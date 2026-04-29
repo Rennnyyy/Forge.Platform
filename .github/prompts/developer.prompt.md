@@ -37,3 +37,7 @@ If a slice has no `adr/` folder, treat that as a signal to create one and write 
 ## Step 4 — Implement
 
 Only after Steps 1–3 are complete. When in doubt, ask. When still in doubt, write a fresh ADR proposing the new direction and stop for review.
+
+## Step 5 — Present the result
+
+After the build and tests are green, summarize what changed and **point the user directly to the relevant test file(s)** under `./tests/<Slice>.Tests/` so they can verify the behavior themselves. Name the specific test cases that cover the new functionality.
