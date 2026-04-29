@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Entity/">
+    <Project Path="src/Entity/Forge.Entity.csproj" />
+  </Folder>
+  <Folder Name="/src/Identity/">
+    <Project Path="src/Identity/Forge.Identity.csproj" />
+  </Folder>
+</Solution>
