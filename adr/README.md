@@ -1,0 +1,43 @@
+# Architecture Decision Records — Forge.Platform (root)
+
+This folder holds **platform-wide** decisions. Slice-local decisions live next to the slice, e.g. [src/Entity/adr/](../src/Entity/adr/).
+
+## Format
+
+Each ADR is one Markdown file, MADR-minimal:
+
+```
+# NNNN — Title
+
+- **Status**: proposed | accepted | superseded by NNNN | deprecated
+- **Date**: YYYY-MM-DD
+- **Author**: <name or agent tag>
+
+## Context
+Why is this decision needed? Forces, constraints.
+
+## Options
+1. Option A — pros / cons
+2. Option B — pros / cons
+...
+
+## Decision
+The chosen option, stated imperatively.
+
+## Consequences
+What this enables or forecloses. Follow-ups.
+```
+
+## Rules
+
+1. ADRs are **append-only** and **numbered sequentially** within their folder. Never renumber.
+2. To change a prior decision, write a new ADR with `Status: accepted` and mark the old one `Status: superseded by NNNN`.
+3. Keep them short. One screen is the goal.
+4. New agents working in the platform must read root ADRs first, then the slice ADRs of the slice they will modify.
+
+## Index
+
+- [0001 — Single-solution monorepo with src/ and tests/](0001-monorepo-layout.md)
+- [0002 — .NET 10 + Central Package Management](0002-dotnet-and-cpm.md)
+- [0003 — Architecture Decision Records as the design source of truth](0003-adr-policy.md)
+- [0004 — Default namespace = Forge.<library>](0004-namespace-convention.md)

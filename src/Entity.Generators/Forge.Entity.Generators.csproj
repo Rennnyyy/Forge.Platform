@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Roslyn source generators must target netstandard2.0 -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Forge.Entity.Generators</RootNamespace>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Generators run inside Roslyn (which is .NET Standard 2.0); keep latest C# language. -->
+    <LangVersion>latest</LangVersion>
+    <!-- Skeleton phase: don't gate on analyzer-release tracking or message-format rules yet. -->
+    <NoWarn>$(NoWarn);RS1032;RS2008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

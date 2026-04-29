@@ -1,9 +1,13 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Entity.Generators/">
+    <Project Path="src/Entity.Generators/Forge.Entity.Generators.csproj" />
+  </Folder>
   <Folder Name="/src/Entity/">
     <Project Path="src/Entity/Forge.Entity.csproj" />
   </Folder>
-  <Folder Name="/src/Identity/">
-    <Project Path="src/Identity/Forge.Identity.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
+    <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
   </Folder>
 </Solution>
