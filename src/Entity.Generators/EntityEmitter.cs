@@ -61,14 +61,14 @@ internal static class EntityEmitter
                 sb.AppendLine();
                 sb.Append("    public ").Append(m.TypeName).AppendLine("()").AppendLine("    {");
                 sb.AppendLine("        __forge_identityUuid = global::System.Guid.NewGuid();");
-                sb.AppendLine("        Iri = global::Forge.Entity.EntityOptions.BaseIri + " +
+                sb.AppendLine("        Iri = global::Forge.Entity.EntityOptions.Current.BaseIri + " +
                               FormatPathSegment(m) + " + \"/\" + __forge_identityUuid.ToString(\"D\");");
                 sb.AppendLine("    }");
                 sb.AppendLine();
                 sb.Append("    internal ").Append(m.TypeName).AppendLine("(global::System.Guid persistedUuid)");
                 sb.AppendLine("    {");
                 sb.AppendLine("        __forge_identityUuid = persistedUuid;");
-                sb.AppendLine("        HydrateIri(global::Forge.Entity.EntityOptions.BaseIri + " +
+                sb.AppendLine("        HydrateIri(global::Forge.Entity.EntityOptions.Current.BaseIri + " +
                               FormatPathSegment(m) + " + \"/\" + persistedUuid.ToString(\"D\"));");
                 sb.AppendLine("    }");
                 sb.AppendLine();
@@ -82,7 +82,7 @@ internal static class EntityEmitter
                 sb.Append("    internal ").Append(m.TypeName).AppendLine("(global::System.Guid persistedUuid)");
                 sb.AppendLine("    {");
                 sb.AppendLine("        __forge_identityUuid = persistedUuid;");
-                sb.AppendLine("        HydrateIri(global::Forge.Entity.EntityOptions.BaseIri + " +
+                sb.AppendLine("        HydrateIri(global::Forge.Entity.EntityOptions.Current.BaseIri + " +
                               FormatPathSegment(m) + " + \"/\" + persistedUuid.ToString(\"D\"));");
                 sb.AppendLine("    }");
                 sb.AppendLine();
@@ -122,7 +122,7 @@ internal static class EntityEmitter
 
         if (m.IdentityStrategy == IdentityStrategy.Path)
         {
-            sb.Append("        var __iri = global::Forge.Entity.EntityOptions.BaseIri")
+            sb.Append("        var __iri = global::Forge.Entity.EntityOptions.Current.BaseIri")
               .Append(" + ").Append(FormatPathSegment(m));
             foreach (var part in m.IdentityParts)
             {
@@ -158,13 +158,13 @@ internal static class EntityEmitter
                 // RFC 4122 URL namespace: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
                 sb.Append("        var __nsGuid = __Forge_ComputeUuidV5(")
                   .Append("new global::System.Guid(\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\"), ")
-                  .Append("global::Forge.Entity.EntityOptions.BaseIri + ")
+                  .Append("global::Forge.Entity.EntityOptions.Current.BaseIri + ")
                   .Append(FormatPathSegment(m))
                   .AppendLine(");");
             }
 
             sb.Append("        __forge_identityUuid = __Forge_ComputeUuidV5(__nsGuid, __name);").AppendLine();
-            sb.Append("        Iri = global::Forge.Entity.EntityOptions.BaseIri + ")
+            sb.Append("        Iri = global::Forge.Entity.EntityOptions.Current.BaseIri + ")
               .Append(FormatPathSegment(m))
               .AppendLine(" + \"/\" + __forge_identityUuid.ToString(\"D\");");
         }

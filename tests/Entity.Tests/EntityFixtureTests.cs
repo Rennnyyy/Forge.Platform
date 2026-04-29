@@ -373,6 +373,71 @@ public class EntityFixtureTests
         await author.Tags.EnsureLoadedAsync();
         author.Tags.Iris.Count.ShouldBe(1); // still 1, not reset
     }
+
+    // -------------------------------------------------------------- EntityOptions.Current / Use
+
+    [Fact]
+    public void EntityOptions_Current_reflects_static_BaseIri()
+    {
+        EntityOptions.Current.BaseIri.ShouldBe("https://forge.example");
+    }
+
+    [Fact]
+    public void EntityOptions_Use_overrides_Current_for_the_scope()
+    {
+        var scoped = new EntityOptionsInstance { BaseIri = "https://tenant.example" };
+
+        using (EntityOptions.Use(scoped))
+        {
+            EntityOptions.Current.BaseIri.ShouldBe("https://tenant.example");
+        }
+
+        // Restored after disposal.
+        EntityOptions.Current.BaseIri.ShouldBe("https://forge.example");
+    }
+
+    [Fact]
+    public void EntityOptions_Use_scope_affects_entity_Iri_materialization()
+    {
+        var scoped = new EntityOptionsInstance { BaseIri = "https://custom.example" };
+
+        using (EntityOptions.Use(scoped))
+        {
+            var foo = new Foo { Slug = "scoped-test" };
+            foo.Iri.ShouldBe("https://custom.example/foos/scoped-test");
+        }
+    }
+
+    // -------------------------------------------------------------- Iri factory
+
+    [Fact]
+    public void Iri_FromBaseUrl_combines_base_and_path()
+    {
+        Iri.FromBaseUrl("/entity/myentity").ShouldBe("https://forge.example/entity/myentity");
+    }
+
+    [Fact]
+    public void Iri_FromBaseUrl_normalizes_leading_slash()
+    {
+        Iri.FromBaseUrl("entity/myentity").ShouldBe("https://forge.example/entity/myentity");
+    }
+
+    [Fact]
+    public void Iri_FromEntity_uses_entity_path_attribute()
+    {
+        Iri.FromEntity<Bar>("myentity").ShouldBe("https://forge.example/bars/myentity");
+    }
+
+    [Fact]
+    public void Iri_FromEntity_respects_ambient_options()
+    {
+        var scoped = new EntityOptionsInstance { BaseIri = "https://tenant.example" };
+
+        using (EntityOptions.Use(scoped))
+        {
+            Iri.FromEntity<Bar>("thing").ShouldBe("https://tenant.example/bars/thing");
+        }
+    }
 }
 
 internal static class TestHydration

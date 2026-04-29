@@ -15,3 +15,5 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0007 — `[Required]` is metadata-only for now](0007-required-is-metadata-only.md)
 - [0008 — Many-to-many relations via `EntityRefCollection<T>` on both sides](0008-many-to-many-inverse-collection.md)
 - [0009 — Deferred (lazy) collections via `[Owning/Inverse(Lazy = true)]`](0009-deferred-collections.md)
+- [0010 — `IEntityOptions` interface, ambient override, and `EntityOptionsInstance`](0010-entity-options-interface-and-di.md)
+- [0011 — `Iri` static factory for IRI construction from plain text](0011-iri-factory.md)
