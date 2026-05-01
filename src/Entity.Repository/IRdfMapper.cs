@@ -14,6 +14,14 @@ public interface IRdfMapper
 
     /// <summary>The <c>rdf:type</c> IRI used for instances of <see cref="EntityType"/>.</summary>
     string ResolveTypeIri(EntityRepositoryOptions options);
+
+    /// <summary>
+    /// Non-generic projection entry-point for transaction executors and other code that
+    /// does not know <typeparamref name="T"/> at compile time. Implementations cast
+    /// <paramref name="entity"/> to the concrete type and delegate to
+    /// <see cref="IRdfMapper{T}.Project"/>.
+    /// </summary>
+    void ProjectEntity(IEntity entity, IRdfTripleSink sink, string typeIri);
 }
 
 /// <summary>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Projects</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #111;
+    }
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 2rem 0 0.5rem;
+      color: #222;
+    }
+    p { margin-bottom: 1rem; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+      font-size: 0.875em;
+      background: #eef;
+      border-radius: 3px;
+      padding: 0.1em 0.35em;
+    }
+    section {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.5rem;
+    }
+    section h2 { margin-top: 0; }
+    dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.2rem 1rem;
+      margin: 0.5rem 0 0.75rem;
+      font-size: 0.9rem;
+    }
+    dt { font-weight: 600; color: #555; }
+    dd { color: #333; }
+    .diagram-wrap {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+      overflow-x: auto;
+    }
+    .mermaid { min-height: 60px; }
+    .legend {
+      font-size: 0.82rem;
+      color: #666;
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+<main>
+
+  <h1>Forge.Platform — Projects</h1>
+  <p>
+    Forge.Platform is a .NET library platform for building richly-typed, RDF-aware domain models.
+    The projects below deliver a complete stack: compile-time code generation via Roslyn source
+    generators, IRI-based entity identity and an abstract RDF persistence contract, a LINQ-to-SPARQL
+    query translation layer, concrete store backends (in-memory and Ontotext GraphDB), and an ambient
+    active-record operations bridge — all without runtime reflection.
+  </p>
+
+  <h2>Dependency diagram</h2>
+  <div class="diagram-wrap">
+    <div class="mermaid">
+graph TD
+    Entity["Forge.Entity"]
+    EntityGenerators["Forge.Entity.Generators"]
+    EntityRepository["Forge.Entity.Repository"]
+    EntitySparql["Forge.Entity.Sparql"]
+    EntityOperations["Forge.Entity.Operations"]
+    EntityOperationsGenerators["Forge.Entity.Operations.Generators"]
+    EntityRepositoryInMemory["Forge.Entity.Repository.InMemory"]
+    EntityRepositoryGraphDb["Forge.Entity.Repository.GraphDb"]
+
+    EntityGenerators -.-> Entity
+    EntityRepository --> Entity
+    EntitySparql --> Entity
+    EntitySparql --> EntityRepository
+    EntityOperations --> Entity
+    EntityOperations --> EntityRepository
+    EntityOperations --> EntitySparql
+    EntityRepositoryInMemory --> Entity
+    EntityRepositoryInMemory --> EntityRepository
+    EntityRepositoryGraphDb --> Entity
+    EntityRepositoryGraphDb --> EntityRepository
+
+    classDef generator fill:#e8d5fb,stroke:#7c3aed,stroke-width:1.5px
+    class EntityGenerators,EntityOperationsGenerators generator
+    </div>
+    <p class="legend">
+      Solid arrows (&#x2192;) = runtime project reference &nbsp;|&nbsp;
+      Dashed arrows (&#x21E2;) = build-time analyzer reference (<code>OutputItemType="Analyzer" ReferenceOutputAssembly="false"</code>) &nbsp;|&nbsp;
+      Violet = Roslyn source generator (<code>netstandard2.0</code>)
+    </p>
+  </div>
+
+  <section id="forge-entity">
+    <h2><code>Forge.Entity</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity</code></dd>
+    </dl>
+    <p>
+      The core runtime library. Defines the entity model (<code>EntityBase</code>,
+      <code>IEntity</code>), the full annotation surface (<code>[Entity]</code>,
+      <code>[Identity]</code>, <code>[IdentityPart]</code>, <code>[Owning]</code>,
+      <code>[Inverse]</code>, <code>[Required]</code>, <code>[Enumeration]</code>),
+      identity strategies and IRI materialization, and the lazy-loading wiring types
+      (<code>EntityRef&lt;T&gt;</code>, <code>EntityRefCollection&lt;T&gt;</code>,
+      <code>EntitySession</code>). <code>Forge.Entity.Generators</code> is wired in as a
+      build-time analyzer so all boilerplate is emitted at compile time with no runtime
+      reflection.
+    </p>
+  </section>
+
+  <section id="forge-entity-generators">
+    <h2><code>Forge.Entity.Generators</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>netstandard2.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Generators</code></dd>
+    </dl>
+    <p>
+      Roslyn incremental source generator that processes every
+      <code>[Entity]</code>-annotated <code>partial class</code> and emits the second
+      partial half: IRI materialization, equality-by-IRI, property-change guards, and
+      lazy-loading stubs. Runs entirely inside the compiler — zero runtime overhead — and
+      is consumed by <code>Forge.Entity</code> (and by end-user projects) as an analyzer
+      reference.
+    </p>
+  </section>
+
+  <section id="forge-entity-repository">
+    <h2><code>Forge.Entity.Repository</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Repository</code></dd>
+    </dl>
+    <p>
+      Abstract persistence layer. Defines the store contract
+      (<code>IEntityStore</code>, <code>IEntityLoader</code>,
+      <code>IRdfTripleSink</code>), the typed application facade
+      (<code>IEntityRepository&lt;T&gt;</code> / <code>EntityRepository&lt;T&gt;</code>),
+      and the RDF mapping infrastructure (<code>IRdfMapper</code>,
+      <code>IRdfMapperRegistry</code>, <code>ReflectionRdfMapper</code>,
+      <code>LiteralCodec</code>, <code>PredicateResolver</code>). Acts as the shared
+      boundary between backend implementations and the rest of the stack.
+    </p>
+  </section>
+
+  <section id="forge-entity-sparql">
+    <h2><code>Forge.Entity.Sparql</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Sparql</code></dd>
+    </dl>
+    <p>
+      LINQ-to-SPARQL provider. Exposes <code>store.Query&lt;T&gt;()</code> returning an
+      <code>IOrderedQueryable&lt;T&gt;</code> / <code>IAsyncEnumerable&lt;T&gt;</code>
+      that translates expression trees into SPARQL SELECT queries via
+      <code>LinqToSparqlVisitor</code> and <code>SparqlEmitter</code>, then executes them
+      against any <code>ISparqlQueryStore</code> backend.
+    </p>
+  </section>
+
+  <section id="forge-entity-repository-inmemory">
+    <h2><code>Forge.Entity.Repository.InMemory</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Repository.InMemory</code></dd>
+    </dl>
+    <p>
+      In-memory <code>IEntityStore</code> and <code>ISparqlQueryStore</code> backed by a
+      dotNetRDF <code>Graph</code>. Uses direct graph traversal for load/save/delete and
+      dotNetRDF's in-process SPARQL engine for query execution; intended for unit tests and
+      embedded scenarios, and shares a behavioral test suite with the GraphDB backend to
+      guarantee interchangeability.
+    </p>
+  </section>
+
+  <section id="forge-entity-repository-graphdb">
+    <h2><code>Forge.Entity.Repository.GraphDb</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Repository.GraphDb</code></dd>
+    </dl>
+    <p>
+      HTTP-based <code>IEntityStore</code> and <code>ISparqlQueryStore</code> targeting
+      the Ontotext GraphDB SPARQL endpoint. Reads via SPARQL <code>CONSTRUCT</code>,
+      writes via SPARQL <code>UPDATE</code> (INSERT DATA / DELETE WHERE), and uses
+      <code>IHttpClientFactory</code> with optional HTTP Basic authentication configured
+      through <code>GraphDbOptions</code>.
+    </p>
+  </section>
+
+  <section id="forge-entity-operations">
+    <h2><code>Forge.Entity.Operations</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Operations</code></dd>
+    </dl>
+    <p>
+      Ambient active-record bridge. <code>EntityOperations.Use(store)</code> binds an
+      <code>IEntityStore</code> to the current async control flow so that
+      generator-emitted instance methods (<code>CreateAsync</code>,
+      <code>ReadAsync</code>, <code>UpdateAsync</code>, <code>DeleteAsync</code>) resolve
+      the store without explicit injection. Orchestrates
+      <code>Forge.Entity.Repository</code> and <code>Forge.Entity.Sparql</code>.
+    </p>
+  </section>
+
+  <section id="forge-entity-operations-generators">
+    <h2><code>Forge.Entity.Operations.Generators</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>netstandard2.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity.Operations.Generators</code></dd>
+    </dl>
+    <p>
+      Roslyn incremental source generator that emits active-record CRUD methods
+      (<code>CreateAsync</code>, <code>ReadAsync</code>, <code>UpdateAsync</code>,
+      <code>DeleteAsync</code>) onto every <code>[Entity]</code>-annotated
+      <code>partial class</code> in the consuming project. Generated file hints use the
+      pattern <code>{Namespace}.{TypeName}.g.ops.cs</code>; consumed by end-user projects
+      as an analyzer reference alongside <code>Forge.Entity.Operations</code>.
+    </p>
+  </section>
+
+</main>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true });
+</script>
+</body>
+</html>

@@ -87,6 +87,32 @@ public static class EntityOperations
         => RequireStore().QueryByTypeAsync<T>(cancellationToken);
 
     /// <summary>
+    /// Opens a new <see cref="EntityTransaction"/> against the ambient store. The bound store
+    /// must implement <see cref="ITransactionalEntityStore"/>; otherwise a
+    /// <see cref="NotSupportedException"/> is thrown.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// using var _ = EntityOperations.Use(store);
+    /// await using var tx = EntityOperations.BeginTransaction();
+    /// tx.Create(artist).Update(label).Delete(obsoleteIri);
+    /// await tx.CommitAsync();
+    /// </code>
+    /// </example>
+    /// <exception cref="NotSupportedException">
+    /// The bound store does not implement <see cref="ITransactionalEntityStore"/>.
+    /// </exception>
+    public static EntityTransaction BeginTransaction()
+    {
+        var store = RequireStore();
+        if (store is not ITransactionalEntityStore txStore)
+            throw new NotSupportedException(
+                $"The bound store ({store.GetType().Name}) does not implement " +
+                $"{nameof(ITransactionalEntityStore)}. Transactions are not supported by this backend.");
+        return new EntityTransaction(txStore);
+    }
+
+    /// <summary>
     /// Open a LINQ-shaped <see cref="IQueryable{T}"/> against the ambient store. The
     /// bound store must implement <see cref="ISparqlQueryStore"/>; otherwise a
     /// <see cref="NotSupportedException"/> is thrown. See Operations ADR-0003.

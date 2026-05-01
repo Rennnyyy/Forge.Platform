@@ -8,6 +8,10 @@ public interface IRdfMapperRegistry
     IRdfMapper<T> For<T>() where T : class, IEntity;
     IRdfMapper? ForTypeIri(string typeIri, EntityRepositoryOptions options);
     IEnumerable<IRdfMapper> All { get; }
+
+    /// <summary>Resolve the mapper for a runtime entity type (used by transaction executors
+    /// where <c>T</c> is not known at compile time).</summary>
+    IRdfMapper ForEntityType(Type entityType);
 }
 
 /// <summary>
@@ -47,6 +51,16 @@ public sealed class RdfMapperRegistry : IRdfMapperRegistry
             if (string.Equals(m.ResolveTypeIri(options), typeIri, StringComparison.Ordinal))
                 return m;
         return null;
+    }
+
+    public IRdfMapper ForEntityType(Type entityType)
+    {
+        ArgumentNullException.ThrowIfNull(entityType);
+        return _byType.GetOrAdd(entityType, static t =>
+        {
+            var ctor = typeof(ReflectionRdfMapper<>).MakeGenericType(t);
+            return (IRdfMapper)Activator.CreateInstance(ctor)!;
+        });
     }
 
     public IEnumerable<IRdfMapper> All => _byType.Values;

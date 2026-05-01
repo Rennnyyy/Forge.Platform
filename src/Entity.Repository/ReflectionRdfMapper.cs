@@ -25,6 +25,10 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
     public string ResolveTypeIri(EntityRepositoryOptions options) =>
         options.ResolveTypeIri(typeof(T).Name, _plan.Value.EntityPath);
 
+    /// <inheritdoc/>
+    public void ProjectEntity(IEntity entity, IRdfTripleSink sink, string typeIri) =>
+        Project((T)entity, sink, typeIri);
+
     // --------------------------------------------------------------- Hydrate
 
     public T? Hydrate(string iri, RdfGraph subjectGraph)

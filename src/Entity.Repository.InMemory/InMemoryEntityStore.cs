@@ -270,7 +270,11 @@ public sealed partial class InMemoryEntityStore : IEntityStore
         return this;
     }
 
-    public ValueTask DisposeAsync() => default;
+    public ValueTask DisposeAsync()
+    {
+        _txLock.Dispose();
+        return default;
+    }
 }
 
 /// <summary>Internal shim so the InMemory backend can use the core's predicate resolver

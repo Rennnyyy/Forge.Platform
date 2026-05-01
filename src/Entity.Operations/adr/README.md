@@ -9,3 +9,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0001 — Active-record CRUD operations on generated entities via ambient IEntityStore](0001-entity-operations-active-record.md)
 - [0002 — Second Roslyn generator for entity operations rather than extending Entity.Generators](0002-operations-second-generator.md)
 - [0003 — `EntityOperations.Query<T>()` exposes an EF-Core-shaped IQueryable surface](0003-iqueryable-entry-point.md)
+- [0004 — `EntityOperations.BeginTransaction()` as the ambient transaction entry-point](0004-begin-transaction-ambient.md)

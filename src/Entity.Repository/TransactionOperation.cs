@@ -1,0 +1,81 @@
+namespace Forge.Entity.Repository;
+
+/// <summary>
+/// Abstract base for a single operation inside an <see cref="EntityTransaction"/>.
+/// </summary>
+public abstract class TransactionOperation
+{
+    /// <summary>The IRI of the entity targeted by this operation.</summary>
+    public abstract string EntityIri { get; }
+}
+
+/// <summary>
+/// Abstract base for operations that write an entity (Create or Update). Exposes the
+/// entity in a non-generic way so backends can project triples via
+/// <see cref="IRdfMapper.ProjectEntity"/> without knowing <typeparamref name="T"/> at the
+/// transaction executor call site.
+/// </summary>
+public abstract class EntityWriteOperation : TransactionOperation
+{
+    /// <summary>The entity that will be persisted.</summary>
+    public abstract IEntity Entity { get; }
+
+    /// <summary>The write mode to use when persisting the entity.</summary>
+    public abstract WriteMode Mode { get; }
+}
+
+/// <summary>
+/// Adds a new entity to the store. Fails (and rolls back the transaction) if an entity
+/// with the same IRI already exists.
+/// </summary>
+public sealed class CreateOperation<T> : EntityWriteOperation where T : class, IEntity
+{
+    internal CreateOperation(T entity) => TypedEntity = entity;
+
+    /// <summary>The strongly-typed entity to create.</summary>
+    public T TypedEntity { get; }
+
+    /// <inheritdoc/>
+    public override IEntity Entity => TypedEntity;
+
+    /// <inheritdoc/>
+    public override WriteMode Mode => WriteMode.Create;
+
+    /// <inheritdoc/>
+    public override string EntityIri => TypedEntity.Iri;
+}
+
+/// <summary>
+/// Replaces an existing entity in the store (full PUT semantics). Deletes all current
+/// triples for the entity's IRI and writes the projected triples.
+/// </summary>
+public sealed class UpdateOperation<T> : EntityWriteOperation where T : class, IEntity
+{
+    internal UpdateOperation(T entity) => TypedEntity = entity;
+
+    /// <summary>The strongly-typed entity to update.</summary>
+    public T TypedEntity { get; }
+
+    /// <inheritdoc/>
+    public override IEntity Entity => TypedEntity;
+
+    /// <inheritdoc/>
+    public override WriteMode Mode => WriteMode.Replace;
+
+    /// <inheritdoc/>
+    public override string EntityIri => TypedEntity.Iri;
+}
+
+/// <summary>
+/// Deletes every triple whose subject is <see cref="Iri"/> from the store.
+/// </summary>
+public sealed class DeleteOperation : TransactionOperation
+{
+    internal DeleteOperation(string iri) => Iri = iri;
+
+    /// <summary>The IRI of the entity to delete.</summary>
+    public string Iri { get; }
+
+    /// <inheritdoc/>
+    public override string EntityIri => Iri;
+}
