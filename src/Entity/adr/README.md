@@ -17,3 +17,6 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0009 — Deferred (lazy) collections via `[Owning/Inverse(Lazy = true)]`](0009-deferred-collections.md)
 - [0010 — `IEntityOptions` interface, ambient override, and `EntityOptionsInstance`](0010-entity-options-interface-and-di.md)
 - [0011 — `Iri` static factory for IRI construction from plain text](0011-iri-factory.md)
+- [0012 — `[Predicate]` attribute on scalar data properties](0012-predicate-attribute-for-data-properties.md)
+- [0013 — `IEntityRepository<T>`, `IRdfMapper<T>`, and reflection-based v1](0013-entity-repository-and-rdf-mapper.md)
+- [0014 — Podman as the preferred container runtime for integration tests](0014-podman-container-runtime.md)

@@ -33,7 +33,7 @@ Combines `EntityOptions.Current.BaseIri` with the given relative path. Leading s
 
 ```csharp
 Iri.FromBaseUrl("/entity/myentity")
-// → "https://forge.example/entity/myentity"
+// → "https://forge-it.net/entity/myentity"
 ```
 
 ### `Iri.FromEntity<T>(string identity)`
@@ -44,7 +44,7 @@ type name. Throws `InvalidOperationException` if `T` is not decorated with `[Ent
 
 ```csharp
 Iri.FromEntity<Bar>("myentity")
-// → "https://forge.example/bars/myentity"
+// → "https://forge-it.net/bars/myentity"
 ```
 
 Reflection is acceptable here: `FromEntity<T>` is not on the identity-materialization hot path;

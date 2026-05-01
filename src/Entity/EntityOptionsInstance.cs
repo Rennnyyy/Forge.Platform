@@ -20,7 +20,7 @@ namespace Forge.Entity;
 /// </example>
 public sealed class EntityOptionsInstance : IEntityOptions
 {
-    private string _baseIri = "https://forge.local";
+    private string _baseIri = "https://forge-it.net";
     private string? _predicateBaseIri;
 
     /// <inheritdoc cref="IEntityOptions.BaseIri"/>

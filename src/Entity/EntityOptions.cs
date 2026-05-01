@@ -7,7 +7,7 @@ namespace Forge.Entity;
 /// <para>
 /// <strong>Test / startup usage</strong> — set the static properties before any entity is
 /// materialized. This is the simplest approach and requires no DI setup:
-/// <code>EntityOptions.BaseIri = "https://forge.example";</code>
+/// <code>EntityOptions.BaseIri = "https://forge-it.net";</code>
 /// </para>
 /// <para>
 /// <strong>DI / per-request usage</strong> — register an <see cref="IEntityOptions"/>
@@ -19,7 +19,7 @@ namespace Forge.Entity;
 public static class EntityOptions
 {
     private static readonly AsyncLocal<IEntityOptions?> _ambient = new();
-    private static string _baseIri = "https://forge.local";
+    private static string _baseIri = "https://forge-it.net";
     private static string? _predicateBaseIri;
 
     // Read-only view that proxies the static backing fields.

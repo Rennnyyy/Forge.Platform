@@ -19,7 +19,7 @@ public static class Iri
     /// <example>
     /// <code>
     /// Iri.FromBaseUrl("/entity/myentity")
-    /// // → "https://forge.example/entity/myentity"
+    /// // → "https://forge-it.net/entity/myentity"
     /// </code>
     /// </example>
     public static string FromBaseUrl(string path)
@@ -37,7 +37,7 @@ public static class Iri
     /// The identity suffix, e.g. <c>"myentity"</c>. Leading slashes are normalized.
     /// </param>
     /// <returns>
-    /// Fully qualified IRI string, e.g. <c>https://forge.example/bars/myentity</c>.
+    /// Fully qualified IRI string, e.g. <c>https://forge-it.net/bars/myentity</c>.
     /// </returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <typeparamref name="T"/> is not decorated with <see cref="EntityAttribute"/>.
@@ -45,7 +45,7 @@ public static class Iri
     /// <example>
     /// <code>
     /// Iri.FromEntity&lt;Bar&gt;("myentity")
-    /// // → "https://forge.example/bars/myentity"
+    /// // → "https://forge-it.net/bars/myentity"
     /// </code>
     /// </example>
     public static string FromEntity<T>(string identity) where T : IEntity

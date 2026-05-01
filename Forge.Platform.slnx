@@ -6,8 +6,20 @@
   <Folder Name="/src/Entity/">
     <Project Path="src/Entity/Forge.Entity.csproj" />
   </Folder>
+  <Folder Name="/src/Entity.Repository/">
+    <Project Path="src/Entity.Repository/Forge.Entity.Repository.csproj" />
+  </Folder>
+  <Folder Name="/src/Entity.Repository.InMemory/">
+    <Project Path="src/Entity.Repository.InMemory/Forge.Entity.Repository.InMemory.csproj" />
+  </Folder>
+  <Folder Name="/src/Entity.Repository.GraphDb/">
+    <Project Path="src/Entity.Repository.GraphDb/Forge.Entity.Repository.GraphDb.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
+    <Project Path="tests/Entity.Tests.Fixtures/Forge.Entity.Tests.Fixtures.csproj" />
+    <Project Path="tests/Entity.Repository.Tests/Forge.Entity.Repository.Tests.csproj" />
+    <Project Path="tests/Entity.Repository.GraphDb.Tests/Forge.Entity.Repository.GraphDb.Tests.csproj" />
   </Folder>
 </Solution>

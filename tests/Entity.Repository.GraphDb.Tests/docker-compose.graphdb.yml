@@ -1,0 +1,27 @@
+# Local GraphDB instance used by Forge.Entity.Repository.GraphDb.Tests.
+# Bring up (Podman):  podman compose -f docker-compose.graphdb.yml up -d
+# Bring up (Docker):  docker compose -f docker-compose.graphdb.yml up -d
+# Tear down:          {podman|docker} compose -f docker-compose.graphdb.yml down -v
+#
+# The fixture (GraphDbFixture) targets http://localhost:7200 by default and creates a
+# repository named "forge-tests" on first run. Override with FORGE_GRAPHDB_URL.
+# Override the container CLI with FORGE_CONTAINER_CLI=podman|docker.
+
+services:
+  graphdb:
+    image: ontotext/graphdb:10.7.3
+    container_name: forge-graphdb
+    ports:
+      - "7200:7200"
+    environment:
+      GDB_HEAP_SIZE: 512m
+    volumes:
+      - graphdb-data:/opt/graphdb/home
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7200/rest/repositories"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  graphdb-data:

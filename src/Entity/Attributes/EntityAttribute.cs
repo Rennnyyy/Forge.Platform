@@ -10,7 +10,7 @@ public sealed class EntityAttribute : Attribute
     /// <summary>
     /// Optional path segment inserted between the global <see cref="EntityOptions.BaseIri"/>
     /// and the identity-derived suffix, e.g. <c>"orders"</c> in
-    /// <c>https://forge.example/orders/{identity}</c>.
+    /// <c>https://forge-it.net/orders/{identity}</c>.
     /// </summary>
     public string? Path { get; init; }
 
@@ -18,7 +18,7 @@ public sealed class EntityAttribute : Attribute
     /// Optional sub-path appended to <see cref="EntityOptions.PredicateBaseIri"/> when resolving
     /// short predicate names on <c>[Owning]</c> / <c>[Inverse]</c>.
     /// Defaults to <see cref="Path"/> when not set.
-    /// e.g. <c>"order"</c> in <c>https://forge.example/predicates/order/{predicate}</c>.
+    /// e.g. <c>"order"</c> in <c>https://forge-it.net/predicates/order/{predicate}</c>.
     /// </summary>
     public string? PredicatePath { get; init; }
 }

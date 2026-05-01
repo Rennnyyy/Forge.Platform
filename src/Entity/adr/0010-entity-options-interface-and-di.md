@@ -7,7 +7,7 @@
 ## Context
 
 `EntityOptions` is a static class with mutable global fields. That is intentional for test ergonomics
-(`EntityOptions.BaseIri = "https://forge.example"` before a test run), but it makes per-request
+(`EntityOptions.BaseIri = "https://forge-it.net"` before a test run), but it makes per-request
 configuration impossible in multi-tenant DI scenarios, and it provides no injection point for
 env-variable / `appsettings.json` binding (`Microsoft.Extensions.Options`).
 

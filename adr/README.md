@@ -41,3 +41,6 @@ What this enables or forecloses. Follow-ups.
 - [0002 — .NET 10 + Central Package Management](0002-dotnet-and-cpm.md)
 - [0003 — Architecture Decision Records as the design source of truth](0003-adr-policy.md)
 - [0004 — Default namespace = Forge.<library>](0004-namespace-convention.md)
+- [0005 — RDF-backed Entity Repository as a separate slice](0005-rdf-repository.md)
+- [0006 — Canonical base URL is https://forge-it.net](0006-canonical-base-url.md)
+- [0007 — Shared test fixtures project for sample entities](0007-shared-test-fixtures.md)

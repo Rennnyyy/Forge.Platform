@@ -13,7 +13,7 @@ public class EntityFixtureTests
     public EntityFixtureTests()
     {
         // Tests are isolated; setting BaseIri here is fine for the demo.
-        EntityOptions.BaseIri = "https://forge.example";
+        EntityOptions.BaseIri = "https://forge-it.net";
     }
 
     // -------------------------------------------------------------- Identity
@@ -23,7 +23,7 @@ public class EntityFixtureTests
     {
         var foo = new Foo { Slug = "alpha" };
 
-        foo.Iri.ShouldBe("https://forge.example/foos/alpha");
+        foo.Iri.ShouldBe("https://forge-it.net/foos/alpha");
         foo.IsIdentitySealed.ShouldBeTrue();
     }
 
@@ -33,22 +33,22 @@ public class EntityFixtureTests
         var bar = new Bar { Name = "thing" };
 
         bar.IsIdentitySealed.ShouldBeTrue();
-        bar.Iri.ShouldStartWith("https://forge.example/bars/");
-        Guid.TryParse(bar.Iri["https://forge.example/bars/".Length..], out _).ShouldBeTrue();
+        bar.Iri.ShouldStartWith("https://forge-it.net/bars/");
+        Guid.TryParse(bar.Iri["https://forge-it.net/bars/".Length..], out _).ShouldBeTrue();
     }
 
     [Fact]
     public void Identity_is_sealed_once_materialized()
     {
         var entity = new SealableTestEntity();
-        entity.AssignIri("https://forge.example/foo/1");
+        entity.AssignIri("https://forge-it.net/foo/1");
 
         var ex = Should.Throw<InvalidOperationException>(
-            () => entity.AssignIri("https://forge.example/foo/2"));
+            () => entity.AssignIri("https://forge-it.net/foo/2"));
         ex.Message.ShouldContain("sealed", Case.Insensitive);
 
         // Re-assigning the same IRI is a no-op.
-        Should.NotThrow(() => entity.AssignIri("https://forge.example/foo/1"));
+        Should.NotThrow(() => entity.AssignIri("https://forge-it.net/foo/1"));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class EntityFixtureTests
         var foo = new Foo { Slug = "before" };
 
         // First Iri access triggers lazy materialization and seals identity.
-        foo.Iri.ShouldBe("https://forge.example/foos/before");
+        foo.Iri.ShouldBe("https://forge-it.net/foos/before");
         foo.IsIdentitySealed.ShouldBeTrue();
 
         // The init accessor calls GuardIdentityMutation(); invoke it via reflection
@@ -123,7 +123,7 @@ public class EntityFixtureTests
     public async Task Awaiting_a_reference_outside_a_session_throws()
     {
         var foo = new Foo { Slug = "lonely" };
-        foo.PrimaryBar = EntityRef<Bar>.ForIri("https://forge.example/bars/missing");
+        foo.PrimaryBar = EntityRef<Bar>.ForIri("https://forge-it.net/bars/missing");
 
         await Should.ThrowAsync<InvalidOperationException>(async () =>
         {
@@ -135,7 +135,7 @@ public class EntityFixtureTests
     public async Task A_reference_that_is_absent_in_the_store_resolves_to_null()
     {
         var foo = new Foo { Slug = "absent-target" };
-        foo.PrimaryBar = EntityRef<Bar>.ForIri("https://forge.example/bars/does-not-exist");
+        foo.PrimaryBar = EntityRef<Bar>.ForIri("https://forge-it.net/bars/does-not-exist");
 
         using var scope = EntitySession.Begin(new InMemoryEntityLoader());
 
@@ -166,9 +166,9 @@ public class EntityFixtureTests
     [Fact]
     public void Enumeration_entities_have_stable_named_iris()
     {
-        Color.Red.Iri.ShouldBe("https://forge.example/colors/red");
-        Color.Green.Iri.ShouldBe("https://forge.example/colors/green");
-        Color.Blue.Iri.ShouldBe("https://forge.example/colors/blue");
+        Color.Red.Iri.ShouldBe("https://forge-it.net/colors/red");
+        Color.Green.Iri.ShouldBe("https://forge-it.net/colors/green");
+        Color.Blue.Iri.ShouldBe("https://forge-it.net/colors/blue");
 
         Color.All.ShouldContain(Color.Red);
         Color.Red.ShouldBeSameAs(Color.Red);
@@ -237,7 +237,7 @@ public class EntityFixtureTests
         var persisted = Guid.Parse("11111111-2222-3333-4444-555555555555");
         var bar = TestHydration.HydrateBarWithUuid(persisted);
 
-        bar.Iri.ShouldBe($"https://forge.example/bars/{persisted:D}");
+        bar.Iri.ShouldBe($"https://forge-it.net/bars/{persisted:D}");
     }
 
     // -------------------------------------------------------------- UuidV5
@@ -249,7 +249,7 @@ public class EntityFixtureTests
         var b = new Widget { Code = "ABC-123" };
 
         a.Iri.ShouldBe(b.Iri);
-        a.Iri.ShouldStartWith("https://forge.example/widgets/");
+        a.Iri.ShouldStartWith("https://forge-it.net/widgets/");
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public class EntityFixtureTests
     {
         var widget = new Widget { Code = "rfc-check" };
 
-        var suffix = widget.Iri["https://forge.example/widgets/".Length..];
+        var suffix = widget.Iri["https://forge-it.net/widgets/".Length..];
         var g = Guid.Parse(suffix);
         // GUID byte 7 high nibble is the version on RFC 4122 wire order;
         // .NET Guid.ToByteArray() uses little-endian for the first three fields,
@@ -379,7 +379,7 @@ public class EntityFixtureTests
     [Fact]
     public void EntityOptions_Current_reflects_static_BaseIri()
     {
-        EntityOptions.Current.BaseIri.ShouldBe("https://forge.example");
+        EntityOptions.Current.BaseIri.ShouldBe("https://forge-it.net");
     }
 
     [Fact]
@@ -393,7 +393,7 @@ public class EntityFixtureTests
         }
 
         // Restored after disposal.
-        EntityOptions.Current.BaseIri.ShouldBe("https://forge.example");
+        EntityOptions.Current.BaseIri.ShouldBe("https://forge-it.net");
     }
 
     [Fact]
@@ -413,19 +413,19 @@ public class EntityFixtureTests
     [Fact]
     public void Iri_FromBaseUrl_combines_base_and_path()
     {
-        Iri.FromBaseUrl("/entity/myentity").ShouldBe("https://forge.example/entity/myentity");
+        Iri.FromBaseUrl("/entity/myentity").ShouldBe("https://forge-it.net/entity/myentity");
     }
 
     [Fact]
     public void Iri_FromBaseUrl_normalizes_leading_slash()
     {
-        Iri.FromBaseUrl("entity/myentity").ShouldBe("https://forge.example/entity/myentity");
+        Iri.FromBaseUrl("entity/myentity").ShouldBe("https://forge-it.net/entity/myentity");
     }
 
     [Fact]
     public void Iri_FromEntity_uses_entity_path_attribute()
     {
-        Iri.FromEntity<Bar>("myentity").ShouldBe("https://forge.example/bars/myentity");
+        Iri.FromEntity<Bar>("myentity").ShouldBe("https://forge-it.net/bars/myentity");
     }
 
     [Fact]
