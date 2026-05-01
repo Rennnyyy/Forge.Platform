@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="dotNetRDF" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Entity\Forge.Entity.csproj" />
+    <!-- Entity generator: emits identity/refs; referenced as normal lib so test driver can invoke it. -->
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Operations\Forge.Entity.Operations.csproj" />
+    <!-- Operations generator: referenced as normal lib so test driver can invoke it. -->
+    <ProjectReference Include="..\..\src\Entity.Operations.Generators\Forge.Entity.Operations.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Repository\Forge.Entity.Repository.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Repository.InMemory\Forge.Entity.Repository.InMemory.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+  </ItemGroup>
+
+</Project>
