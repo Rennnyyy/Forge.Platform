@@ -1,6 +1,7 @@
 using Forge.Entity;
 using Forge.Entity.Repository;
 using Forge.Entity.Repository.InMemory;
+using Forge.Entity.Sparql;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.Options;
@@ -186,5 +187,30 @@ public sealed class EntityOperationsBehavioralTests : IClassFixture<EntityOption
 
         scope.Dispose();
         EntityOperations.CurrentStore.ShouldBeNull();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 9. Query<T>() returns an IQueryable bound to the ambient store (ADR-0003)
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Query_returns_an_IQueryable_bound_to_the_ambient_store()
+    {
+        await using var store = BuildStore();
+        using var _ = EntityOperations.Use(store);
+
+        await new Artist { Name = "Aurora", Country = "no", Active = true  }.CreateAsync();
+        await new Artist { Name = "Bjorn",  Country = "se", Active = false }.CreateAsync();
+        await new Artist { Name = "Cleo",   Country = "us", Active = true  }.CreateAsync();
+
+        var actives = await EntityOperations.Query<Artist>()
+            .Where(a => a.Active)
+            .OrderBy(a => a.Name)
+            .ToListAsync();
+
+        actives.Select(a => a.Name).ShouldBe(new[] { "Aurora", "Cleo" });
+
+        var count = await EntityOperations.Query<Artist>().CountAsync(a => a.Country == "se");
+        count.ShouldBe(1);
     }
 }

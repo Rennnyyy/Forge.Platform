@@ -1,4 +1,5 @@
 using Forge.Entity.Repository;
+using Forge.Entity.Sparql;
 
 namespace Forge.Entity.Operations;
 
@@ -84,6 +85,25 @@ public static class EntityOperations
     public static IAsyncEnumerable<T> ListAsync<T>(CancellationToken cancellationToken = default)
         where T : class, IEntity
         => RequireStore().QueryByTypeAsync<T>(cancellationToken);
+
+    /// <summary>
+    /// Open a LINQ-shaped <see cref="IQueryable{T}"/> against the ambient store. The
+    /// bound store must implement <see cref="ISparqlQueryStore"/>; otherwise a
+    /// <see cref="NotSupportedException"/> is thrown. See Operations ADR-0003.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// using var _ = EntityOperations.Use(store);
+    /// var artists = await EntityOperations
+    ///     .Query&lt;Artist&gt;()
+    ///     .Where(a =&gt; a.Country == "us" &amp;&amp; a.Active)
+    ///     .OrderBy(a =&gt; a.Name)
+    ///     .Take(20)
+    ///     .ToListAsync();
+    /// </code>
+    /// </example>
+    public static IQueryable<T> Query<T>() where T : class, IEntity
+        => RequireStore().Query<T>();
 
     // ── Internal scope ───────────────────────────────────────────────────────
 

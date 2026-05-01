@@ -2,13 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Forge.Entity.Operations</RootNamespace>
+    <RootNamespace>Forge.Entity.Sparql</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Entity\Forge.Entity.csproj" />
     <ProjectReference Include="..\Entity.Repository\Forge.Entity.Repository.csproj" />
-    <ProjectReference Include="..\Entity.Sparql\Forge.Entity.Sparql.csproj" />
   </ItemGroup>
 
 </Project>

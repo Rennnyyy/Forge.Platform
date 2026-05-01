@@ -12,7 +12,7 @@ namespace Forge.Entity.Repository.InMemory;
 /// embedded scenarios. The same behavioral spec is asserted against the GraphDB
 /// backend to keep the two implementations interchangeable.
 /// </summary>
-public sealed class InMemoryEntityStore : IEntityStore
+public sealed partial class InMemoryEntityStore : IEntityStore
 {
     private readonly Graph _graph;
     private readonly IRdfMapperRegistry _registry;

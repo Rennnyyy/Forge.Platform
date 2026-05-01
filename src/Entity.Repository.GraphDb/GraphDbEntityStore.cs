@@ -16,7 +16,7 @@ namespace Forge.Entity.Repository.GraphDb;
 /// DELETE WHERE). Behaves identically to <c>InMemoryEntityStore</c> w.r.t. the mapper
 /// contract — the two share a behavioral test suite.
 /// </summary>
-public sealed class GraphDbEntityStore : IEntityStore
+public sealed partial class GraphDbEntityStore : IEntityStore
 {
     private readonly HttpClient _http;
     private readonly IRdfMapperRegistry _registry;
