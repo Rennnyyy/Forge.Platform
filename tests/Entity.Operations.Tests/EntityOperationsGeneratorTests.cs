@@ -192,4 +192,63 @@ public sealed class EntityOperationsGeneratorTests
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty();
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 8. [NoOperations]-decorated entity produces no .g.ops.cs file
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void NoOperations_decorated_entity_produces_no_ops_file()
+    {
+        var src = """
+            using Forge.Entity;
+            using Forge.Entity.Operations;
+            namespace Demo;
+
+            [Entity(Path = "aspects")]
+            [Identity(IdentityGenerator.Random)]
+            [NoOperations]
+            public partial class Aspect { }
+            """;
+
+        var result = OperationsGeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+
+        // The structural .g.cs file must still be emitted.
+        result.EmittedFiles.ShouldContain(f => f.FileName == "Demo.Aspect.g.cs");
+
+        // No active-record CRUD file may be emitted for the opted-out type.
+        result.EmittedFiles.ShouldNotContain(f => f.FileName == "Demo.Aspect.g.ops.cs");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 9. Undecorated entity is unaffected (regression guard for trunk 1)
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Undecorated_entity_continues_to_produce_ops_file()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "widgets")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Widget { }
+            """;
+
+        var result = OperationsGeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+
+        var (_, code) = OpsFile(result, "Widget");
+
+        code.ShouldContain("partial class Widget");
+        code.ShouldContain("public global::System.Threading.Tasks.ValueTask CreateAsync(");
+        code.ShouldContain("public global::System.Threading.Tasks.ValueTask UpdateAsync(");
+        code.ShouldContain("public global::System.Threading.Tasks.ValueTask DeleteAsync(");
+        code.ShouldContain("public static global::System.Threading.Tasks.ValueTask<Widget?> ReadAsync(");
+        code.ShouldContain("public static global::System.Collections.Generic.IAsyncEnumerable<Widget> ListAsync(");
+    }
 }
