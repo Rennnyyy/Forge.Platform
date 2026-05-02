@@ -6,13 +6,21 @@ using Microsoft.Extensions.Options;
 namespace Forge.Entity.Aspects.DependencyInjection;
 
 /// <summary>
-/// DI extensions for the Aspects slice. See Aspects ADR-0003 and ADR-0004.
+/// DI extensions for the Aspects slice. See Aspects ADR-0003, ADR-0004, ADR-0006, ADR-0007.
 /// </summary>
 public static class AspectsServiceCollectionExtensions
 {
+    // Key for exposing the raw (pre-decoration) IEntityStore via keyed services so the
+    // ITransactionalEntityStore factory can bypass the AspectEnforcingEntityStore wrapper
+    // and cast the store to ISparqlQueryStore / ITransactionalEntityStore.
+    internal const string InnerStoreKey = "forge.aspects.inner";
+
     /// <summary>
-    /// Registers shape infrastructure, the Aspects engine, and exposes a decorated
-    /// <see cref="ITransactionalEntityStore"/> singleton that enforces aspect validation.
+    /// Registers shape infrastructure, the Aspects engines (write + read), and:
+    /// <list type="bullet">
+    ///   <item>A decorated <see cref="ITransactionalEntityStore"/> that enforces write-aspect validation.</item>
+    ///   <item>A decorated <see cref="IEntityStore"/> that enforces read-aspect validation via <see cref="QueryAspectScope"/>.</item>
+    /// </list>
     /// </summary>
     /// <remarks>
     /// Must be called after the backend (e.g. <c>UseInMemory()</c>) has been registered.
@@ -35,18 +43,46 @@ public static class AspectsServiceCollectionExtensions
         // precede or follow AddForgeAspects() can be executed at first resolution.
         services.TryAddSingleton<PendingAspectRegistrations>();
 
-        // Engine
+        // Engines
         services.TryAddSingleton<IAspectEngine, AspectEngine>();
+        services.TryAddSingleton<IQueryAspectEngine, QueryAspectEngine>();
 
-        // ITransactionalEntityStore is not registered by the backend DI extensions — they
-        // only register IEntityStore. We add it here as a decorated singleton.
+        // Capture the raw IEntityStore descriptor BEFORE decoration so the
+        // ITransactionalEntityStore factory can reach the store that actually implements
+        // ISparqlQueryStore and ITransactionalEntityStore (AspectEnforcingEntityStore
+        // does not forward those interfaces). Exposed via a keyed singleton.
+        var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEntityStore));
+        if (rawDescriptor is not null)
+        {
+            services.Remove(rawDescriptor);
+
+            // For ImplementationInstance descriptors, use the instance overload so that
+            // DI does not attempt to dispose the instance during container teardown.
+            // For factory/type descriptors, use the factory overload (resolved once, singleton).
+            if (rawDescriptor.ImplementationInstance is IEntityStore existingInstance)
+                services.AddKeyedSingleton<IEntityStore>(InnerStoreKey, existingInstance);
+            else
+                services.AddKeyedSingleton<IEntityStore>(InnerStoreKey,
+                    (sp, _) => ResolveFromDescriptor(rawDescriptor, sp));
+
+            services.AddSingleton<IEntityStore>(sp =>
+                new AspectEnforcingEntityStore(
+                    sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey),
+                    sp.GetRequiredService<IQueryAspectEngine>(),
+                    sp.GetRequiredService<IRdfMapperRegistry>(),
+                    sp.GetRequiredService<IOptions<EntityRepositoryOptions>>()));
+        }
+
+        // ITransactionalEntityStore resolves the raw inner store directly so that ISparqlQueryStore
+        // and ITransactionalEntityStore casts remain valid after IEntityStore is decorated.
         services.TryAddSingleton<ITransactionalEntityStore>(sp =>
         {
-            // Run any deferred code-aspect registrations first.
             var pending = sp.GetRequiredService<PendingAspectRegistrations>();
             pending.Execute(sp);
 
-            var raw = sp.GetRequiredService<IEntityStore>();
+            IEntityStore raw = rawDescriptor is not null
+                ? sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey)
+                : sp.GetRequiredService<IEntityStore>();
 
             if (raw is not ISparqlQueryStore queryStore)
                 throw new InvalidOperationException(
@@ -65,6 +101,14 @@ public static class AspectsServiceCollectionExtensions
 
         return services;
     }
+
+    private static IEntityStore ResolveFromDescriptor(ServiceDescriptor d, IServiceProvider sp) => d switch
+    {
+        { ImplementationFactory: { } f } => (IEntityStore)f(sp),
+        { ImplementationInstance: { } i } => (IEntityStore)i,
+        { ImplementationType: { } t } => (IEntityStore)ActivatorUtilities.CreateInstance(sp, t),
+        _ => throw new InvalidOperationException("Unexpected IEntityStore service descriptor shape.")
+    };
 
     /// <summary>
     /// Registers a code-origin aspect from a Turtle file on disk. The file path is resolved

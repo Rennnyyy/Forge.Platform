@@ -3,9 +3,9 @@ using Forge.Entity.Repository;
 namespace Forge.Entity.Aspects;
 
 /// <summary>
-/// Resolves a declared <see cref="IAspect"/> to its registered <see cref="IShapeAspect"/>
+/// Resolves a declared <see cref="IOperationAspect"/> to its registered <see cref="IShapeAspect"/>
 /// for a given entity type and operation kind. Throws <see cref="AspectNotRegisteredException"/>
-/// when the combination is not registered. See Aspects ADR-0003.
+/// when the combination is not registered. See Aspects ADR-0003, ADR-0006.
 /// </summary>
 public interface IAspectResolver
 {
@@ -16,5 +16,5 @@ public interface IAspectResolver
     /// <exception cref="AspectNotRegisteredException">
     /// Thrown when the aspect is not registered for the given type and kind.
     /// </exception>
-    IShapeAspect Resolve(IAspect aspect, Type entityType, AspectKind kind);
+    IShapeAspect Resolve(IOperationAspect aspect, Type entityType, AspectKind kind);
 }

@@ -41,7 +41,7 @@ public sealed class EntityTransaction : IAsyncDisposable
         => Create(entity, Aspect.NoOp);
 
     /// <summary>Enqueues a Create operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Create<T>(T entity, IAspect aspect) where T : class, IEntity
+    public EntityTransaction Create<T>(T entity, IOperationAspect aspect) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
@@ -55,7 +55,7 @@ public sealed class EntityTransaction : IAsyncDisposable
         => Update(entity, Aspect.NoOp);
 
     /// <summary>Enqueues an Update operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Update<T>(T entity, IAspect aspect) where T : class, IEntity
+    public EntityTransaction Update<T>(T entity, IOperationAspect aspect) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
@@ -69,7 +69,7 @@ public sealed class EntityTransaction : IAsyncDisposable
         => Delete(iri, Aspect.NoOp);
 
     /// <summary>Enqueues a Delete operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Delete(string iri, IAspect aspect)
+    public EntityTransaction Delete(string iri, IOperationAspect aspect)
     {
         ThrowIfFinished();
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
@@ -82,7 +82,7 @@ public sealed class EntityTransaction : IAsyncDisposable
     /// Enqueues a Delete operation with an explicit validation aspect and entity type hint.
     /// The type hint is required so the Aspects engine can resolve which shape to apply.
     /// </summary>
-    public EntityTransaction Delete<T>(string iri, IAspect aspect) where T : class, IEntity
+    public EntityTransaction Delete<T>(string iri, IOperationAspect aspect) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);

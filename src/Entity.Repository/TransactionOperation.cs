@@ -5,7 +5,7 @@ namespace Forge.Entity.Repository;
 /// </summary>
 public abstract class TransactionOperation
 {
-    private static readonly IAspect _noOp = global::Forge.Entity.Repository.Aspect.NoOp;
+    private static readonly IOperationAspect _noOp = global::Forge.Entity.Repository.Aspect.NoOp;
 
     /// <summary>The IRI of the entity targeted by this operation.</summary>
     public abstract string EntityIri { get; }
@@ -15,7 +15,7 @@ public abstract class TransactionOperation
     /// Defaults to <see cref="Aspect.NoOp"/> — no validation.
     /// See Aspects ADR-0003.
     /// </summary>
-    public IAspect Aspect { get; init; } = _noOp;
+    public IOperationAspect Aspect { get; init; } = _noOp;
 }
 
 /// <summary>

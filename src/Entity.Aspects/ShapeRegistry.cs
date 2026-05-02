@@ -33,7 +33,7 @@ internal sealed class ShapeRegistry : IShapeRegistry, IAspectResolver
         }
     }
 
-    public IShapeAspect? TryGet(IAspect aspect, Type entityType, AspectKind kind)
+    public IShapeAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind)
     {
         ArgumentNullException.ThrowIfNull(aspect);
         ArgumentNullException.ThrowIfNull(entityType);
@@ -45,7 +45,7 @@ internal sealed class ShapeRegistry : IShapeRegistry, IAspectResolver
 
     // ------------------------------------------------------------------ IAspectResolver
 
-    public IShapeAspect Resolve(IAspect aspect, Type entityType, AspectKind kind)
+    public IShapeAspect Resolve(IOperationAspect aspect, Type entityType, AspectKind kind)
     {
         var result = TryGet(aspect, entityType, kind);
         if (result is null)

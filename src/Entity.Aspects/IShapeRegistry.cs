@@ -20,5 +20,5 @@ public interface IShapeRegistry
     /// Return the registered <see cref="IShapeAspect"/> for the given identity, entity type,
     /// and kind, or <c>null</c> if no such registration exists.
     /// </summary>
-    IShapeAspect? TryGet(IAspect aspect, Type entityType, AspectKind kind);
+    IShapeAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind);
 }

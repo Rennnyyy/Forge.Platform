@@ -15,4 +15,7 @@ public enum AspectKind
 
     /// <summary>Applies to Delete operations.</summary>
     Delete = 4,
+
+    /// <summary>Applies to Read operations (LoadAsync, QueryByTypeAsync, LINQ, dynamic SPARQL).</summary>
+    Read = 8,
 }

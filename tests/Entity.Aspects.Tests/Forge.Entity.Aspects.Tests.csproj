@@ -32,6 +32,7 @@
     <ProjectReference Include="..\..\src\Entity.Repository.InMemory\Forge.Entity.Repository.InMemory.csproj" />
     <ProjectReference Include="..\..\src\Entity.Repository.GraphDb\Forge.Entity.Repository.GraphDb.csproj" />
     <ProjectReference Include="..\..\src\Entity.Aspects\Forge.Entity.Aspects.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Sparql\Forge.Entity.Sparql.csproj" />
     <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
   </ItemGroup>
 
