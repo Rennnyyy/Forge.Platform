@@ -20,17 +20,17 @@ A .NET library platform for building richly-typed, RDF-aware domain models. Enti
 
 - **`Forge.Entity` (core)** — The runtime type system. Slap `[Entity]` on a `partial class`, declare your `[Identity]` strategy and relations (`[Owning]`, `[Inverse]`), and the Roslyn source generator (`Entity.Generators`) hammers out all the boilerplate — IRI materialization, equality, lazy-loading wiring — at compile time. No runtime reflection. No magic base-class soup.
 
-- **`Forge.Entity.Repository`** — Persistence abstractions: `IEntityStore`, `IEntityRepository<T>`, `IRdfMapper<T>`, and RDF model types (`RdfTriple`, `RdfGraph`). A reflection-based mapper reads your attributes (`[Predicate]`, `[Owning]`, `[Inverse]`) to translate .NET objects to/from RDF triples.
+- **`Forge.Repository`** — Persistence abstractions: `IEntityStore`, `IEntityRepository<T>`, `IRdfMapper<T>`, and RDF model types (`RdfTriple`, `RdfGraph`). A reflection-based mapper reads your attributes (`[Predicate]`, `[Owning]`, `[Inverse]`) to translate .NET objects to/from RDF triples.
 
-- **`Forge.Entity.Repository.InMemory` / `.GraphDb`** — Pluggable backends. InMemory uses dotNetRDF for tests and fixtures; GraphDb talks to Ontotext GraphDB over HTTP for production. Backend is config-driven (`Forge:EntityRepository:Backend`).
+- **`Forge.Repository.InMemory` / `.GraphDb`** — Pluggable backends. InMemory uses dotNetRDF for tests and fixtures; GraphDb talks to Ontotext GraphDB over HTTP for production. Backend is config-driven (`Forge:EntityRepository:Backend`).
 
-- **`Forge.Entity.Aspects`** — A two-pass validation pipeline that fires before writes:
+- **`Forge.Aspects`** — A two-pass validation pipeline that fires before writes:
   1. *Local pass* — SHACL shape validation on the entity's own RDF graph.
   2. *Context pass* — SPARQL SELECT queries against the live store for cross-entity constraints.
 
-- **`Forge.Entity.Operations` / `.Operations.Generators`** — Source-generates typed operation objects (create / update / delete commands) for entities.
+- **`Forge.Operations` / `.Operations.Generators`** — Source-generates typed operation objects (create / update / delete commands) for entities.
 
-- **`Forge.Entity.Sparql`** — Deferred slice for SPARQL query construction, rewriting, security filters, and federation. The `IEntityStore` is the seam.
+- **`Forge.Sparql`** — Deferred slice for SPARQL query construction, rewriting, security filters, and federation. The `IEntityStore` is the seam.
 
 **What can you DO with it as a consumer?**
 - Define domain entities as clean POCOs annotated with `[Entity]`, `[Identity]`, `[Owning]`, `[Inverse]`.

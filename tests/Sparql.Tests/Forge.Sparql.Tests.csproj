@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="dotNetRDF" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Entity\Forge.Entity.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
+    <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\Sparql\Forge.Sparql.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+  </ItemGroup>
+
+</Project>

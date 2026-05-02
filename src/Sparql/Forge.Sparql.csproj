@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Forge.Sparql</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Entity\Forge.Entity.csproj" />
+    <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
+  </ItemGroup>
+
+</Project>

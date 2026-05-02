@@ -2,7 +2,7 @@ namespace Forge.Entity;
 
 /// <summary>
 /// Declares the RDF predicate IRI for a scalar data property. Consumed by the
-/// persistence layer (<c>Forge.Entity.Repository</c>) to map the property value
+/// persistence layer (<c>Forge.Repository</c>) to map the property value
 /// to a triple <c>&lt;subject&gt; &lt;predicate&gt; "value"</c>.
 /// </summary>
 /// <remarks>

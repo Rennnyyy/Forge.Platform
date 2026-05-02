@@ -36,10 +36,10 @@ One short paragraph. What is this platform, what problem does it solve, what doe
 | `adr/` | Platform-wide Architecture Decision Records |
 | `src/Entity/` | `Forge.Entity` library — runtime types, attributes, options |
 | `src/Entity.Generators/` | Roslyn incremental source generator (`netstandard2.0`) |
-| `src/Entity.Aspects/` | `Forge.Entity.Aspects` SHACL validation engine + `Aspect` entity (Code + Repository origin) |
+| `src/Aspects/` | `Forge.Aspects` SHACL validation engine + `Aspect` entity (Code + Repository origin) |
 | `tests/Entity.Tests/` | Behavioral tests — **the executable spec** for `Forge.Entity` |
 | `tests/Entity.Generators.Tests/` | Snapshot tests for the source generator output |
-| `tests/Entity.Aspects.Tests/` | Behavioural tests for the Aspects slice |
+| `tests/Aspects.Tests/` | Behavioural tests for the Aspects slice |
 
 Scan `src/` and `tests/` and fill in any additional slices you find.
 

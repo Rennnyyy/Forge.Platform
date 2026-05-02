@@ -6,35 +6,35 @@
   <Folder Name="/src/Entity/">
     <Project Path="src/Entity/Forge.Entity.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Repository/">
-    <Project Path="src/Entity.Repository/Forge.Entity.Repository.csproj" />
+  <Folder Name="/src/Repository/">
+    <Project Path="src/Repository/Forge.Repository.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Repository.InMemory/">
-    <Project Path="src/Entity.Repository.InMemory/Forge.Entity.Repository.InMemory.csproj" />
+  <Folder Name="/src/Repository.InMemory/">
+    <Project Path="src/Repository.InMemory/Forge.Repository.InMemory.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Repository.GraphDb/">
-    <Project Path="src/Entity.Repository.GraphDb/Forge.Entity.Repository.GraphDb.csproj" />
+  <Folder Name="/src/Repository.GraphDb/">
+    <Project Path="src/Repository.GraphDb/Forge.Repository.GraphDb.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Operations/">
-    <Project Path="src/Entity.Operations/Forge.Entity.Operations.csproj" />
+  <Folder Name="/src/Operations/">
+    <Project Path="src/Operations/Forge.Operations.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Operations.Generators/">
-    <Project Path="src/Entity.Operations.Generators/Forge.Entity.Operations.Generators.csproj" />
+  <Folder Name="/src/Operations.Generators/">
+    <Project Path="src/Operations.Generators/Forge.Operations.Generators.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Sparql/">
-    <Project Path="src/Entity.Sparql/Forge.Entity.Sparql.csproj" />
+  <Folder Name="/src/Sparql/">
+    <Project Path="src/Sparql/Forge.Sparql.csproj" />
   </Folder>
-  <Folder Name="/src/Entity.Aspects/">
-    <Project Path="src/Entity.Aspects/Forge.Entity.Aspects.csproj" />
+  <Folder Name="/src/Aspects/">
+    <Project Path="src/Aspects/Forge.Aspects.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
     <Project Path="tests/Entity.Tests.Fixtures/Forge.Entity.Tests.Fixtures.csproj" />
-    <Project Path="tests/Entity.Repository.Tests/Forge.Entity.Repository.Tests.csproj" />
-    <Project Path="tests/Entity.Repository.GraphDb.Tests/Forge.Entity.Repository.GraphDb.Tests.csproj" />
-    <Project Path="tests/Entity.Operations.Tests/Forge.Entity.Operations.Tests.csproj" />
-    <Project Path="tests/Entity.Sparql.Tests/Forge.Entity.Sparql.Tests.csproj" />
-    <Project Path="tests/Entity.Aspects.Tests/Forge.Entity.Aspects.Tests.csproj" />
+    <Project Path="tests/Repository.Tests/Forge.Repository.Tests.csproj" />
+    <Project Path="tests/Repository.GraphDb.Tests/Forge.Repository.GraphDb.Tests.csproj" />
+    <Project Path="tests/Operations.Tests/Forge.Operations.Tests.csproj" />
+    <Project Path="tests/Sparql.Tests/Forge.Sparql.Tests.csproj" />
+    <Project Path="tests/Aspects.Tests/Forge.Aspects.Tests.csproj" />
   </Folder>
 </Solution>

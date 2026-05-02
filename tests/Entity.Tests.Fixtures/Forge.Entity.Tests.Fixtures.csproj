@@ -13,8 +13,8 @@
     <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\Entity.Operations\Forge.Entity.Operations.csproj" />
-    <ProjectReference Include="..\..\src\Entity.Operations.Generators\Forge.Entity.Operations.Generators.csproj"
+    <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
+    <ProjectReference Include="..\..\src\Operations.Generators\Forge.Operations.Generators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>

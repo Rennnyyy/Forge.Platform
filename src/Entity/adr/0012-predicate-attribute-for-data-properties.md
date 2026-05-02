@@ -41,7 +41,7 @@ participates in IRI generation but is not emitted as a separate triple.
 
 - Persistence is opt-in at the property level — no surprise data leakage to RDF.
 - Property renames do not change graph semantics.
-- The default mapper (`Forge.Entity.Repository.ReflectionRdfMapper<T>`) reads this
+- The default mapper (`Forge.Repository.ReflectionRdfMapper<T>`) reads this
   attribute via reflection; a future generator-emitted mapper (ADR-0013 phase 2) will
   consume the same attribute via syntax-tree introspection.
 - `[Predicate]` is **metadata only at the entity level**: it has no runtime effect inside

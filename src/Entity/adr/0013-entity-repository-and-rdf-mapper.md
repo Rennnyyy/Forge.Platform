@@ -107,8 +107,8 @@ the registry. No application change required.
 - Slice ships with full read/write coverage now, paid in microbenchmarks (reflection per
   property). Acceptable for the typical RDF workload (network-bound).
 - `__forge_part_*` field naming is now an *internal contract* between
-  `Forge.Entity.Generators` and `Forge.Entity.Repository`. A test in
-  `Entity.Repository.Tests` asserts the contract holds for known entity samples.
+  `Forge.Entity.Generators` and `Forge.Repository`. A test in
+  `Repository.Tests` asserts the contract holds for known entity samples.
 - The generator team can change identity-part field naming only by updating the contract
   in lockstep with `ReflectionRdfMapper<T>`.
 - AOT consumers must wait for phase 2 (generated mappers) before trimming.

@@ -16,12 +16,12 @@ but its scope is uncertain.
 ## Options
 
 1. **Introduce three new slices** —
-   `Forge.Entity.Repository` (abstractions + reflection-based mapper),
-   `Forge.Entity.Repository.InMemory` (dotNetRDF in-memory backend),
-   `Forge.Entity.Repository.GraphDb` (Ontotext GraphDB HTTP backend).
+   `Forge.Repository` (abstractions + reflection-based mapper),
+   `Forge.Repository.InMemory` (dotNetRDF in-memory backend),
+   `Forge.Repository.GraphDb` (Ontotext GraphDB HTTP backend).
    Each backend ships its own DI extension. Backend selection is configuration-driven
    (`Forge:EntityRepository:Backend = InMemory | GraphDb`). Query construction is a
-   future fourth slice (`Forge.Entity.Sparql`); v1 uses templated SPARQL strings inside
+   future fourth slice (`Forge.Sparql`); v1 uses templated SPARQL strings inside
    the backends.
 2. Single `Forge.Entity.Persistence` slice with both backends inside.
    Pro: fewer projects. Con: every consumer drags both backends and their dependencies
@@ -39,10 +39,10 @@ Option 1.
 
 | Slice | Purpose |
 |-------|---------|
-| `src/Entity.Repository/` | `IEntityStore`, `IEntityRepository<T>`, `IEntityMaterializer`, `IRdfMapper<T>`, `EntitySession`/loader integration, RDF model types (`RdfTerm`, `RdfTriple`, `RdfGraph`), reflection-based mapper |
-| `src/Entity.Repository.InMemory/` | `InMemoryEntityStore` backed by a dotNetRDF `TripleStore`; fluent builder for Turtle fixtures |
-| `src/Entity.Repository.GraphDb/` | `GraphDbEntityStore` against the Ontotext SPARQL endpoint over `HttpClient`; `DelegatingHandler`-based auth |
-| `src/Entity.Sparql/` | **Deferred.** Query model + emitter + rewriter pipeline. Phase-2; `IEntityStore` is the seam. |
+| `src/Repository/` | `IEntityStore`, `IEntityRepository<T>`, `IEntityMaterializer`, `IRdfMapper<T>`, `EntitySession`/loader integration, RDF model types (`RdfTerm`, `RdfTriple`, `RdfGraph`), reflection-based mapper |
+| `src/Repository.InMemory/` | `InMemoryEntityStore` backed by a dotNetRDF `TripleStore`; fluent builder for Turtle fixtures |
+| `src/Repository.GraphDb/` | `GraphDbEntityStore` against the Ontotext SPARQL endpoint over `HttpClient`; `DelegatingHandler`-based auth |
+| `src/Sparql/` | **Deferred.** Query model + emitter + rewriter pipeline. Phase-2; `IEntityStore` is the seam. |
 
 ### Backend selection
 
@@ -53,7 +53,7 @@ directly for tests and code-first wiring.
 
 ### v1 mapper is reflection-based
 
-`IRdfMapper<T>` is implemented in `Forge.Entity.Repository` by a single
+`IRdfMapper<T>` is implemented in `Forge.Repository` by a single
 `ReflectionRdfMapper<T>` that reads `[Entity]`, `[IdentityPart]`, `[Predicate]` (new),
 `[Owning]`, `[Inverse]` via reflection. ADR-0013 explains why the source generator is not
 extended in this phase and what the migration path looks like.
@@ -79,7 +79,7 @@ are written as ordered `rdf:List` chains.
 - Consumers pick exactly the backends they need (NuGet-level isolation).
 - Adding a future backend (e.g. Stardog, RDFox) is a new sibling slice with no churn in
   core or other backends.
-- `Forge.Entity.Sparql` can land later without forcing API changes in `Forge.Entity.Repository`
+- `Forge.Sparql` can land later without forcing API changes in `Forge.Repository`
   because `IEntityStore` accepts opaque SPARQL queries today.
-- `Microsoft.Extensions.*` becomes a dependency of `Forge.Entity.Repository`. Acceptable —
+- `Microsoft.Extensions.*` becomes a dependency of `Forge.Repository`. Acceptable —
   every realistic consumer is on the MS hosting stack.

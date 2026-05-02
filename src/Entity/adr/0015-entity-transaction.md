@@ -39,7 +39,7 @@ The platform is used with two backends:
 
 Option 1.
 
-### New abstractions (`Forge.Entity.Repository`)
+### New abstractions (`Forge.Repository`)
 
 | Type | Role |
 |---|---|

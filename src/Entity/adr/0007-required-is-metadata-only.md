@@ -1,10 +1,10 @@
 # 0007 — `[Required]` is metadata-only for now
 
-- **Status**: superseded by Forge.Entity.Aspects/adr/0001-split-shape-validation.md
+- **Status**: superseded by Forge.Aspects/adr/0001-split-shape-validation.md
 - **Date**: 2026-04-29
 - **Author**: bootstrap
 
-> **Supersession note (2026-05-02):** The "metadata-only" stance described below applied until the `Forge.Entity.Aspects` slice landed in Trunk 3. The `[Required]` attribute itself is unchanged — domain authors continue to annotate required predicates with it — but its runtime enforcement is now the responsibility of the Aspects engine, which synthesises an implicit Local shape for every `[Required]` property at startup and evaluates it during the Local validation pass. See `Forge.Entity.Aspects/adr/0001-split-shape-validation.md` for the full validation contract.
+> **Supersession note (2026-05-02):** The "metadata-only" stance described below applied until the `Forge.Aspects` slice landed in Trunk 3. The `[Required]` attribute itself is unchanged — domain authors continue to annotate required predicates with it — but its runtime enforcement is now the responsibility of the Aspects engine, which synthesises an implicit Local shape for every `[Required]` property at startup and evaluates it during the Local validation pass. See `Forge.Aspects/adr/0001-split-shape-validation.md` for the full validation contract.
 
 ## Context
 

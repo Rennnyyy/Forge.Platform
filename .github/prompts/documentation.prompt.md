@@ -33,12 +33,12 @@ Use this lore as a starting point but verify and correct it against the actual s
 |---------|------|
 | `Forge.Entity` | Core runtime library — entity model, attributes, identity strategies, IRI materialization, lazy-loading wiring. |
 | `Forge.Entity.Generators` | Roslyn incremental source generator (`netstandard2.0`) that processes `[Entity]` annotations at compile time and emits all boilerplate code for `Forge.Entity`. |
-| `Forge.Entity.Repository` | Abstract persistence layer — `IEntityRepository`, `IEntityStore`, `IRdfMapper`, codec and predicate resolution. |
-| `Forge.Entity.Repository.InMemory` | In-memory `IEntityStore` / `ISparqlQueryStore` implementation backed by dotNetRDF — ideal for unit tests. |
-| `Forge.Entity.Repository.GraphDb` | GraphDB (Ontotext) `IEntityStore` / `ISparqlQueryStore` implementation over HTTP using dotNetRDF and `IHttpClientFactory`. |
-| `Forge.Entity.Sparql` | SPARQL query builder — translates `IQueryable<T>` and predicate maps into SPARQL SELECT/CONSTRUCT queries against an `ISparqlQueryStore`. |
-| `Forge.Entity.Operations` | High-level entity operations (load, save, delete) that orchestrate `IEntityRepository`, `IEntityStore`, and `Forge.Entity.Sparql`. |
-| `Forge.Entity.Operations.Generators` | Roslyn incremental source generator (`netstandard2.0`) for `Forge.Entity.Operations` — emits operation dispatch boilerplate. |
+| `Forge.Repository` | Abstract persistence layer — `IEntityRepository`, `IEntityStore`, `IRdfMapper`, codec and predicate resolution. |
+| `Forge.Repository.InMemory` | In-memory `IEntityStore` / `ISparqlQueryStore` implementation backed by dotNetRDF — ideal for unit tests. |
+| `Forge.Repository.GraphDb` | GraphDB (Ontotext) `IEntityStore` / `ISparqlQueryStore` implementation over HTTP using dotNetRDF and `IHttpClientFactory`. |
+| `Forge.Sparql` | SPARQL query builder — translates `IQueryable<T>` and predicate maps into SPARQL SELECT/CONSTRUCT queries against an `ISparqlQueryStore`. |
+| `Forge.Operations` | High-level entity operations (load, save, delete) that orchestrate `IEntityRepository`, `IEntityStore`, and `Forge.Sparql`. |
+| `Forge.Operations.Generators` | Roslyn incremental source generator (`netstandard2.0`) for `Forge.Operations` — emits operation dispatch boilerplate. |
 
 ### 3 — Produce `./docs/projects.html`
 

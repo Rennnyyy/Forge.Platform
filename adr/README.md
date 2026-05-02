@@ -44,3 +44,4 @@ What this enables or forecloses. Follow-ups.
 - [0005 — RDF-backed Entity Repository as a separate slice](0005-rdf-repository.md)
 - [0006 — Canonical base URL is https://forge-it.net](0006-canonical-base-url.md)
 - [0007 — Shared test fixtures project for sample entities](0007-shared-test-fixtures.md)
+- [0008 — Remove `Entity.` prefix from satellite package/namespace names](0008-remove-entity-prefix-from-satellite-packages.md)

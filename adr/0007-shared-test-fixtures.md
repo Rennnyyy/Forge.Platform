@@ -6,12 +6,12 @@
 
 ## Context
 
-`tests/Entity.Repository.Tests/` owns a rich set of sample entities (Artist, Album, Label,
+`tests/Repository.Tests/` owns a rich set of sample entities (Artist, Album, Label,
 Track) together with `EntityOptionsFixture` that sets `EntityOptions.BaseIri`. A second
-backend test project (`Entity.Repository.GraphDb.Tests`) needs the same domain model to
+backend test project (`Repository.GraphDb.Tests`) needs the same domain model to
 validate the same scenarios against a live GraphDB instance. Until now it consumed those
 files via `<Compile Include>` MSBuild file-links — both projects compiled the source files
-into their own assemblies, each carrying the namespace `Forge.Entity.Repository.Tests.Sample`.
+into their own assemblies, each carrying the namespace `Forge.Repository.Tests.Sample`.
 
 This approach has three problems:
 
@@ -45,14 +45,14 @@ Option 1.
   xUnit dependency — each consumer declares its own `[CollectionDefinition]` that wires it.
 - The project has `<IsPackable>false</IsPackable>` and is never published to NuGet.
 - The project is added to the `/tests/` solution folder.
-- `Entity.Repository.Tests` and `Entity.Repository.GraphDb.Tests` replace their current
+- `Repository.Tests` and `Repository.GraphDb.Tests` replace their current
   entity consumption mechanism with a plain `<ProjectReference>` to the fixtures project.
 
 ## Consequences
 
 - The Roslyn source generator runs exactly once for the shared entities.
 - The sample entity namespace is stable: `Forge.Entity.Tests.Fixtures.Sample`.
-- Any future test slice (e.g. `Entity.Sparql.Tests` or a `Samples` project) gains a single
+- Any future test slice (e.g. `Sparql.Tests` or a `Samples` project) gains a single
   `<ProjectReference>` to get the full domain model and fixture helpers.
-- `Entity.Repository.Tests` no longer owns the sample entity source files.
-- The `<Compile Include>` hack in `Entity.Repository.GraphDb.Tests` is eliminated.
+- `Repository.Tests` no longer owns the sample entity source files.
+- The `<Compile Include>` hack in `Repository.GraphDb.Tests` is eliminated.
