@@ -27,6 +27,9 @@
   <Folder Name="/src/Aspects/">
     <Project Path="src/Aspects/Forge.Aspects.csproj" />
   </Folder>
+  <Folder Name="/src/Validation/">
+    <Project Path="src/Validation/Forge.Validation.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
@@ -36,5 +39,6 @@
     <Project Path="tests/Operations.Tests/Forge.Operations.Tests.csproj" />
     <Project Path="tests/Sparql.Tests/Forge.Sparql.Tests.csproj" />
     <Project Path="tests/Aspects.Tests/Forge.Aspects.Tests.csproj" />
+    <Project Path="tests/Validation.Tests/Forge.Validation.Tests.csproj" />
   </Folder>
 </Solution>
