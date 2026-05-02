@@ -166,7 +166,7 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
 
     private async Task<bool> TxAskAsync(string txUrl, string sparql, CancellationToken ct)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Post, txUrl)
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{txUrl}?action=QUERY")
         {
             Content = new StringContent(sparql, Encoding.UTF8, "application/sparql-query"),
         };
@@ -180,8 +180,7 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
 
     private async Task TxUpdateAsync(string txUrl, string sparql, CancellationToken ct)
     {
-        var stmtUrl = $"{txUrl}/statements";
-        using var req = new HttpRequestMessage(HttpMethod.Put, stmtUrl)
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"{txUrl}?action=UPDATE")
         {
             Content = new StringContent(sparql, Encoding.UTF8, "application/sparql-update"),
         };

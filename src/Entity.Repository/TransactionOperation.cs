@@ -5,8 +5,17 @@ namespace Forge.Entity.Repository;
 /// </summary>
 public abstract class TransactionOperation
 {
+    private static readonly IAspect _noOp = global::Forge.Entity.Repository.Aspect.NoOp;
+
     /// <summary>The IRI of the entity targeted by this operation.</summary>
     public abstract string EntityIri { get; }
+
+    /// <summary>
+    /// The validation policy that applies to this operation.
+    /// Defaults to <see cref="Aspect.NoOp"/> — no validation.
+    /// See Aspects ADR-0003.
+    /// </summary>
+    public IAspect Aspect { get; init; } = _noOp;
 }
 
 /// <summary>
@@ -30,7 +39,7 @@ public abstract class EntityWriteOperation : TransactionOperation
 /// </summary>
 public sealed class CreateOperation<T> : EntityWriteOperation where T : class, IEntity
 {
-    internal CreateOperation(T entity) => TypedEntity = entity;
+    public CreateOperation(T entity) => TypedEntity = entity;
 
     /// <summary>The strongly-typed entity to create.</summary>
     public T TypedEntity { get; }
@@ -51,7 +60,7 @@ public sealed class CreateOperation<T> : EntityWriteOperation where T : class, I
 /// </summary>
 public sealed class UpdateOperation<T> : EntityWriteOperation where T : class, IEntity
 {
-    internal UpdateOperation(T entity) => TypedEntity = entity;
+    public UpdateOperation(T entity) => TypedEntity = entity;
 
     /// <summary>The strongly-typed entity to update.</summary>
     public T TypedEntity { get; }
@@ -71,10 +80,16 @@ public sealed class UpdateOperation<T> : EntityWriteOperation where T : class, I
 /// </summary>
 public sealed class DeleteOperation : TransactionOperation
 {
-    internal DeleteOperation(string iri) => Iri = iri;
+    public DeleteOperation(string iri) => Iri = iri;
 
     /// <summary>The IRI of the entity to delete.</summary>
     public string Iri { get; }
+
+    /// <summary>
+    /// The CLR type of the entity being deleted. Set when a typed aspect is declared via
+    /// <c>EntityTransaction.Delete&lt;T&gt;(iri, aspect)</c>; <c>null</c> for NoOp deletes.
+    /// </summary>
+    public Type? EntityType { get; init; }
 
     /// <inheritdoc/>
     public override string EntityIri => Iri;

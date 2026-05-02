@@ -39,8 +39,8 @@ Option 1.
 | Step | HTTP call |
 |---|---|
 | Open | `POST {BaseUrl}/repositories/{RepoId}/transactions` — `201 Created`, `Location: {txUrl}` |
-| Query within tx | `POST {txUrl}` with SPARQL body, `Accept: application/sparql-results+json` |
-| Update within tx | `PUT {txUrl}/statements` with SPARQL Update body, `Content-Type: application/sparql-update` |
+| Query within tx | `POST {txUrl}?action=QUERY` with SPARQL body, `Content-Type: application/sparql-query`, `Accept: application/sparql-results+json` |
+| Update within tx | `PUT {txUrl}?action=UPDATE` with SPARQL Update body, `Content-Type: application/sparql-update` |
 | Commit | `PUT {txUrl}?action=COMMIT` |
 | Rollback | `DELETE {txUrl}` (best-effort; original exception is re-thrown regardless) |
 

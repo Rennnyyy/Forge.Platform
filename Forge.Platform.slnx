@@ -24,6 +24,9 @@
   <Folder Name="/src/Entity.Sparql/">
     <Project Path="src/Entity.Sparql/Forge.Entity.Sparql.csproj" />
   </Folder>
+  <Folder Name="/src/Entity.Aspects/">
+    <Project Path="src/Entity.Aspects/Forge.Entity.Aspects.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
@@ -32,5 +35,6 @@
     <Project Path="tests/Entity.Repository.GraphDb.Tests/Forge.Entity.Repository.GraphDb.Tests.csproj" />
     <Project Path="tests/Entity.Operations.Tests/Forge.Entity.Operations.Tests.csproj" />
     <Project Path="tests/Entity.Sparql.Tests/Forge.Entity.Sparql.Tests.csproj" />
+    <Project Path="tests/Entity.Aspects.Tests/Forge.Entity.Aspects.Tests.csproj" />
   </Folder>
 </Solution>

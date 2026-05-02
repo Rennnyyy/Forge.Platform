@@ -38,28 +38,56 @@ public sealed class EntityTransaction : IAsyncDisposable
     /// if an entity with the same IRI already exists.
     /// </summary>
     public EntityTransaction Create<T>(T entity) where T : class, IEntity
+        => Create(entity, Aspect.NoOp);
+
+    /// <summary>Enqueues a Create operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
+    public EntityTransaction Create<T>(T entity, IAspect aspect) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
-        _operations.Add(new CreateOperation<T>(entity));
+        ArgumentNullException.ThrowIfNull(aspect);
+        _operations.Add(new CreateOperation<T>(entity) { Aspect = aspect });
         return this;
     }
 
     /// <summary>Enqueues an Update (Replace) operation for <paramref name="entity"/>.</summary>
     public EntityTransaction Update<T>(T entity) where T : class, IEntity
+        => Update(entity, Aspect.NoOp);
+
+    /// <summary>Enqueues an Update operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
+    public EntityTransaction Update<T>(T entity, IAspect aspect) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
-        _operations.Add(new UpdateOperation<T>(entity));
+        ArgumentNullException.ThrowIfNull(aspect);
+        _operations.Add(new UpdateOperation<T>(entity) { Aspect = aspect });
         return this;
     }
 
     /// <summary>Enqueues a Delete operation for the entity with the given <paramref name="iri"/>.</summary>
     public EntityTransaction Delete(string iri)
+        => Delete(iri, Aspect.NoOp);
+
+    /// <summary>Enqueues a Delete operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
+    public EntityTransaction Delete(string iri, IAspect aspect)
     {
         ThrowIfFinished();
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
-        _operations.Add(new DeleteOperation(iri));
+        ArgumentNullException.ThrowIfNull(aspect);
+        _operations.Add(new DeleteOperation(iri) { Aspect = aspect });
+        return this;
+    }
+
+    /// <summary>
+    /// Enqueues a Delete operation with an explicit validation aspect and entity type hint.
+    /// The type hint is required so the Aspects engine can resolve which shape to apply.
+    /// </summary>
+    public EntityTransaction Delete<T>(string iri, IAspect aspect) where T : class, IEntity
+    {
+        ThrowIfFinished();
+        ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        ArgumentNullException.ThrowIfNull(aspect);
+        _operations.Add(new DeleteOperation(iri) { Aspect = aspect, EntityType = typeof(T) });
         return this;
     }
 
