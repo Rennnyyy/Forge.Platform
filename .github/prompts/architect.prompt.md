@@ -66,8 +66,11 @@ Close with a "Where to go from here" section:
 
 | Command | When to use it |
 |---------|----------------|
+| `/Forge-Storyline` | You want the warm medieval tour — great for visitors who have never seen the city. |
 | `/Forge-Explorer` | You want the quick friendly pitch — great for sharing with teammates who are new. |
 | `/Forge-Developer` | You want to implement a feature, fix a bug, or make any code change. The agent reads all ADRs, locates the right slice, implements with proper design discipline, and keeps tests green. |
+| `/Forge-Documentation` | You want to regenerate the HTML dependency diagram and project overview in `docs/`. |
+| `/Forge-Automation` | You want to register a new prompt and wire it into every existing guide. |
 
 Show concrete example invocations:
 > `/Forge-Developer I want to add a validation API to the Entity slice.`

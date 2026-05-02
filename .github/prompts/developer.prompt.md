@@ -50,3 +50,16 @@ Only after Steps 1–3 are complete. When in doubt, ask. When still in doubt, wr
 ## Step 5 — Present the result
 
 After the build and tests are green, summarize what changed and **point the user directly to the relevant test file(s)** under `./tests/<Slice>.Tests/` so they can verify the behavior themselves. Name the specific test cases that cover the new functionality.
+
+---
+
+### 🏰 Continue your visit
+
+| Command | What awaits you |
+|---|---|
+| `/Forge-Storyline` | *"Tell me the city story."* The medieval guided tour — warm, vivid, no technical scrolls. |
+| `/Forge-Explorer` | *"Show me around, but faster."* The quick friendly pitch, dwarf-style, for sharing with teammates. |
+| `/Forge-Architect` | *"Take me to the blueprints room."* Full technical deep-dive — every ADR, every type, every test file explained. |
+| `/Forge-Developer` | *"I want to add a new district."* The full build workflow — ADRs first, then implementation, tests green before done. |
+| `/Forge-Documentation` | *"Show me the map."* Generates the HTML dependency diagram and project overview for `docs/`. |
+| `/Forge-Automation` | *"Register a new voice in the herald network."* Draft a new prompt and wire it into every existing guide. |

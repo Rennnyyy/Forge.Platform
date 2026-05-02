@@ -129,3 +129,16 @@ After writing the file, read it back and confirm:
 - All special characters inside the `<div class="mermaid">` block are HTML-escaped.
 
 Report the path of the generated file and a one-line summary of what was written.
+
+---
+
+### 🏰 Continue your visit
+
+| Command | What awaits you |
+|---|---|
+| `/Forge-Storyline` | *"Tell me the city story."* The medieval guided tour — warm, vivid, no technical scrolls. |
+| `/Forge-Explorer` | *"Show me around, but faster."* The quick friendly pitch, dwarf-style, for sharing with teammates. |
+| `/Forge-Architect` | *"Take me to the blueprints room."* Full technical deep-dive — every ADR, every type, every test file explained. |
+| `/Forge-Developer` | *"I want to add a new district."* The full build workflow — ADRs first, then implementation, tests green before done. |
+| `/Forge-Documentation` | *"Show me the map."* Generates the HTML dependency diagram and project overview for `docs/`. |
+| `/Forge-Automation` | *"Register a new voice in the herald network."* Draft a new prompt and wire it into every existing guide. |

@@ -55,8 +55,12 @@ One solution. Clean slices under `src/`. Tests under `tests/`. Pure-domain proje
 
 | Command | What it does for you |
 |---|---|
+| `/Forge-Storyline` | *"Tell me the city story."* The medieval guided tour — warm, vivid, no technical scrolls. |
+| `/Forge-Explorer` | *"Show me around, but faster."* The quick friendly pitch, dwarf-style, for sharing with teammates. |
 | `/Forge-Architect` | *"Show me the blueprints."* Deep technical tour: every ADR explained, every type catalogued, every test file mapped. For the thorough explorer. |
 | `/Forge-Developer` | *"I want to build something."* Fires up the full dev workflow — reads all the ADRs, locates the right slice, implements with proper design discipline, keeps tests green. |
+| `/Forge-Documentation` | *"Show me the map."* Generates the HTML dependency diagram and project overview for `docs/`. |
+| `/Forge-Automation` | *"Register a new voice in the herald network."* Draft a new prompt and wire it into every existing guide. |
 
 **Example invocations:**
 > `/Forge-Architect` — give me the full technical picture
