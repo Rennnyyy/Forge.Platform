@@ -82,3 +82,5 @@ public sealed record CapabilityResult<TResponse> where TResponse : class
   `CapabilityContext` argument.
 - Tests can construct `CapabilityContext` directly without infrastructure; no registry mocks needed.
 - The dispatcher is the single resolution point; handlers never call `IMessageAspectRegistry`.
+
+> *`CapabilityResult<TResponse>` is now a discriminated union with nested `Ok` and `Fail` records due to ADR-0005.*
