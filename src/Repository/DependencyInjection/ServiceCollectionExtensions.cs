@@ -1,4 +1,5 @@
 using Forge.Entity;
+using Forge.Repository.Mapping;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

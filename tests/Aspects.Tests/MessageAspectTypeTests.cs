@@ -1,3 +1,4 @@
+using Forge.Aspects.Message;
 using Shouldly;
 
 namespace Forge.Aspects.Tests;

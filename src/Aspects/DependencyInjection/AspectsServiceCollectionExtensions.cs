@@ -1,5 +1,11 @@
 using Forge.Entity;
+using Forge.Aspects.Message;
+using Forge.Aspects.Operation;
+using Forge.Aspects.Query;
+using Forge.Aspects.Shape;
 using Forge.Repository;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;

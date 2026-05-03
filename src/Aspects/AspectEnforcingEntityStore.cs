@@ -1,6 +1,8 @@
 using Forge.Entity;
 using VDS.RDF;
+using Forge.Aspects.Query;
 using Forge.Repository;
+using Forge.Repository.Mapping;
 using Forge.Repository.Rdf;
 using Microsoft.Extensions.Options;
 

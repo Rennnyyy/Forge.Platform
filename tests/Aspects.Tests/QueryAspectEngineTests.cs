@@ -1,6 +1,8 @@
 using Forge.Entity;
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
+using Forge.Aspects.Query;
+using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;

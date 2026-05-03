@@ -1,4 +1,5 @@
 using Forge.Aspects.DependencyInjection;
+using Forge.Aspects.Message;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;

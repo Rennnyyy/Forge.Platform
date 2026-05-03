@@ -5,6 +5,7 @@ using Forge.Repository;
 using Forge.Repository.InMemory;
 using Forge.Repository.InMemory.DependencyInjection;
 using Forge.Repository.DependencyInjection;
+using Forge.Repository.Transaction;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.DependencyInjection;

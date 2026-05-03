@@ -2,6 +2,8 @@ using Forge.Entity;
 using Forge.Operations;
 using Forge.Repository;
 using Forge.Repository.InMemory;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.Options;

@@ -1,5 +1,7 @@
 using Forge.Entity;
+using Forge.Repository;
 using Forge.Repository.InMemory;
+using Forge.Repository.Mapping;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.Options;

@@ -1,4 +1,6 @@
 using Forge.Entity;
+using Forge.Repository;
+using Forge.Repository.Mapping;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.Options;
 using Shouldly;

@@ -1,6 +1,8 @@
 using Forge.Entity;
 using Forge.Operations;
 using Forge.Repository;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.Options;
 using Shouldly;

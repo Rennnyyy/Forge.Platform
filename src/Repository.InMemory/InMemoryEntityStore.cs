@@ -1,5 +1,7 @@
 using Forge.Entity;
 using System.Runtime.CompilerServices;
+using Forge.Repository;
+using Forge.Repository.Mapping;
 using Forge.Repository.Rdf;
 using Microsoft.Extensions.Options;
 using VDS.RDF;

@@ -1,4 +1,7 @@
 using Forge.Entity;
+using Forge.Repository;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using VDS.RDF;
 
 namespace Forge.Repository.InMemory;

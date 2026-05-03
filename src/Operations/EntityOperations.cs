@@ -1,5 +1,6 @@
 using Forge.Entity;
 using Forge.Repository;
+using Forge.Repository.Transaction;
 using Forge.Sparql;
 
 namespace Forge.Operations;

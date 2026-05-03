@@ -1,7 +1,11 @@
 using Forge.Entity;
 using System.Text;
+using Forge.Aspects.Operation;
+using Forge.Aspects.Shape;
 using Forge.Repository;
+using Forge.Repository.Mapping;
 using Forge.Repository.Rdf;
+using Forge.Repository.Transaction;
 using Microsoft.Extensions.Options;
 using VDS.RDF;
 using VDS.RDF.Shacl;

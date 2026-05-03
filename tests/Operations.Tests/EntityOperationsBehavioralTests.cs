@@ -1,6 +1,7 @@
 using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.InMemory;
+using Forge.Repository.Mapping;
 using Forge.Sparql;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;

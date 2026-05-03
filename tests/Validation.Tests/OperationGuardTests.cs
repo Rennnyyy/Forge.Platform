@@ -3,6 +3,8 @@ using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Forge.Repository;
 using Forge.Repository.InMemory;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Forge.Validation;
 using Forge.Validation.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;

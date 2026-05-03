@@ -1,9 +1,12 @@
 using Forge.Entity;
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
+using Forge.Aspects.Operation;
+using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
+using Forge.Repository.Transaction;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
 using Microsoft.Extensions.DependencyInjection;
