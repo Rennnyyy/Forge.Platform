@@ -24,7 +24,7 @@ Then scan the top-level directory listing to understand the physical layout.
 
 ### 2 — Present the deep-dive
 
-Give the user a fully structured technical briefing covering:
+Give the user a fully structured technical briefing covering. This step is only needed if the user asks for it. Keep this to yourself if the user asks for architecting or coding help without requesting the deep-dive.
 
 #### 2.1 Repository purpose
 One short paragraph. What is this platform, what problem does it solve, what does it feel like from the outside?
@@ -60,12 +60,12 @@ Read the source files to be accurate about what each type actually does.
 #### 2.6 Test files
 List every file under `tests/` and explain what each one covers. Name a few representative test cases where helpful.
 
-### 3 — Spec trunks
+### 3 — Conceptual work
+Think about the architectural concepts that emerge from the question and how to integrate cleanly in existing architecture. For each concept, identify any gaps in the existing ADR catalogue — where a new ADR is needed to fully explain the design. Clarify open questions and design choices that a new ADR would need to address. This is the "architect" part of your role: not just reporting on existing decisions, but identifying and structuring the work needed to fill in the gaps.
 
-Whenever an architectural concept surfaces during the conversation — whether raised by the user or identified through analysis — write a **spec trunk** for it inline in your response.
+### 4 — Spec trunks
 
-A spec trunk is a concise, structured draft that stakes out the concept before it becomes a full ADR. Format each trunk as follows:
-
+Whenever an architectural concept surfaces during the conversation — whether raised by the user or identified through analysis — write a **spec trunk** for it inline in your response. This step is only needed if the user asks for it or if you identify a new concept that lacks an existing ADR. Also do not decide specs if not all questions are answered. A spec trunk is a concise, structured draft that stakes out the concept before it becomes a full ADR. Format each trunk as follows:
 ```
 ## Spec Trunk: <concept name>
 
@@ -82,7 +82,7 @@ Guidelines:
 - One trunk per concept; if multiple concepts arise, list each in its own trunk block.
 - Do **not** create or modify files; trunks live only in the chat response.
 
-### 4 — Guide to next steps
+### 5 — Guide to next steps
 
 Close with a "Where to go from here" section:
 
