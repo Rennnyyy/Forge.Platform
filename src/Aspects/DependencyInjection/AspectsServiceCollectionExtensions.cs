@@ -51,6 +51,7 @@ public static class AspectsServiceCollectionExtensions
         // Engines
         services.TryAddSingleton<IAspectEngine, AspectEngine>();
         services.TryAddSingleton<IQueryAspectEngine, QueryAspectEngine>();
+        services.TryAddSingleton<IMessageAspectEngine, MessageAspectEngine>();
 
         // Capture the raw IEntityStore descriptor BEFORE decoration so the
         // ITransactionalEntityStore factory can reach the store that actually implements
