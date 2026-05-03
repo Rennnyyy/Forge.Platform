@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forge Platform — Product Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2e3144;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --if:      #3b82f6;
+      --cap:     #8b5cf6;
+      --auth:    #f59e0b;
+      --opt:     #10b981;
+      --future:  #4b5563;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1.5rem 2.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 1.25rem;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.3px; }
+    header p  { font-size: .82rem; color: var(--muted); }
+
+    .iri {
+      font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+      font-size: .72rem;
+      color: var(--muted);
+      background: #1e2235;
+      padding: .1rem .4rem;
+      border-radius: 4px;
+    }
+
+    .graph-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow: auto;
+    }
+
+    .graph-wrap .mermaid {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* legend */
+    .legend {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      padding: .75rem 2.5rem 1rem;
+      border-top: 1px solid var(--border);
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: .4rem; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot.if   { background: var(--if);  }
+    .dot.cap  { background: var(--cap); }
+    .dot.auth { background: var(--auth);}
+    .dot.opt  { background: var(--opt); }
+    .dot.future { background: var(--future); }
+    .edge-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      background: #1e2235;
+      padding: .1rem .35rem;
+      border-radius: 3px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Forge Platform</h1>
+  <p>Product × Feature graph &nbsp;·&nbsp; as stored in the Information Framework</p>
+  <span class="iri">forge:platform / :Product → :hasFeature → :Feature</span>
+</header>
+
+<div class="graph-wrap">
+  <div class="mermaid">
+%%{ init: { "theme": "base", "themeVariables": {
+    "background":         "#0f1117",
+    "primaryColor":       "#1a1d27",
+    "primaryTextColor":   "#e2e8f0",
+    "primaryBorderColor": "#2e3144",
+    "lineColor":          "#4b5563",
+    "edgeLabelBackground":"#0f1117",
+    "clusterBkg":         "#0f1117",
+    "clusterBorder":      "#2e3144",
+    "fontFamily":         "Segoe UI, system-ui, sans-serif",
+    "fontSize":           "14px"
+} } }%%
+graph LR
+
+  %% ── Products ──────────────────────────────────────────
+  IF(["forge:InformationFramework"])
+  CAP(["forge:CapabilityFramework"])
+
+  %% ── Information Framework features ───────────────────
+  IF_ENT["forge:feature/EntityCore"]
+  IF_OPS["forge:feature/Operations"]
+  IF_ASP["forge:feature/Aspects"]
+  IF_PER["forge:feature/Persistence"]
+  IF_SPQ["forge:feature/SparqlQueryLayer"]
+
+  %% ── Persistence feature options ───────────────────────
+  OPT_MEM["forge:option/InMemory"]
+  OPT_GDB["forge:option/GraphDb"]
+
+  %% ── Capability Framework features ─────────────────────
+  CAP_CORE["forge:feature/CapabilityCore"]
+  CAP_HTTP["forge:feature/HttpTransport"]
+  CAP_ASP["forge:feature/PerRequestAspects"]
+
+  %% ── Authorization (shared feature, options like Persistence) ──
+  AUTH["forge:feature/Authorization"]
+  AUTH_ANON["forge:option/Anonymous"]
+  AUTH_NOOP["forge:option/NoOpGuard"]
+  AUTH_JWT["forge:option/FullJwt"]
+
+  %% ── Product → Feature edges ────────────────────────────
+  IF  -->|":hasFeature"| IF_ENT
+  IF  -->|":hasFeature"| IF_OPS
+  IF  -->|":hasFeature"| IF_ASP
+  IF  -->|":hasFeature"| IF_PER
+  IF  -->|":hasFeature"| IF_SPQ
+
+  IF_PER -->|":hasOption"| OPT_MEM
+  IF_PER -->|":hasOption"| OPT_GDB
+
+  CAP -->|":hasFeature"| CAP_CORE
+  CAP -->|":hasFeature"| CAP_HTTP
+  CAP -->|":hasFeature"| CAP_ASP
+
+  %% ── Cross-product aspect dependency ────────────────────
+  CAP_ASP -->|":requires"| IF_ASP
+
+  %% ── Authorization — shared feature across both products
+  IF  -->|":hasFeature"| AUTH
+  CAP -->|":hasFeature"| AUTH
+
+  AUTH -->|":hasOption"| AUTH_ANON
+  AUTH -->|":hasOption"| AUTH_NOOP
+  AUTH -->|":hasOption"| AUTH_JWT
+
+  %% ── Styles ─────────────────────────────────────────────
+  classDef product  fill:#1e2d44,stroke:#3b82f6,color:#bfdbfe,font-weight:700,rx:999
+  classDef if_feat  fill:#172036,stroke:#3b82f6,color:#93c5fd
+  classDef cap_feat fill:#1e1640,stroke:#8b5cf6,color:#c4b5fd
+  classDef opt      fill:#0d2218,stroke:#10b981,color:#6ee7b7
+  classDef auth_feat fill:#2d1c00,stroke:#f59e0b,color:#fcd34d
+  classDef auth_opt fill:#231400,stroke:#d97706,color:#fbbf24
+  classDef future   fill:#18181b,stroke:#4b5563,color:#6b7280,stroke-dasharray:4
+
+  class IF,CAP product
+  class IF_ENT,IF_OPS,IF_ASP,IF_PER if_feat
+  class CAP_CORE,CAP_HTTP,CAP_ASP cap_feat
+  class OPT_MEM,OPT_GDB opt
+  class AUTH auth_feat
+  class AUTH_ANON,AUTH_NOOP,AUTH_JWT auth_opt
+  class IF_SPQ future
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot if"></div> Information Framework</div>
+  <div class="legend-item"><div class="dot cap"></div> Capability Framework</div>
+  <div class="legend-item"><div class="dot opt"></div> Feature option (selectable)</div>
+  <div class="legend-item"><div class="dot auth"></div> Authorization (shared, staging-resolved)</div>
+  <div class="legend-item"><div class="dot future"></div> Phase 2 / deferred</div>
+  <div class="legend-item">
+    <span class="edge-label">:hasFeature</span>&nbsp;product owns feature
+  </div>
+  <div class="legend-item">
+    <span class="edge-label">:hasOption</span>&nbsp;feature/vp offers selectable option
+  </div>
+  <div class="legend-item">
+    <span class="edge-label">:requires</span>&nbsp;cross-product dependency
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose' });
+</script>
+</body>
+</html>
