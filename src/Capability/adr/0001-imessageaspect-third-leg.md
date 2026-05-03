@@ -94,3 +94,5 @@ public interface IMessageAspectEngine
   used by the write leg; both are intentional and documented.
 - `Forge.Capability` references `Forge.Aspects` and uses `IMessageAspectEngine` + `IMessageAspectRegistry`
   injected at the dispatcher layer.
+
+> *`IOperationAspect` (base token) renamed to `IAspect` due to Aspects ADR-0009. `IWriteAspect` renamed to `IOperationAspect` simultaneously. `IMessageAspect : IAspect`. The naming pattern is now: `IOperationAspect`, `IQueryAspect`, `IMessageAspect`.*

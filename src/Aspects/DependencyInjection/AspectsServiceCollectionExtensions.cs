@@ -40,6 +40,10 @@ public static class AspectsServiceCollectionExtensions
         services.TryAddSingleton<IShapeRegistry>(registry);
         services.TryAddSingleton<IAspectResolver>(registry);
 
+        // Message aspect registry — null-on-miss, sealed after first read.
+        var messageRegistry = new MessageAspectRegistry();
+        services.TryAddSingleton<IMessageAspectRegistry>(messageRegistry);
+
         // Keep a list of pending aspect registrations so AddCodeAspect() calls that
         // precede or follow AddForgeAspects() can be executed at first resolution.
         services.TryAddSingleton<PendingAspectRegistrations>();

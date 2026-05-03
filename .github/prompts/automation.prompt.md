@@ -2,8 +2,8 @@
 description: "Register a new prompt in the Forge herald network — draft the file and wire it into every existing guide's menu."
 name: "Forge Automation"
 argument-hint: "Name and purpose of the new prompt, e.g. 'Forge-Reviewer — reviews PRs for ADR compliance'."
-mode: agent
-tools: [read_file, create_file, replace_string_in_file, multi_replace_string_in_file, file_search]
+agent: agent
+tools: [read, search, web, agent, edit, execute, search, todo, vscode]
 ---
 # Forge.Platform — Prompt Automation
 

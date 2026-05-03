@@ -4,7 +4,7 @@ using Forge.Repository;
 namespace Forge.Aspects;
 
 /// <summary>
-/// An <see cref="IOperationAspect"/> that gates and validates read / query operations.
+/// An <see cref="IAspect"/> that gates and validates read / query operations.
 /// See Aspects ADR-0007.
 /// </summary>
 /// <remarks>
@@ -34,7 +34,7 @@ namespace Forge.Aspects;
 ///   </item>
 /// </list>
 /// </remarks>
-public interface IQueryAspect : IOperationAspect
+public interface IQueryAspect : IAspect
 {
     /// <summary>
     /// SPARQL WHERE body fragment for the access gate / data filter, or <c>null</c> if no

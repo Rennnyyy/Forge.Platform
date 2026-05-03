@@ -78,6 +78,8 @@ The two renames are complementary:
 - The three concrete aspect interfaces now follow a uniform `I<Scope>Aspect` pattern:
   `IWriteAspect`, `IQueryAspect`, `IMessageAspect`.
 - `InlineTtlShapeAspect` is renamed to `InlineTtlWriteAspect` for filesystem
+
+> *`IWriteAspect` subsequently renamed to `IOperationAspect` due to Aspects ADR-0009. The decision to scope the write-validation interface by domain context (not mechanism) is unchanged.*
   consistency; the constructor signature is otherwise unchanged.
 - All registration call sites that reference `IShapeAspect` or `InlineTtlShapeAspect`
   must be updated — no other behavioral changes.

@@ -2,10 +2,10 @@ using Forge.Entity;
 namespace Forge.Aspects;
 
 /// <summary>
-/// A <see cref="IWriteAspect"/> that holds shape data as inline strings.
+/// A <see cref="IOperationAspect"/> that holds shape data as inline strings.
 /// Used for code-origin aspects registered via the DI extension or in tests.
 /// </summary>
-public sealed class InlineTtlWriteAspect : IWriteAspect
+public sealed class InlineTtlWriteAspect : IOperationAspect
 {
     /// <inheritdoc/>
     public string Name { get; }

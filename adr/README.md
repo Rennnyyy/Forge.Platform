@@ -45,3 +45,4 @@ What this enables or forecloses. Follow-ups.
 - [0006 — Canonical base URL is https://forge-it.net](0006-canonical-base-url.md)
 - [0007 — Shared test fixtures project for sample entities](0007-shared-test-fixtures.md)
 - [0008 — Remove `Entity.` prefix from satellite package/namespace names](0008-remove-entity-prefix-from-satellite-packages.md)
+- [0009 — ADR adjustment policy: inline notes for identifier-only changes](0009-adr-adjust-policy.md)

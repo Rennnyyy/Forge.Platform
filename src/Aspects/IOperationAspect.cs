@@ -2,12 +2,12 @@ using Forge.Entity;
 namespace Forge.Aspects;
 
 /// <summary>
-/// An <see cref="Forge.Repository.IOperationAspect"/> that carries SHACL shape material.
-/// The engine casts <c>IOperationAspect</c> to this interface to obtain shape data; the cast
-/// succeeds for every non-NoOp aspect registered in Trunk 2.
-/// See Aspects ADR-0004, ADR-0006, ADR-0008.
+/// An <see cref="Forge.Repository.IAspect"/> that carries SHACL shape material.
+/// The engine casts <c>IAspect</c> to this interface to obtain shape data; the cast
+/// succeeds for every non-NoOp aspect registered in the write leg.
+/// See Aspects ADR-0004, ADR-0009.
 /// </summary>
-public interface IWriteAspect : Forge.Repository.IOperationAspect
+public interface IOperationAspect : Forge.Repository.IAspect
 {
     /// <summary>
     /// Turtle-serialized SHACL Local shape, or <c>null</c> if this aspect has no local pass.

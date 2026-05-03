@@ -57,3 +57,5 @@ Option 1.
   `EntityTransaction` methods continue to compile because `IShapeAspect : IOperationAspect`.
 - File `IAspect.cs` is renamed to `IOperationAspect.cs` for filesystem consistency,
   though the rename is not strictly required at the compiler level.
+
+> *`IOperationAspect` (base token) renamed back to `IAspect` due to Aspects ADR-0009. `IWriteAspect` was simultaneously renamed to `IOperationAspect`. The disambiguation rationale here remains valid; only the chosen name changed.*

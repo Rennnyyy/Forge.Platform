@@ -19,10 +19,12 @@ hook. The hook must be:
    `Forge.Repository`, `Forge.Operations`, or any other slice. Consumers opt in by
    wiring the guarded decorator.
 
-### Relationship to `IOperationAspect`
+### Relationship to `IAspect`
 
-`IOperationAspect` (Repository slice) carries the *validation policy name* as a thin token
-on each `TransactionOperation`. The `aspectToken` in `IOperationGuard.AuthorizeTransactionAsync`
+`IAspect` (Repository slice) carries the *validation policy name* as a thin token
+on each `TransactionOperation`.
+
+> *Renamed from `IOperationAspect` to `IAspect` due to Aspects ADR-0009.* The `aspectToken` in `IOperationGuard.AuthorizeTransactionAsync`
 is derived from `TransactionOperation.Aspect.Name` — the guard does not receive a separate
 parameter; it inspects each operation directly. For queries, the `aspectToken` is passed
 explicitly because queries currently carry no ambient aspect in the base store interfaces.

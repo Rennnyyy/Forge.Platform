@@ -37,6 +37,8 @@ making `TransactionOperation` carry it would require `Forge.Repository` to refer
 
 Option 1.
 
+> *`IAspect` name temporarily changed to `IOperationAspect` by Aspects ADR-0006, then restored to `IAspect` by Aspects ADR-0009. The decision rationale and consequences are unchanged.*
+
 ### What lives in `Forge.Repository`
 
 ```csharp

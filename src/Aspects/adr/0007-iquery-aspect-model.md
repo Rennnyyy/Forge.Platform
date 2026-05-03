@@ -43,7 +43,7 @@ Option 1.
 ## `IQueryAspect` contract
 
 ```csharp
-public interface IQueryAspect : IOperationAspect
+public interface IQueryAspect : IAspect  // IAspect = Forge.Repository.IAspect; see Aspects ADR-0009
 {
     // Layer 1 — Access gate / filter.
     // SPARQL WHERE body fragment appended (generated queries) or substituted via

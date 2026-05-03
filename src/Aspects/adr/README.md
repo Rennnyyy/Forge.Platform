@@ -14,3 +14,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0006 — Rename `IAspect` → `IOperationAspect`](0006-rename-iaspect-to-ioperationaspect.md)
 - [0007 — `IQueryAspect`: filter injection + result-graph SHACL for reads and queries](0007-iquery-aspect-model.md)
 - [0008 — Rename `IShapeAspect` → `IWriteAspect`](0008-rename-ishapeaspect-to-ioperationaspect.md)
+- [0009 — Restore `IAspect` as base token; rename `IWriteAspect` → `IOperationAspect`](0009-rename-ioperationaspect-to-iaspect-iwriteaspect-to-ioperationaspect.md)

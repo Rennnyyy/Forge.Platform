@@ -2,8 +2,8 @@
 description: "Generate /docs — HTML page with Mermaid dependency diagram and descriptions for all src/ projects."
 name: "Forge Documentation"
 argument-hint: "Optionally focus on a specific project or area, or hit Enter to generate all docs."
-mode: agent
-tools: [read_file, create_file, replace_string_in_file, list_dir, file_search, grep_search]
+agent: agent
+tools: [read, search, web, agent, edit, execute, search, todo, vscode]
 ---
 # Forge.Platform — Documentation Generator
 

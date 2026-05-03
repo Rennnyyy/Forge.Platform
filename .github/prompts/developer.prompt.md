@@ -2,8 +2,8 @@
 description: "Forge.Platform developer workflow: locate the slice, read all ADRs, then implement with full design discipline."
 name: "Forge Developer"
 argument-hint: "Describe your change or feature…"
-mode: agent
-tools: [read_file, create_file, replace_string_in_file, run_in_terminal, file_search, grep_search, semantic_search]
+agent: agent
+tools: [read, search, web, agent, edit, execute, search, todo, vscode]″
 ---
 # Forge.Platform — Agent Router
 

@@ -2,8 +2,8 @@
 description: "Forge.Platform deep-dive: full ADR catalogue, type inventory, test map, and physical layout — for the thorough explorer."
 name: "Forge Architect"
 argument-hint: "Optionally focus on a slice or topic, e.g. 'Entity ADRs' or 'public API'…"
-mode: agent
-tools: [read_file, list_dir, file_search, grep_search, semantic_search]
+agent: agent
+tools: [read, search, web, agent, edit, execute, search, todo, vscode]
 ---
 # Forge.Platform — Architect
 

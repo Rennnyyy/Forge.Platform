@@ -2,8 +2,7 @@
 description: "Quick friendly intro to Forge.Platform — what it is, what you can do with it, and where to go next."
 name: "Forge Explorer"
 argument-hint: "Anything specific you're curious about? Or just hit Enter for the grand tour!"
-mode: ask
-tools: []
+agent: ask
 ---
 # Forge.Platform — Welcome, traveller! ⚒️
 

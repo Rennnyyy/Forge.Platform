@@ -2,8 +2,7 @@
 description: "Forge.Platform as a medieval city — a re:Invent-style beginner talk for non-technical audiences."
 name: "Forge Storyline"
 argument-hint: "Any specific part of the city you want to explore? Or just hit Enter for the full guided tour!"
-mode: ask
-tools: []
+agent: ask
 ---
 # Forge.Platform — The Medieval City Tour 🏰
 
