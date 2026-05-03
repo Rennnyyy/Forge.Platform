@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
+    <ProjectReference Include="..\..\src\Authorization\Forge.Authorization.csproj" />
   </ItemGroup>
 
 </Project>

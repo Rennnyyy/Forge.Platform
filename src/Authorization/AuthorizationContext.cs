@@ -1,25 +1,25 @@
-namespace Forge.Validation;
+namespace Forge.Authorization;
 
 /// <summary>
 /// Ambient binding that propagates the calling agent's identity token through the
-/// async call stack to the <see cref="GuardedTransactionalStore"/>. See Validation ADR-0002.
+/// async call stack to the <see cref="GuardedTransactionalStore"/>. See Authorization ADR-0002.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Bind the token once at the top of the call stack (e.g. in ASP.NET Core middleware)
 /// and every downstream transaction or query within that scope carries it automatically:
 /// <code>
-/// using var _ = ValidationContext.Use(bearerToken);
+/// using var _ = AuthorizationContext.Use(bearerToken);
 /// await artist.CreateAsync();   // guarded — agent token flows through
 /// </code>
 /// </para>
 /// <para>
-/// Tests that use <see cref="AllowAllOperationGuard"/> do not need to call
+/// Tests that use <see cref="AllowAllAspectGuard"/> do not need to call
 /// <see cref="Use"/> because the allow-all guard ignores the token. A stricter guard
 /// that rejects an empty agent token forces authenticated call sites to establish a scope.
 /// </para>
 /// </remarks>
-public static class ValidationContext
+public static class AuthorizationContext
 {
     private static readonly AsyncLocal<string?> _agentToken = new();
 

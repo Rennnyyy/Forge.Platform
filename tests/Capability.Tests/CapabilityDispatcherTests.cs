@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Forge.Aspects;
 using Forge.Aspects.Message;
 using Forge.Capability;
+using Forge.Authorization;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
@@ -260,5 +261,165 @@ public sealed class CapabilityDispatcherTests
         var ok = result.ShouldBeOfType<CapabilityResult<TestResponse>.Ok>();
         ok.Response.ShouldBeSameAs(response);
         ok.Events.Count.ShouldBe(1);
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 10. Active ValidationContext scope → AgentToken forwarded to handler context
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Agent_token_from_validation_context_is_forwarded_to_handler_context()
+    {
+        CapabilityContext? capturedContext = null;
+        var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
+        handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Do<CapabilityContext>(c => capturedContext = c), Arg.Any<CancellationToken>())
+               .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
+                   new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
+
+        var dispatcher = BuildDispatcher(handler);
+
+        using (Forge.Authorization.AuthorizationContext.Use("agent-42"))
+        {
+            await dispatcher.DispatchAsync(new TestCommand("x"));
+        }
+
+        capturedContext.ShouldNotBeNull();
+        capturedContext!.AgentToken.ShouldBe("agent-42");
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 11. No ValidationContext scope → AgentToken in context is null
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task No_validation_context_scope_results_in_null_agent_token()
+    {
+        CapabilityContext? capturedContext = null;
+        var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
+        handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Do<CapabilityContext>(c => capturedContext = c), Arg.Any<CancellationToken>())
+               .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
+                   new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
+
+        var dispatcher = BuildDispatcher(handler);
+        await dispatcher.DispatchAsync(new TestCommand("x"));
+
+        capturedContext.ShouldNotBeNull();
+        capturedContext!.AgentToken.ShouldBeNull();
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 12. Guard called for command with correct agent and aspect tokens
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_is_called_for_command_with_agent_and_aspect_tokens()
+    {
+        var guard         = Substitute.For<IAspectGuard>();
+        var commandAspect = Substitute.For<IMessageAspect>();
+        commandAspect.Name.Returns("my-policy");
+        var aspects    = new CapabilityAspects { CommandAspect = commandAspect };
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(OkHandler(), Substitute.For<IMessageAspectEngine>(), guard);
+
+        using (Forge.Authorization.AuthorizationContext.Use("agent-1"))
+            await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+
+        await guard.Received(1).AuthorizeAsync("agent-1", "my-policy", Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 13. Guard called for command with "noop" when no aspect supplied
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_receives_noop_aspect_token_when_no_command_aspect()
+    {
+        var guard      = Substitute.For<IAspectGuard>();
+        // Use FailHandler so the response slot is never reached; only the command guard call fires.
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            FailHandler(new CapabilityError("ERR", "noop-test")), Substitute.For<IMessageAspectEngine>(), guard);
+
+        await dispatcher.DispatchAsync(new TestCommand("x"), aspects: null);
+
+        await guard.Received(1).AuthorizeAsync(string.Empty, "noop", Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 14. Guard called for response (Ok) with correct kind
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_is_called_for_response_on_ok_result()
+    {
+        var guard          = Substitute.For<IAspectGuard>();
+        var responseAspect = Substitute.For<IMessageAspect>();
+        responseAspect.Name.Returns("resp-policy");
+        var aspects    = new CapabilityAspects { ResponseAspect = responseAspect };
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(OkHandler(), Substitute.For<IMessageAspectEngine>(), guard);
+
+        await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+
+        await guard.Received(1).AuthorizeAsync(string.Empty, "resp-policy", Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 15. Guard NOT called for response when handler returns Fail
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_is_not_called_for_response_on_fail_result()
+    {
+        var guard          = Substitute.For<IAspectGuard>();
+        var responseAspect = Substitute.For<IMessageAspect>();
+        var aspects        = new CapabilityAspects { ResponseAspect = responseAspect };
+        var dispatcher     = new CapabilityDispatcher<TestCommand, TestResponse>(
+            FailHandler(new CapabilityError("ERR", "oops")), Substitute.For<IMessageAspectEngine>(), guard);
+
+        await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+
+        await guard.DidNotReceive().AuthorizeAsync(Arg.Any<string>(), "resp-policy", Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 16. Guard called per event with correct aspect token and kind
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_is_called_per_event_with_event_kind()
+    {
+        var guard       = Substitute.For<IAspectGuard>();
+        var eventAspect = Substitute.For<IMessageAspect>();
+        eventAspect.Name.Returns("evt-policy");
+        var evt     = new TestEvent("created");
+        var aspects = new CapabilityAspects
+        {
+            EventAspects = ImmutableDictionary<Type, IMessageAspect>.Empty.Add(typeof(TestEvent), eventAspect),
+        };
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            OkHandler(events: [evt]), Substitute.For<IMessageAspectEngine>(), guard);
+
+        await dispatcher.DispatchAsync(new TestCommand("go"), aspects);
+
+        await guard.Received(1).AuthorizeAsync(string.Empty, "evt-policy", Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 17. Guard throws on command → exception propagates, handler not called
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Guard_denial_on_command_propagates_and_handler_is_not_called()
+    {
+        var guard   = Substitute.For<IAspectGuard>();
+        var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
+        guard.AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+             .Returns(_ => ValueTask.FromException(new UnauthorizedAccessException("denied")));
+
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, Substitute.For<IMessageAspectEngine>(), guard);
+
+        await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => dispatcher.DispatchAsync(new TestCommand("bad")).AsTask());
+
+        await handler.DidNotReceive()
+            .HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CapabilityContext>(), Arg.Any<CancellationToken>());
     }
 }

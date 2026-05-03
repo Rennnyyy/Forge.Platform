@@ -2,24 +2,23 @@ using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 
-namespace Forge.Validation;
+namespace Forge.Authorization;
 
 /// <summary>
 /// Decorates an <see cref="ITransactionalEntityStore"/> with pre-commit authorization
-/// via an <see cref="IOperationGuard"/>. See Validation ADR-0003.
+/// via an <see cref="IAspectGuard"/>. See Validation ADR-0004.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <strong>Transaction authorization</strong> — all operations are passed to
-/// <see cref="IOperationGuard.AuthorizeTransactionAsync"/> <em>before</em> the inner
-/// store is contacted. If the guard throws, the inner store is never called and all
-/// operations are discarded.
+/// <strong>Transaction authorization</strong> — <see cref="IAspectGuard.AuthorizeAsync"/> is
+/// called once per operation <em>before</em> the inner store is contacted. If the guard
+/// throws for any operation, the inner store is never called and the whole transaction
+/// is discarded.
 /// </para>
 /// <para>
 /// <strong>Query authorization</strong> — <see cref="LoadAsync{T}"/> and
-/// <see cref="QueryByTypeAsync{T}"/> call
-/// <see cref="IOperationGuard.AuthorizeQueryAsync"/> with <c>aspectToken = "noop"</c>
-/// before delegating to the inner store.
+/// <see cref="QueryByTypeAsync{T}"/> call <see cref="IAspectGuard.AuthorizeAsync"/> with
+/// <c>aspectToken = "noop"</c> before delegating to the inner store.
 /// </para>
 /// <para>
 /// Individual-write methods (<c>SaveAsync</c>, <c>DeleteAsync</c>) on <see cref="IEntityStore"/>
@@ -30,12 +29,12 @@ namespace Forge.Validation;
 public sealed class GuardedTransactionalStore : ITransactionalEntityStore
 {
     private readonly ITransactionalEntityStore _inner;
-    private readonly IOperationGuard _guard;
+    private readonly IAspectGuard _guard;
 
     /// <summary>
     /// Wraps <paramref name="inner"/> with authorization via <paramref name="guard"/>.
     /// </summary>
-    public GuardedTransactionalStore(ITransactionalEntityStore inner, IOperationGuard guard)
+    public GuardedTransactionalStore(ITransactionalEntityStore inner, IAspectGuard guard)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(guard);
@@ -47,19 +46,20 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Calls <see cref="IOperationGuard.AuthorizeTransactionAsync"/> with the full
-    /// operations list before delegating to the inner store. The agent token is resolved
-    /// from <see cref="ValidationContext.CurrentAgentToken"/>; an empty string is passed
-    /// when no scope is active (safe for use with <see cref="AllowAllOperationGuard"/>).
+    /// Calls <see cref="IAspectGuard.AuthorizeAsync"/> once per operation before
+    /// delegating to the inner store. The agent token is resolved from
+    /// when no scope is active (safe for use with <see cref="AllowAllAspectGuard"/>).
+    /// If the guard throws for any operation, the inner store is never contacted.
     /// </remarks>
     public async ValueTask ExecuteTransactionAsync(
         IReadOnlyList<TransactionOperation> operations,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operations);
-        var agentToken = ValidationContext.CurrentAgentToken ?? string.Empty;
-        await _guard.AuthorizeTransactionAsync(agentToken, operations, cancellationToken)
-            .ConfigureAwait(false);
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        foreach (var op in operations)
+            await _guard.AuthorizeAsync(agentToken, op.Aspect.Name, cancellationToken)
+                .ConfigureAwait(false);
         await _inner.ExecuteTransactionAsync(operations, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -70,8 +70,8 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
     public async ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
-        var agentToken = ValidationContext.CurrentAgentToken ?? string.Empty;
-        await _guard.AuthorizeQueryAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
             .ConfigureAwait(false);
         return await _inner.LoadAsync<T>(iri, cancellationToken).ConfigureAwait(false);
     }
@@ -81,8 +81,8 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
-        var agentToken = ValidationContext.CurrentAgentToken ?? string.Empty;
-        await _guard.AuthorizeQueryAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
             .ConfigureAwait(false);
         await foreach (var item in _inner.QueryByTypeAsync<T>(cancellationToken).ConfigureAwait(false))
             yield return item;

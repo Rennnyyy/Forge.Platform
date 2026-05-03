@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Forge.Validation</RootNamespace>
+    <RootNamespace>Forge.Authorization</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

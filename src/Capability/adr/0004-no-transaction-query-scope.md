@@ -41,5 +41,5 @@ No `[AllowsTransaction]`, `[AllowsQuery]`, or equivalent handlers are introduced
   is implemented. It must address: attribute syntax, enforcement point
   (dispatcher vs. store wrapper), and how dynamic allowlists compose with the existing
   `IOperationGuard`.
-- The `GuardedTransactionalStore` from `Forge.Validation` remains the primary write-access
+- The `GuardedTransactionalStore` from `Forge.Authorization` remains the primary write-access
   control mechanism for capability handlers, as for all other callers.

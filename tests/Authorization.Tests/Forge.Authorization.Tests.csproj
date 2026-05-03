@@ -28,7 +28,7 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
-    <ProjectReference Include="..\..\src\Validation\Forge.Validation.csproj" />
+    <ProjectReference Include="..\..\src\Authorization\Forge.Authorization.csproj" />
     <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
   </ItemGroup>
 

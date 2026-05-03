@@ -3,12 +3,12 @@ using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Forge.Validation.DependencyInjection;
+namespace Forge.Authorization.DependencyInjection;
 
 /// <summary>
-/// DI extensions for the Validation slice. See Validation ADR-0003.
+/// DI extensions for the Authorization slice. See Authorization ADR-0004.
 /// </summary>
-public static class ValidationServiceCollectionExtensions
+public static class AuthorizationServiceCollectionExtensions
 {
     /// <summary>
     /// Decorates the registered <see cref="ITransactionalEntityStore"/> with a
@@ -24,13 +24,13 @@ public static class ValidationServiceCollectionExtensions
     /// registered, so that the <see cref="ITransactionalEntityStore"/> descriptor is
     /// already present in the collection.
     /// </remarks>
-    public static IServiceCollection AddForgeValidation(
+    public static IServiceCollection AddForgeAuthorization(
         this IServiceCollection services,
-        IOperationGuard? guard = null)
+        IAspectGuard? guard = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var effectiveGuard = guard ?? AllowAllOperationGuard.Instance;
+        var effectiveGuard = guard ?? AllowAllAspectGuard.Instance;
 
         var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ITransactionalEntityStore));
         if (rawDescriptor is null)

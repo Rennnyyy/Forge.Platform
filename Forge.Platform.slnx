@@ -30,8 +30,8 @@
   <Folder Name="/src/Capability/">
     <Project Path="src/Capability/Forge.Capability.csproj" />
   </Folder>
-  <Folder Name="/src/Validation/">
-    <Project Path="src/Validation/Forge.Validation.csproj" />
+  <Folder Name="/src/Authorization/">
+    <Project Path="src/Authorization/Forge.Authorization.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
@@ -43,6 +43,6 @@
     <Project Path="tests/Sparql.Tests/Forge.Sparql.Tests.csproj" />
     <Project Path="tests/Aspects.Tests/Forge.Aspects.Tests.csproj" />
     <Project Path="tests/Capability.Tests/Forge.Capability.Tests.csproj" />
-    <Project Path="tests/Validation.Tests/Forge.Validation.Tests.csproj" />
+    <Project Path="tests/Authorization.Tests/Forge.Authorization.Tests.csproj" />
   </Folder>
 </Solution>

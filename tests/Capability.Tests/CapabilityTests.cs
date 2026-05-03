@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Forge.Aspects.Message;
 using Forge.Capability;
+using Forge.Authorization;
 using NSubstitute;
 using Shouldly;
 
@@ -119,8 +120,9 @@ public sealed class CapabilityHandlerTests
             CapabilityContext context,
             CancellationToken cancellationToken = default)
         {
+            // The handler reads context.AgentToken — no dependency on ValidationContext.
             CapabilityResult<PingResponse> result = new CapabilityResult<PingResponse>.Ok(
-                new PingResponse(command.Message));
+                new PingResponse($"{command.Message} from {context.AgentToken ?? "anonymous"}"));
             return ValueTask.FromResult(result);
         }
     }
@@ -135,7 +137,7 @@ public sealed class CapabilityHandlerTests
         var result = await handler.HandleAsync(command, context);
 
         var ok = result.ShouldBeOfType<CapabilityResult<PingResponse>.Ok>();
-        ok.Response.Echo.ShouldBe("ping");
+        ok.Response.Echo.ShouldBe("ping from anonymous");
         ok.Events.ShouldBeEmpty();
     }
 
@@ -151,6 +153,24 @@ public sealed class CapabilityHandlerTests
         var fail = result.ShouldBeOfType<CapabilityResult<PingResponse>.Fail>();
         fail.Error.Code.ShouldBe("INVALID");
         fail.Error.Message.ShouldBe("Command rejected");
+    }
+
+    [Fact]
+    public async Task Handler_reads_agent_token_from_context_established_by_dispatcher()
+    {
+        // Arrange: host code establishes the ambient scope before calling DispatchAsync.
+        var engine     = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
+        var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine);
+
+        CapabilityResult<PingResponse> result;
+        using (AuthorizationContext.Use("user-007"))
+        {
+            result = await dispatcher.DispatchAsync(new PingCommand("ping"));
+        }
+
+        // Assert: the handler received the agent token through CapabilityContext.
+        var ok = result.ShouldBeOfType<CapabilityResult<PingResponse>.Ok>();
+        ok.Response.Echo.ShouldBe("ping from user-007");
     }
 
     private sealed class FailingHandler : ICapabilityHandler<PingCommand, PingResponse>

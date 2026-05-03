@@ -1,6 +1,6 @@
 using Forge.Entity.Tests.Fixtures;
 
-namespace Forge.Validation.Tests;
+namespace Forge.Authorization.Tests;
 
 /// <summary>Apply the EntityOptionsFixture to every test class in this assembly.</summary>
 [CollectionDefinition("EntityOptions")]

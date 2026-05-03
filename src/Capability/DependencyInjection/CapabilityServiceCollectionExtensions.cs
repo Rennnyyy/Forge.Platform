@@ -1,4 +1,5 @@
 using Forge.Aspects.Message;
+using Forge.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -32,7 +33,8 @@ public static class CapabilityServiceCollectionExtensions
         services.TryAddTransient<ICapabilityDispatcher<TCommand, TResponse>>(sp =>
             new CapabilityDispatcher<TCommand, TResponse>(
                 sp.GetRequiredService<ICapabilityHandler<TCommand, TResponse>>(),
-                sp.GetRequiredService<IMessageAspectEngine>()));
+                sp.GetRequiredService<IMessageAspectEngine>(),
+                sp.GetService<IAspectGuard>()));
 
         return services;
     }

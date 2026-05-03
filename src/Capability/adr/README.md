@@ -13,3 +13,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0005 — `CapabilityResult<TResponse>` carries a failure state](0005-capability-result-failure-state.md)
 - [0006 — `ICapabilityDispatcher<TCommand,TResponse>`: dispatcher pipeline implementation](0006-capability-dispatcher-design.md)
 - [0007 — Shapes provided dynamically per dispatch call; no generator](0007-dynamic-per-call-aspects.md)
+- [0008 — Dispatcher reads ambient agent token into `CapabilityContext`](0008-agent-token-in-capability-context.md)
