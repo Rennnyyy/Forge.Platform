@@ -17,8 +17,8 @@ public sealed record TestEvent(string Kind);
 /// <summary>
 /// Behavioral tests for <see cref="CapabilityDispatcher{TCommand,TResponse}"/> /
 /// <see cref="ICapabilityDispatcher{TCommand,TResponse}"/>.
-/// Tests exercise the six-step pipeline defined in Capability ADR-0002 and ADR-0006,
-/// using per-call <see cref="CapabilityAspects"/> per ADR-0007.
+/// Tests exercise the pipeline defined in Capability ADR-0002, ADR-0006, and ADR-0011:
+/// aspects are resolved from <see cref="IAspectStore"/> by IRI.
 /// </summary>
 public sealed class CapabilityDispatcherTests
 {
@@ -28,10 +28,27 @@ public sealed class CapabilityDispatcherTests
 
     private static ICapabilityDispatcher<TestCommand, TestResponse> BuildDispatcher(
         ICapabilityHandler<TestCommand, TestResponse> handler,
-        IMessageAspectEngine? engine = null)
+        IMessageAspectEngine? engine = null,
+        IAspectStore? store = null)
     {
         engine ??= Substitute.For<IMessageAspectEngine>();
-        return new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine);
+        store  ??= Substitute.For<IAspectStore>();
+        return new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
+    }
+
+    /// <summary>
+    /// Builds a store stub that returns <paramref name="capAspect"/> by its IRI
+    /// and each supplied message aspect by its own IRI.
+    /// </summary>
+    private static IAspectStore StoreWith(
+        CapabilityAspect capAspect,
+        params (string iri, IMessageAspect aspect)[] messageAspects)
+    {
+        var store = Substitute.For<IAspectStore>();
+        store.TryResolveCapabilityAspect(capAspect.Iri).Returns(capAspect);
+        foreach (var (iri, aspect) in messageAspects)
+            store.TryResolveMessage(iri).Returns(aspect);
+        return store;
     }
 
     private static ICapabilityHandler<TestCommand, TestResponse> OkHandler(
@@ -59,7 +76,7 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 1. Null aspects → fully permissive, handler is called
+    // 1. Null IRI → fully permissive, handler is called
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -69,7 +86,7 @@ public sealed class CapabilityDispatcherTests
         var handler = OkHandler(new TestResponse("pong"));
         var dispatcher = BuildDispatcher(handler, engine);
 
-        var result = await dispatcher.DispatchAsync(new TestCommand("ping"), aspects: null);
+        var result = await dispatcher.DispatchAsync(new TestCommand("ping"), capabilityAspectIri: null);
 
         var ok = result.ShouldBeOfType<CapabilityResult<TestResponse>.Ok>();
         ok.Response.Output.ShouldBe("pong");
@@ -80,7 +97,7 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 2. Command aspect → engine called with command & commandAspect
+    // 2. Command aspect IRI → engine called with command & resolved commandAspect
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -88,12 +105,14 @@ public sealed class CapabilityDispatcherTests
     {
         var engine        = Substitute.For<IMessageAspectEngine>();
         var commandAspect = Substitute.For<IMessageAspect>();
-        var command       = new TestCommand("hi");
-        var handler       = OkHandler();
-        var aspects       = new CapabilityAspects { CommandAspect = commandAspect };
-        var dispatcher    = BuildDispatcher(handler, engine);
+        commandAspect.Iri.Returns("urn:cmd");
+        var command    = new TestCommand("hi");
+        var handler    = OkHandler();
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", CommandAspectIri = "urn:cmd" };
+        var store      = StoreWith(capAspect, ("urn:cmd", commandAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
-        await dispatcher.DispatchAsync(command, aspects);
+        await dispatcher.DispatchAsync(command, "urn:cap");
 
         await engine.Received(1)
             .ValidateAsync(command, commandAspect, Arg.Any<CancellationToken>());
@@ -108,41 +127,51 @@ public sealed class CapabilityDispatcherTests
     {
         var engine        = Substitute.For<IMessageAspectEngine>();
         var commandAspect = Substitute.For<IMessageAspect>();
-        var handler       = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
-        var violation     = new MessageAspectViolationException(
+        commandAspect.Iri.Returns("urn:cmd");
+        var handler   = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
+        var violation = new MessageAspectViolationException(
             typeof(TestCommand), "cmd-aspect",
             [new AspectViolation("urn:x", null, "http://www.w3.org/ns/shacl#Violation", "Bad command.", null)]);
 
         engine.ValidateAsync(Arg.Any<object>(), commandAspect, Arg.Any<CancellationToken>())
               .Throws(violation);
 
-        var aspects    = new CapabilityAspects { CommandAspect = commandAspect };
-        var dispatcher = BuildDispatcher(handler, engine);
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", CommandAspectIri = "urn:cmd" };
+        var store      = StoreWith(capAspect, ("urn:cmd", commandAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
         await Should.ThrowAsync<MessageAspectViolationException>(
-            () => dispatcher.DispatchAsync(new TestCommand("bad"), aspects).AsTask());
+            () => dispatcher.DispatchAsync(new TestCommand("bad"), "urn:cap").AsTask());
 
         await handler.DidNotReceive()
             .HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CapabilityContext>(), Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 4. CapabilityContext passed to handler contains the per-call aspects
+    // 4. CapabilityContext passed to handler carries the resolved CapabilityAspect
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handler_receives_context_with_per_call_aspects()
+    public async Task Handler_receives_context_with_resolved_capability_aspect()
     {
-        var commandAspect  = Substitute.For<IMessageAspect>();
-        var responseAspect = Substitute.For<IMessageAspect>();
-        var eventAspect    = Substitute.For<IMessageAspect>();
-        var aspects        = new CapabilityAspects
+        var capAspect = new CapabilityAspect
         {
-            CommandAspect  = commandAspect,
-            ResponseAspect = responseAspect,
-            EventAspects   = ImmutableDictionary<Type, IMessageAspect>.Empty
-                                 .Add(typeof(TestEvent), eventAspect),
+            Iri               = "urn:cap",
+            CommandAspectIri  = "urn:cmd",
+            ResponseAspectIri = "urn:resp",
+            EventAspectIris   = ImmutableDictionary<Type, string>.Empty
+                                    .Add(typeof(TestEvent), "urn:evt"),
         };
+        var commandAspect  = Substitute.For<IMessageAspect>();
+        commandAspect.Iri.Returns("urn:cmd");
+        var responseAspect = Substitute.For<IMessageAspect>();
+        responseAspect.Iri.Returns("urn:resp");
+        var eventAspect    = Substitute.For<IMessageAspect>();
+        eventAspect.Iri.Returns("urn:evt");
+        var store = StoreWith(capAspect,
+            ("urn:cmd",  commandAspect),
+            ("urn:resp", responseAspect),
+            ("urn:evt",  eventAspect));
 
         CapabilityContext? capturedContext = null;
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
@@ -150,17 +179,20 @@ public sealed class CapabilityDispatcherTests
                .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
                    new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
 
-        var dispatcher = BuildDispatcher(handler);
-        await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            handler, Substitute.For<IMessageAspectEngine>(), store);
+        await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
 
         capturedContext.ShouldNotBeNull();
-        capturedContext!.CommandAspect.ShouldBeSameAs(commandAspect);
-        capturedContext.ResponseAspect.ShouldBeSameAs(responseAspect);
-        capturedContext.EventAspects[typeof(TestEvent)].ShouldBeSameAs(eventAspect);
+        capturedContext!.Aspect.ShouldNotBeNull();
+        capturedContext.Aspect!.Iri.ShouldBe("urn:cap");
+        capturedContext.Aspect.CommandAspectIri.ShouldBe("urn:cmd");
+        capturedContext.Aspect.ResponseAspectIri.ShouldBe("urn:resp");
+        capturedContext.Aspect.EventAspectIris[typeof(TestEvent)].ShouldBe("urn:evt");
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 5. Response aspect → engine called with response & responseAspect
+    // 5. Response aspect IRI → engine called with response & resolved responseAspect
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -168,12 +200,14 @@ public sealed class CapabilityDispatcherTests
     {
         var engine         = Substitute.For<IMessageAspectEngine>();
         var responseAspect = Substitute.For<IMessageAspect>();
-        var response       = new TestResponse("result");
-        var handler        = OkHandler(response);
-        var aspects        = new CapabilityAspects { ResponseAspect = responseAspect };
-        var dispatcher     = BuildDispatcher(handler, engine);
+        responseAspect.Iri.Returns("urn:resp");
+        var response   = new TestResponse("result");
+        var handler    = OkHandler(response);
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp" };
+        var store      = StoreWith(capAspect, ("urn:resp", responseAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
-        await dispatcher.DispatchAsync(new TestCommand("q"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("q"), "urn:cap");
 
         await engine.Received(1)
             .ValidateAsync(response, responseAspect, Arg.Any<CancellationToken>());
@@ -188,11 +222,13 @@ public sealed class CapabilityDispatcherTests
     {
         var engine         = Substitute.For<IMessageAspectEngine>();
         var responseAspect = Substitute.For<IMessageAspect>();
-        var handler        = FailHandler(new CapabilityError("ERR", "oops"));
-        var aspects        = new CapabilityAspects { ResponseAspect = responseAspect };
-        var dispatcher     = BuildDispatcher(handler, engine);
+        responseAspect.Iri.Returns("urn:resp");
+        var handler    = FailHandler(new CapabilityError("ERR", "oops"));
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp" };
+        var store      = StoreWith(capAspect, ("urn:resp", responseAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
-        var result = await dispatcher.DispatchAsync(new TestCommand("q"), aspects);
+        var result = await dispatcher.DispatchAsync(new TestCommand("q"), "urn:cap");
 
         result.ShouldBeOfType<CapabilityResult<TestResponse>.Fail>();
         // Engine called once for the null command aspect; never for the response.
@@ -209,36 +245,39 @@ public sealed class CapabilityDispatcherTests
     {
         var engine      = Substitute.For<IMessageAspectEngine>();
         var eventAspect = Substitute.For<IMessageAspect>();
-        var evt         = new TestEvent("created");
-        var handler     = OkHandler(events: [evt]);
-        var aspects     = new CapabilityAspects
+        eventAspect.Iri.Returns("urn:evt");
+        var evt       = new TestEvent("created");
+        var handler   = OkHandler(events: [evt]);
+        var capAspect = new CapabilityAspect
         {
-            EventAspects = ImmutableDictionary<Type, IMessageAspect>.Empty
-                               .Add(typeof(TestEvent), eventAspect),
+            Iri             = "urn:cap",
+            EventAspectIris = ImmutableDictionary<Type, string>.Empty.Add(typeof(TestEvent), "urn:evt"),
         };
-        var dispatcher = BuildDispatcher(handler, engine);
+        var store      = StoreWith(capAspect, ("urn:evt", eventAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
-        await dispatcher.DispatchAsync(new TestCommand("go"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("go"), "urn:cap");
 
         await engine.Received(1)
             .ValidateAsync(evt, eventAspect, Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 8. Event type not in EventAspects → engine called with null (permissive)
+    // 8. Event type not in EventAspectIris → engine called with null (permissive)
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Event_with_no_registered_aspect_is_permissive()
     {
-        var engine  = Substitute.For<IMessageAspectEngine>();
-        var evt     = new TestEvent("unknown");
-        // EventAspects is empty — no aspect for TestEvent.
-        var handler = OkHandler(events: [evt]);
-        var aspects = new CapabilityAspects();
-        var dispatcher = BuildDispatcher(handler, engine);
+        var engine    = Substitute.For<IMessageAspectEngine>();
+        var evt       = new TestEvent("unknown");
+        var handler   = OkHandler(events: [evt]);
+        // EventAspectIris is empty — no aspect for TestEvent.
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap" };
+        var store      = StoreWith(capAspect);
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
-        await dispatcher.DispatchAsync(new TestCommand("go"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("go"), "urn:cap");
 
         await engine.Received(1)
             .ValidateAsync(evt, null, Arg.Any<CancellationToken>());
@@ -308,43 +347,48 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 12. Guard called for command with correct agent and aspect tokens
+    // 12. Guard called for command with correct agent and aspect IRI
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Guard_is_called_for_command_with_agent_and_aspect_tokens()
+    public async Task Guard_is_called_for_command_with_agent_and_aspect_iri()
     {
         var guard         = Substitute.For<IAspectGuard>();
         var commandAspect = Substitute.For<IMessageAspect>();
-        commandAspect.Name.Returns("my-policy");
-        var aspects    = new CapabilityAspects { CommandAspect = commandAspect };
-        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(OkHandler(), Substitute.For<IMessageAspectEngine>(), guard);
+        commandAspect.Iri.Returns("urn:cmd-policy");
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", CommandAspectIri = "urn:cmd-policy" };
+        var store      = StoreWith(capAspect, ("urn:cmd-policy", commandAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            OkHandler(), Substitute.For<IMessageAspectEngine>(), store, guard);
 
         using (Forge.Authorization.AuthorizationContext.Use("agent-1"))
-            await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+            await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
 
-        await guard.Received(1).AuthorizeAsync("agent-1", "my-policy", Arg.Any<CancellationToken>());
+        await guard.Received(1).AuthorizeAsync("agent-1", "urn:cmd-policy", Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 13. Guard called for command with "noop" when no aspect supplied
+    // 13. Guard called for command with NoOpIri when no capability aspect supplied
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Guard_receives_noop_aspect_token_when_no_command_aspect()
+    public async Task Guard_receives_noop_aspect_iri_when_no_capability_aspect()
     {
-        var guard      = Substitute.For<IAspectGuard>();
+        var guard = Substitute.For<IAspectGuard>();
         // Use FailHandler so the response slot is never reached; only the command guard call fires.
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
-            FailHandler(new CapabilityError("ERR", "noop-test")), Substitute.For<IMessageAspectEngine>(), guard);
+            FailHandler(new CapabilityError("ERR", "noop-test")),
+            Substitute.For<IMessageAspectEngine>(),
+            Substitute.For<IAspectStore>(),
+            guard);
 
-        await dispatcher.DispatchAsync(new TestCommand("x"), aspects: null);
+        await dispatcher.DispatchAsync(new TestCommand("x"), capabilityAspectIri: null);
 
-        await guard.Received(1).AuthorizeAsync(string.Empty, "noop", Arg.Any<CancellationToken>());
+        await guard.Received(1).AuthorizeAsync(string.Empty, Aspect.NoOpIri, Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 14. Guard called for response (Ok) with correct kind
+    // 14. Guard called for response (Ok) with correct aspect IRI
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -352,13 +396,15 @@ public sealed class CapabilityDispatcherTests
     {
         var guard          = Substitute.For<IAspectGuard>();
         var responseAspect = Substitute.For<IMessageAspect>();
-        responseAspect.Name.Returns("resp-policy");
-        var aspects    = new CapabilityAspects { ResponseAspect = responseAspect };
-        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(OkHandler(), Substitute.For<IMessageAspectEngine>(), guard);
+        responseAspect.Iri.Returns("urn:resp-policy");
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp-policy" };
+        var store      = StoreWith(capAspect, ("urn:resp-policy", responseAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            OkHandler(), Substitute.For<IMessageAspectEngine>(), store, guard);
 
-        await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
 
-        await guard.Received(1).AuthorizeAsync(string.Empty, "resp-policy", Arg.Any<CancellationToken>());
+        await guard.Received(1).AuthorizeAsync(string.Empty, "urn:resp-policy", Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
@@ -370,36 +416,41 @@ public sealed class CapabilityDispatcherTests
     {
         var guard          = Substitute.For<IAspectGuard>();
         var responseAspect = Substitute.For<IMessageAspect>();
-        var aspects        = new CapabilityAspects { ResponseAspect = responseAspect };
-        var dispatcher     = new CapabilityDispatcher<TestCommand, TestResponse>(
-            FailHandler(new CapabilityError("ERR", "oops")), Substitute.For<IMessageAspectEngine>(), guard);
+        responseAspect.Iri.Returns("urn:resp-policy");
+        var capAspect  = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp-policy" };
+        var store      = StoreWith(capAspect, ("urn:resp-policy", responseAspect));
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            FailHandler(new CapabilityError("ERR", "oops")),
+            Substitute.For<IMessageAspectEngine>(), store, guard);
 
-        await dispatcher.DispatchAsync(new TestCommand("x"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
 
-        await guard.DidNotReceive().AuthorizeAsync(Arg.Any<string>(), "resp-policy", Arg.Any<CancellationToken>());
+        await guard.DidNotReceive().AuthorizeAsync(Arg.Any<string>(), "urn:resp-policy", Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 16. Guard called per event with correct aspect token and kind
+    // 16. Guard called per event with correct aspect IRI
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Guard_is_called_per_event_with_event_kind()
+    public async Task Guard_is_called_per_event_with_event_aspect_iri()
     {
         var guard       = Substitute.For<IAspectGuard>();
         var eventAspect = Substitute.For<IMessageAspect>();
-        eventAspect.Name.Returns("evt-policy");
-        var evt     = new TestEvent("created");
-        var aspects = new CapabilityAspects
+        eventAspect.Iri.Returns("urn:evt-policy");
+        var evt       = new TestEvent("created");
+        var capAspect = new CapabilityAspect
         {
-            EventAspects = ImmutableDictionary<Type, IMessageAspect>.Empty.Add(typeof(TestEvent), eventAspect),
+            Iri             = "urn:cap",
+            EventAspectIris = ImmutableDictionary<Type, string>.Empty.Add(typeof(TestEvent), "urn:evt-policy"),
         };
+        var store      = StoreWith(capAspect, ("urn:evt-policy", eventAspect));
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
-            OkHandler(events: [evt]), Substitute.For<IMessageAspectEngine>(), guard);
+            OkHandler(events: [evt]), Substitute.For<IMessageAspectEngine>(), store, guard);
 
-        await dispatcher.DispatchAsync(new TestCommand("go"), aspects);
+        await dispatcher.DispatchAsync(new TestCommand("go"), "urn:cap");
 
-        await guard.Received(1).AuthorizeAsync(string.Empty, "evt-policy", Arg.Any<CancellationToken>());
+        await guard.Received(1).AuthorizeAsync(string.Empty, "urn:evt-policy", Arg.Any<CancellationToken>());
     }
 
     // ───────────────────────────────────────────────────────────────────
@@ -414,7 +465,8 @@ public sealed class CapabilityDispatcherTests
         guard.AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
              .Returns(_ => ValueTask.FromException(new UnauthorizedAccessException("denied")));
 
-        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, Substitute.For<IMessageAspectEngine>(), guard);
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            handler, Substitute.For<IMessageAspectEngine>(), Substitute.For<IAspectStore>(), guard);
 
         await Should.ThrowAsync<UnauthorizedAccessException>(
             () => dispatcher.DispatchAsync(new TestCommand("bad")).AsTask());

@@ -2,7 +2,6 @@ using Forge.Entity;
 using Forge.Aspects.Message;
 using Forge.Aspects.Operation;
 using Forge.Aspects.Query;
-using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.Mapping;
 using Forge.Repository.Transaction;
@@ -23,54 +22,42 @@ public static class AspectsServiceCollectionExtensions
     internal const string InnerStoreKey = "forge.aspects.inner";
 
     /// <summary>
-    /// Registers shape infrastructure, the Aspects engines (write + read), and:
+    /// Registers the unified <see cref="IAspectStore"/>, shape infrastructure, all three
+    /// aspect engines (operation, query, message), and:
     /// <list type="bullet">
-    ///   <item>A decorated <see cref="ITransactionalEntityStore"/> that enforces write-aspect validation.</item>
-    ///   <item>A decorated <see cref="IEntityStore"/> that enforces read-aspect validation via <see cref="QueryAspectScope"/>.</item>
+    ///   <item>A decorated <see cref="ITransactionalEntityStore"/> that enforces operation-aspect validation.</item>
+    ///   <item>A decorated <see cref="IEntityStore"/> that enforces query-aspect validation via <see cref="QueryAspectScope"/>.</item>
     /// </list>
     /// </summary>
     /// <remarks>
     /// Must be called after the backend (e.g. <c>UseInMemory()</c>) has been registered.
-    /// The registered <see cref="IEntityStore"/> must implement <see cref="ISparqlQueryStore"/>;
-    /// otherwise the singleton factory throws <see cref="InvalidOperationException"/> on
-    /// first resolve (fail-fast at application startup).
     /// </remarks>
     public static IServiceCollection AddForgeAspects(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Shape infrastructure — singletons; registry is shared instance for IShapeRegistry + IAspectResolver.
+        // Unified aspect store — sealed after first resolve.
+        services.TryAddSingleton<IAspectStore, AspectStore>();
+
+        // Shape cache — shared by all engines.
         services.TryAddSingleton<IShapeCache, ShapeCache>();
 
-        var registry = new ShapeRegistry();
-        services.TryAddSingleton<IShapeRegistry>(registry);
-        services.TryAddSingleton<IAspectResolver>(registry);
-
-        // Message aspect registry — null-on-miss, sealed after first read.
-        var messageRegistry = new MessageAspectRegistry();
-        services.TryAddSingleton<IMessageAspectRegistry>(messageRegistry);
-
-        // Keep a list of pending aspect registrations so AddCodeAspect() calls that
-        // precede or follow AddForgeAspects() can be executed at first resolution.
+        // Keep a list of pending aspect registrations so AddOperationAspect() / AddQueryAspect() /
+        // AddMessageAspect() calls that precede or follow AddForgeAspects() can be executed at
+        // first resolution (before the store is sealed).
         services.TryAddSingleton<PendingAspectRegistrations>();
 
         // Engines
-        services.TryAddSingleton<IAspectEngine, AspectEngine>();
+        services.TryAddSingleton<IOperationAspectEngine, OperationAspectEngine>();
         services.TryAddSingleton<IQueryAspectEngine, QueryAspectEngine>();
         services.TryAddSingleton<IMessageAspectEngine, MessageAspectEngine>();
 
-        // Capture the raw IEntityStore descriptor BEFORE decoration so the
-        // ITransactionalEntityStore factory can reach the store that actually implements
-        // ISparqlQueryStore and ITransactionalEntityStore (AspectEnforcingEntityStore
-        // does not forward those interfaces). Exposed via a keyed singleton.
+        // Capture the raw IEntityStore descriptor BEFORE decoration.
         var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEntityStore));
         if (rawDescriptor is not null)
         {
             services.Remove(rawDescriptor);
 
-            // For ImplementationInstance descriptors, use the instance overload so that
-            // DI does not attempt to dispose the instance during container teardown.
-            // For factory/type descriptors, use the factory overload (resolved once, singleton).
             if (rawDescriptor.ImplementationInstance is IEntityStore existingInstance)
                 services.AddKeyedSingleton<IEntityStore>(InnerStoreKey, existingInstance);
             else
@@ -78,11 +65,17 @@ public static class AspectsServiceCollectionExtensions
                     (sp, _) => ResolveFromDescriptor(rawDescriptor, sp));
 
             services.AddSingleton<IEntityStore>(sp =>
-                new AspectEnforcingEntityStore(
+            {
+                var pending = sp.GetRequiredService<PendingAspectRegistrations>();
+                pending.Execute(sp);
+
+                return new AspectEnforcingEntityStore(
                     sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey),
                     sp.GetRequiredService<IQueryAspectEngine>(),
+                    sp.GetRequiredService<IAspectStore>(),
                     sp.GetRequiredService<IRdfMapperRegistry>(),
-                    sp.GetRequiredService<IOptions<EntityRepositoryOptions>>()));
+                    sp.GetRequiredService<IOptions<EntityRepositoryOptions>>());
+            });
         }
 
         // ITransactionalEntityStore resolves the raw inner store directly so that ISparqlQueryStore
@@ -107,7 +100,7 @@ public static class AspectsServiceCollectionExtensions
                     $"AddForgeAspects() requires the registered IEntityStore to implement " +
                     $"ITransactionalEntityStore, but '{raw.GetType().FullName}' does not.");
 
-            var engine = sp.GetRequiredService<IAspectEngine>();
+            var engine = sp.GetRequiredService<IOperationAspectEngine>();
             return new AspectEnforcingTransactionalStore(txStore, queryStore, engine);
         });
 
@@ -123,25 +116,67 @@ public static class AspectsServiceCollectionExtensions
     };
 
     /// <summary>
-    /// Registers a code-origin aspect from a Turtle file on disk. The file path is resolved
+    /// Registers a code-origin operation aspect from a Turtle file on disk. The file path is resolved
     /// relative to <see cref="AppContext.BaseDirectory"/> unless rooted.
     /// TTL is parsed eagerly when <see cref="ITransactionalEntityStore"/> is first resolved;
     /// a malformed file throws <see cref="AspectTtlParseException"/> at that point.
     /// </summary>
-    public static IServiceCollection AddCodeAspect(
+    public static IServiceCollection AddOperationAspect(
         this IServiceCollection services,
         string ttlPath,
-        Type forEntityType,
-        AspectKind kind,
-        string aspectName)
+        string aspectIri)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(ttlPath);
-        ArgumentNullException.ThrowIfNull(forEntityType);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aspectName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aspectIri);
 
         services.TryAddSingleton<PendingAspectRegistrations>();
-        services.AddSingleton<IPendingAspectAction>(new FileAspectAction(ttlPath, forEntityType, kind, aspectName));
+        services.AddSingleton<IPendingAspectAction>(new FileOperationAspectAction(ttlPath, aspectIri));
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a code-origin operation aspect directly. Keyed by <see cref="IAspect.Iri"/>.
+    /// </summary>
+    public static IServiceCollection AddOperationAspect(
+        this IServiceCollection services,
+        IOperationAspect aspect)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(aspect);
+
+        services.TryAddSingleton<PendingAspectRegistrations>();
+        services.AddSingleton<IPendingAspectAction>(new InlineOperationAspectAction(aspect));
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a query aspect into the <see cref="IAspectStore"/> at startup.
+    /// </summary>
+    public static IServiceCollection AddQueryAspect(
+        this IServiceCollection services,
+        IQueryAspect aspect)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(aspect);
+
+        services.TryAddSingleton<PendingAspectRegistrations>();
+        services.AddSingleton<IPendingAspectAction>(new InlineQueryAspectAction(aspect));
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a message aspect into the <see cref="IAspectStore"/> at startup.
+    /// </summary>
+    public static IServiceCollection AddMessageAspect(
+        this IServiceCollection services,
+        IMessageAspect aspect)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(aspect);
+
+        services.TryAddSingleton<PendingAspectRegistrations>();
+        services.AddSingleton<IPendingAspectAction>(new InlineMessageAspectAction(aspect));
         return services;
     }
 
@@ -157,31 +192,45 @@ public static class AspectsServiceCollectionExtensions
             if (System.Threading.Interlocked.Exchange(ref _executed, 1) != 0) return;
 
             var actions = sp.GetServices<IPendingAspectAction>();
-            var registry = sp.GetRequiredService<IShapeRegistry>();
+            var store = sp.GetRequiredService<IAspectStore>();
             var cache = sp.GetRequiredService<IShapeCache>();
 
             foreach (var action in actions)
-                action.Execute(registry, cache);
+                action.Execute(store, cache);
         }
     }
 
     internal interface IPendingAspectAction
     {
-        void Execute(IShapeRegistry registry, IShapeCache cache);
+        void Execute(IAspectStore store, IShapeCache cache);
     }
 
-    private sealed class FileAspectAction(
-        string ttlPath, Type entityType, AspectKind kind, string aspectName) : IPendingAspectAction
+    private sealed class FileOperationAspectAction(string ttlPath, string aspectIri) : IPendingAspectAction
     {
-        public void Execute(IShapeRegistry registry, IShapeCache cache)
+        public void Execute(IAspectStore store, IShapeCache cache)
         {
             var fullPath = Path.IsPathRooted(ttlPath)
                 ? ttlPath
                 : Path.Combine(AppContext.BaseDirectory, ttlPath);
             var ttl = File.ReadAllText(fullPath);
             cache.GetOrParse(ttl); // throws AspectTtlParseException if malformed
-            var aspect = new InlineTtlWriteAspect(aspectName, ttl, contextWhere: null);
-            registry.Register(aspect, entityType, kind);
+            var aspect = new InlineTtlOperationAspect(aspectIri, ttl, contextWhere: null);
+            store.RegisterOperation(aspect);
         }
+    }
+
+    private sealed class InlineOperationAspectAction(IOperationAspect aspect) : IPendingAspectAction
+    {
+        public void Execute(IAspectStore store, IShapeCache _) => store.RegisterOperation(aspect);
+    }
+
+    private sealed class InlineQueryAspectAction(IQueryAspect aspect) : IPendingAspectAction
+    {
+        public void Execute(IAspectStore store, IShapeCache _) => store.RegisterQuery(aspect);
+    }
+
+    private sealed class InlineMessageAspectAction(IMessageAspect aspect) : IPendingAspectAction
+    {
+        public void Execute(IAspectStore store, IShapeCache _) => store.RegisterMessage(aspect);
     }
 }

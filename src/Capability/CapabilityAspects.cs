@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Forge.Aspects.Message;
+using Forge.Aspects;
 
 namespace Forge.Capability;
 

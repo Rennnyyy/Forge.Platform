@@ -1,3 +1,4 @@
+using Forge.Aspects;
 using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
@@ -58,7 +59,7 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
         ArgumentNullException.ThrowIfNull(operations);
         var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
         foreach (var op in operations)
-            await _guard.AuthorizeAsync(agentToken, op.Aspect.Name, cancellationToken)
+            await _guard.AuthorizeAsync(agentToken, op.AspectIri, cancellationToken)
                 .ConfigureAwait(false);
         await _inner.ExecuteTransactionAsync(operations, cancellationToken)
             .ConfigureAwait(false);
@@ -71,7 +72,7 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
         where T : class, IEntity
     {
         var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
-        await _guard.AuthorizeAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOpIri, cancellationToken)
             .ConfigureAwait(false);
         return await _inner.LoadAsync<T>(iri, cancellationToken).ConfigureAwait(false);
     }
@@ -82,7 +83,7 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
         where T : class, IEntity
     {
         var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
-        await _guard.AuthorizeAsync(agentToken, Aspect.NoOp.Name, cancellationToken)
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOpIri, cancellationToken)
             .ConfigureAwait(false);
         await foreach (var item in _inner.QueryByTypeAsync<T>(cancellationToken).ConfigureAwait(false))
             yield return item;

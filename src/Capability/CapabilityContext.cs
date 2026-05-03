@@ -1,14 +1,14 @@
-using System.Collections.Immutable;
-using Forge.Aspects.Message;
+using Forge.Aspects;
 
 namespace Forge.Capability;
 
 public sealed class CapabilityContext
 {
-    public IMessageAspect? CommandAspect { get; init; }
-    public IMessageAspect? ResponseAspect { get; init; }
-    public IReadOnlyDictionary<Type, IMessageAspect> EventAspects { get; init; }
-        = ImmutableDictionary<Type, IMessageAspect>.Empty;
+    /// <summary>
+    /// The resolved <see cref="CapabilityAspect"/> for this dispatch, or <c>null</c>
+    /// when no capability aspect IRI was supplied (fully permissive execution).
+    /// </summary>
+    public CapabilityAspect? Aspect { get; init; }
 
     /// <summary>
     /// The agent identity token captured from <see cref="Forge.Authorization.AuthorizationContext.CurrentAgentToken"/>

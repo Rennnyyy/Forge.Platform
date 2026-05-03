@@ -1,8 +1,8 @@
 using Forge.Entity;
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
+using Forge.Aspects.Operation;
 using Forge.Aspects.Query;
-using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
@@ -28,11 +28,12 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
 {
     // ------------------------------------------------------------------ Helpers
 
-    private static ServiceProvider BuildProvider()
+    private static ServiceProvider BuildProvider(Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.Configure<EntityRepositoryOptions>(_ => { });
         services.AddForgeEntityRepository().UseInMemory();
+        configure?.Invoke(services);
         services.AddForgeAspects();
         return services.BuildServiceProvider();
     }
@@ -65,16 +66,15 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task LoadAsync_with_matching_FilterWhere_returns_entity()
     {
-        await using var sp = BuildProvider();
+        // FilterWhere always produces a row → access granted.
+        var aspect = new InlineTtlQueryAspect("always-grant", "BIND(true AS ?_ok)", null);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
         var store = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Mozart", "at");
         await store.SaveAsync(artist, WriteMode.Create);
 
-        // FilterWhere always produces a row → access granted.
-        var aspect = new InlineTtlQueryAspect("always-grant", "BIND(true AS ?_ok)", null);
-
-        using var _ = QueryAspectScope.Use(aspect);
+        using var _ = QueryAspectScope.Use(aspect.Iri);
         var result = await store.LoadAsync<Artist>(artist.Iri);
         result.ShouldNotBeNull();
         result!.Name.ShouldBe("Mozart");
@@ -87,21 +87,20 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task LoadAsync_with_non_matching_FilterWhere_throws_QueryAspectViolationException()
     {
-        await using var sp = BuildProvider();
+        // FilterWhere never produces a row → access denied.
+        var aspect = new InlineTtlQueryAspect("always-deny", "FILTER(false)", null);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
         var store = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Beethoven", "de");
         await store.SaveAsync(artist, WriteMode.Create);
 
-        // FilterWhere never produces a row → access denied.
-        var aspect = new InlineTtlQueryAspect("always-deny", "FILTER(false)", null);
-
-        using var _ = QueryAspectScope.Use(aspect);
+        using var _ = QueryAspectScope.Use(aspect.Iri);
 
         var ex = await Should.ThrowAsync<QueryAspectViolationException>(
             () => store.LoadAsync<Artist>(artist.Iri).AsTask());
 
-        ex.SourceAspectName.ShouldBe("always-deny");
+        ex.SourceAspectIri.ShouldBe("always-deny");
         ex.EntityIri.ShouldBe(artist.Iri);
     }
 
@@ -112,16 +111,15 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task Disposing_scope_restores_unrestricted_reads()
     {
-        await using var sp = BuildProvider();
+        var aspect = new InlineTtlQueryAspect("deny-all", "FILTER(false)", null);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
         var store = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Brahms", "de");
         await store.SaveAsync(artist, WriteMode.Create);
 
-        var aspect = new InlineTtlQueryAspect("deny-all", "FILTER(false)", null);
-
         // Inside scope — denied
-        using (QueryAspectScope.Use(aspect))
+        using (QueryAspectScope.Use(aspect.Iri))
         {
             await Should.ThrowAsync<QueryAspectViolationException>(
                 () => store.LoadAsync<Artist>(artist.Iri).AsTask());
@@ -139,13 +137,6 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task LoadAsync_with_failing_ResultShapeTtl_throws_QueryAspectViolationException()
     {
-        await using var sp = BuildProvider();
-        var store = sp.GetRequiredService<IEntityStore>();
-
-        // Schubert is "at"; shape demands "us" → violation.
-        var artist = MakeArtist("Schubert", "at");
-        await store.SaveAsync(artist, WriteMode.Create);
-
         var shapeTtl = @"
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix artist: <https://forge-it.net/predicates/artist/> .
@@ -160,13 +151,19 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     ] .
 ";
         var aspect = new InlineTtlQueryAspect("us-only-shape", null, shapeTtl);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
+        var store = sp.GetRequiredService<IEntityStore>();
 
-        using var _ = QueryAspectScope.Use(aspect);
+        // Schubert is "at"; shape demands "us" → violation.
+        var artist = MakeArtist("Schubert", "at");
+        await store.SaveAsync(artist, WriteMode.Create);
+
+        using var _ = QueryAspectScope.Use(aspect.Iri);
 
         var ex = await Should.ThrowAsync<QueryAspectViolationException>(
             () => store.LoadAsync<Artist>(artist.Iri).AsTask());
 
-        ex.SourceAspectName.ShouldBe("us-only-shape");
+        ex.SourceAspectIri.ShouldBe("us-only-shape");
         ex.Violations.ShouldNotBeNull();
         ex.Violations!.Count.ShouldBeGreaterThan(0);
     }
@@ -178,12 +175,6 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task LoadAsync_with_passing_ResultShapeTtl_returns_entity()
     {
-        await using var sp = BuildProvider();
-        var store = sp.GetRequiredService<IEntityStore>();
-
-        var artist = MakeArtist("Hanson", "us");
-        await store.SaveAsync(artist, WriteMode.Create);
-
         var shapeTtl = @"
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix artist: <https://forge-it.net/predicates/artist/> .
@@ -197,9 +188,14 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
         sh:message ""Only US artists are accessible via this aspect."" ;
     ] .
 ";
-        var aspect = new InlineTtlQueryAspect("us-only-shape", null, shapeTtl);
+        var aspect = new InlineTtlQueryAspect("us-only-shape-qa6", null, shapeTtl);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
+        var store = sp.GetRequiredService<IEntityStore>();
 
-        using var _ = QueryAspectScope.Use(aspect);
+        var artist = MakeArtist("Hanson", "us");
+        await store.SaveAsync(artist, WriteMode.Create);
+
+        using var _ = QueryAspectScope.Use(aspect.Iri);
         var result = await store.LoadAsync<Artist>(artist.Iri);
         result.ShouldNotBeNull();
         result!.Country.ShouldBe("us");
@@ -231,13 +227,6 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task QueryByTypeAsync_with_failing_aggregate_ResultShapeTtl_throws()
     {
-        await using var sp = BuildProvider();
-        var store = sp.GetRequiredService<IEntityStore>();
-
-        // One US artist and one non-US; shape demands all be "us" → aggregate violation.
-        await store.SaveAsync(MakeArtist("US-Artist", "us"), WriteMode.Create);
-        await store.SaveAsync(MakeArtist("GB-Artist", "gb"), WriteMode.Create);
-
         var shapeTtl = @"
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix artist: <https://forge-it.net/predicates/artist/> .
@@ -252,8 +241,14 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     ] .
 ";
         var aspect = new InlineTtlQueryAspect("all-us-shape", null, shapeTtl);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(aspect));
+        var store = sp.GetRequiredService<IEntityStore>();
 
-        using var _ = QueryAspectScope.Use(aspect);
+        // One US artist and one non-US; shape demands all be "us" → aggregate violation.
+        await store.SaveAsync(MakeArtist("US-Artist", "us"), WriteMode.Create);
+        await store.SaveAsync(MakeArtist("GB-Artist", "gb"), WriteMode.Create);
+
+        using var _ = QueryAspectScope.Use(aspect.Iri);
 
         // Enumerate all, then the ValidateResultGraph call fires after the scan.
         var ex = await Should.ThrowAsync<QueryAspectViolationException>(async () =>
@@ -261,7 +256,7 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
             await foreach (var _ in store.QueryByTypeAsync<Artist>()) { }
         });
 
-        ex.SourceAspectName.ShouldBe("all-us-shape");
+        ex.SourceAspectIri.ShouldBe("all-us-shape");
         ex.Violations.ShouldNotBeNull();
         ex.Violations!.Count.ShouldBeGreaterThan(0);
     }
@@ -331,7 +326,7 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
         var ex = Should.Throw<QueryAspectViolationException>(
             () => engine.InjectFilterDynamic(query, aspect));
 
-        ex.SourceAspectName.ShouldBe("test");
+        ex.SourceAspectIri.ShouldBe("test");
         ex.Message.ShouldContain("##aspect:filter##");
     }
 
@@ -390,9 +385,14 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
             "\"us\"^^<http://www.w3.org/2001/XMLSchema#string> .";
 
         var aspect = new InlineTtlQueryAspect("us-only-linq", usCountryFilter, null);
+        await using var sp2 = BuildProvider(s => s.AddQueryAspect(aspect));
+        var store2 = sp2.GetRequiredService<IEntityStore>();
+        await store2.SaveAsync(MakeArtist("Aria",  "us"), WriteMode.Create);
+        await store2.SaveAsync(MakeArtist("Bjorn", "se"), WriteMode.Create);
+        await store2.SaveAsync(MakeArtist("Cleo",  "us"), WriteMode.Create);
 
-        using var _ = QueryAspectScope.Use(aspect);
-        var results = await store.Query<Artist>().ToListAsync();
+        using var _ = QueryAspectScope.Use(aspect.Iri);
+        var results = await store2.Query<Artist>().ToListAsync();
 
         results.Count.ShouldBe(2);
         results.Select(a => a.Name).ShouldBe(new[] { "Aria", "Cleo" }, ignoreOrder: true);

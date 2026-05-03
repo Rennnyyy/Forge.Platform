@@ -13,44 +13,44 @@ public sealed class QueryAspectViolationException : Exception
     /// <summary>The IRI of the entity or query that was rejected, if available.</summary>
     public string? EntityIri { get; }
 
-    /// <summary>The name of the aspect whose gate or shape produced the violation.</summary>
-    public string SourceAspectName { get; }
+    /// <summary>The IRI of the aspect whose gate or shape produced the violation.</summary>
+    public string SourceAspectIri { get; }
 
     /// <summary>Creates a gate-failure exception (no SHACL violations — access denied by filter).</summary>
-    public QueryAspectViolationException(string entityIri, string sourceAspectName)
-        : base($"Aspect '{sourceAspectName}' denied read access to <{entityIri}>.")
+    public QueryAspectViolationException(string entityIri, string sourceAspectIri)
+        : base($"Aspect '{sourceAspectIri}' denied read access to <{entityIri}>.")
     {
         EntityIri = entityIri;
-        SourceAspectName = sourceAspectName;
+        SourceAspectIri = sourceAspectIri;
     }
 
     /// <summary>Creates a result-shape violation exception.</summary>
     public QueryAspectViolationException(
         IReadOnlyList<AspectViolation> violations,
         string? entityIri,
-        string sourceAspectName)
-        : base(BuildMessage(violations, entityIri, sourceAspectName))
+        string sourceAspectIri)
+        : base(BuildMessage(violations, entityIri, sourceAspectIri))
     {
         Violations = violations;
         EntityIri = entityIri;
-        SourceAspectName = sourceAspectName;
+        SourceAspectIri = sourceAspectIri;
     }
 
     /// <summary>Creates a missing-placeholder exception for dynamic SPARQL.</summary>
-    public QueryAspectViolationException(string message, string sourceAspectName, bool _)
+    public QueryAspectViolationException(string message, string sourceAspectIri, bool _)
         : base(message)
     {
-        SourceAspectName = sourceAspectName;
+        SourceAspectIri = sourceAspectIri;
     }
 
     private static string BuildMessage(
         IReadOnlyList<AspectViolation> violations,
         string? iri,
-        string aspectName)
+        string aspectIri)
     {
         var target = iri is { } i ? $"<{i}>" : "query result";
         var first = violations.Count > 0 ? violations[0].Message : "(no message)";
-        return $"Aspect '{aspectName}' rejected {target}: {first}" +
+        return $"Aspect '{aspectIri}' rejected {target}: {first}" +
                (violations.Count > 1 ? $" (+{violations.Count - 1} more)" : string.Empty);
     }
 }

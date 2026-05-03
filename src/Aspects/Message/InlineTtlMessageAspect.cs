@@ -1,4 +1,3 @@
-using Forge.Entity;
 namespace Forge.Aspects.Message;
 
 /// <summary>
@@ -9,23 +8,23 @@ namespace Forge.Aspects.Message;
 public sealed class InlineTtlMessageAspect : IMessageAspect
 {
     /// <inheritdoc/>
-    public string Name { get; }
+    public string Iri { get; }
 
     /// <inheritdoc/>
     public string? ShapeTtl { get; }
 
-    /// <param name="name">Unique aspect name. Must not be <c>"noop"</c>.</param>
+    /// <param name="iri">Canonical IRI identifying this aspect. Must not be <see cref="Aspect.NoOpIri"/>.</param>
     /// <param name="shapeTtl">
     /// Turtle-serialized SHACL shape validated against the projected message graph,
     /// or <c>null</c> if no shape check is required.
     /// </param>
-    public InlineTtlMessageAspect(string name, string? shapeTtl)
+    public InlineTtlMessageAspect(string iri, string? shapeTtl)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (name == "noop")
-            throw new ArgumentException("The aspect name 'noop' is reserved.", nameof(name));
+        ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        if (iri == Aspect.NoOpIri)
+            throw new ArgumentException("The NoOp IRI is reserved.", nameof(iri));
 
-        Name = name;
+        Iri = iri;
         ShapeTtl = shapeTtl;
     }
 }

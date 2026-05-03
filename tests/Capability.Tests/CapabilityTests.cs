@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+using Forge.Aspects;
 using Forge.Aspects.Message;
 using Forge.Capability;
 using Forge.Authorization;
@@ -15,33 +15,27 @@ namespace Forge.Capability.Tests;
 public sealed class CapabilityContextTests
 {
     [Fact]
-    public void Default_constructed_context_has_null_aspects_and_empty_event_aspects()
+    public void Default_constructed_context_has_null_aspect_and_null_agent_token()
     {
         var context = new CapabilityContext();
 
-        context.CommandAspect.ShouldBeNull();
-        context.ResponseAspect.ShouldBeNull();
-        context.EventAspects.ShouldBeEmpty();
+        context.Aspect.ShouldBeNull();
+        context.AgentToken.ShouldBeNull();
     }
 
     [Fact]
-    public void Context_with_populated_aspects_retains_them()
+    public void Context_with_populated_aspect_retains_it()
     {
-        var commandAspect = Substitute.For<IMessageAspect>();
-        var responseAspect = Substitute.For<IMessageAspect>();
-        var eventAspect = Substitute.For<IMessageAspect>();
+        var capAspect = new CapabilityAspect { Iri = "urn:test-cap" };
 
         var context = new CapabilityContext
         {
-            CommandAspect = commandAspect,
-            ResponseAspect = responseAspect,
-            EventAspects = ImmutableDictionary<Type, IMessageAspect>.Empty
-                .Add(typeof(string), eventAspect),
+            Aspect     = capAspect,
+            AgentToken = "agent-x",
         };
 
-        context.CommandAspect.ShouldBeSameAs(commandAspect);
-        context.ResponseAspect.ShouldBeSameAs(responseAspect);
-        context.EventAspects[typeof(string)].ShouldBeSameAs(eventAspect);
+        context.Aspect.ShouldBeSameAs(capAspect);
+        context.AgentToken.ShouldBe("agent-x");
     }
 }
 
@@ -160,7 +154,8 @@ public sealed class CapabilityHandlerTests
     {
         // Arrange: host code establishes the ambient scope before calling DispatchAsync.
         var engine     = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
-        var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine);
+        var store      = NSubstitute.Substitute.For<Forge.Aspects.IAspectStore>();
+        var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
 
         CapabilityResult<PingResponse> result;
         using (AuthorizationContext.Use("user-007"))

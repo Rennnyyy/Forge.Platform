@@ -1,4 +1,3 @@
-using Forge.Entity;
 namespace Forge.Aspects.Query;
 
 /// <summary>
@@ -8,7 +7,7 @@ namespace Forge.Aspects.Query;
 public sealed class InlineTtlQueryAspect : IQueryAspect
 {
     /// <inheritdoc/>
-    public string Name { get; }
+    public string Iri { get; }
 
     /// <inheritdoc/>
     public string? FilterWhere { get; }
@@ -16,7 +15,7 @@ public sealed class InlineTtlQueryAspect : IQueryAspect
     /// <inheritdoc/>
     public string? ResultShapeTtl { get; }
 
-    /// <param name="name">Unique aspect name. Must not be <c>"noop"</c>.</param>
+    /// <param name="iri">Canonical IRI identifying this aspect. Must not be <see cref="Aspect.NoOpIri"/>.</param>
     /// <param name="filterWhere">
     /// SPARQL WHERE body fragment for the access gate, or <c>null</c>. Do not include
     /// <c>WHERE { }</c> delimiters — supply only the inner content.
@@ -24,13 +23,13 @@ public sealed class InlineTtlQueryAspect : IQueryAspect
     /// <param name="resultShapeTtl">
     /// Turtle-serialized SHACL shape for the result-graph pass, or <c>null</c>.
     /// </param>
-    public InlineTtlQueryAspect(string name, string? filterWhere, string? resultShapeTtl)
+    public InlineTtlQueryAspect(string iri, string? filterWhere, string? resultShapeTtl)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (name == "noop")
-            throw new ArgumentException("The aspect name 'noop' is reserved.", nameof(name));
+        ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        if (iri == Aspect.NoOpIri)
+            throw new ArgumentException("The NoOp IRI is reserved.", nameof(iri));
 
-        Name = name;
+        Iri = iri;
         FilterWhere = filterWhere;
         ResultShapeTtl = resultShapeTtl;
     }

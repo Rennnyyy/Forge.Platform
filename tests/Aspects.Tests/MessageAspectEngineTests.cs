@@ -127,7 +127,7 @@ public sealed class MessageAspectEngineTests
         var ex = await Should.ThrowAsync<MessageAspectViolationException>(
             () => engine.ValidateAsync(message, aspect).AsTask());
 
-        ex.AspectName.ShouldBe(aspectName);
+        ex.AspectIri.ShouldBe(aspectName);
         ex.Violations.ShouldNotBeEmpty();
         ex.MessageType.ShouldBe(typeof(NamedMessage));
     }

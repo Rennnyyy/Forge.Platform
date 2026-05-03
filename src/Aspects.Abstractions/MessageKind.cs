@@ -1,9 +1,6 @@
-namespace Forge.Aspects.Message;
+namespace Forge.Aspects;
 
-/// <summary>
-/// Categorises the role of a capability message.
-/// Values may be combined using standard flag arithmetic.
-/// </summary>
+/// <summary>Categorises the role of a capability message.</summary>
 [Flags]
 public enum MessageKind
 {

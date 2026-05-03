@@ -1,5 +1,6 @@
+using Forge.Aspects;
 using Forge.Entity;
-using Forge.Aspects.Shape;
+using Forge.Aspects.Operation;
 using Forge.Repository;
 using VDS.RDF;
 using VDS.RDF.Shacl;
@@ -53,7 +54,7 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
         }
 
         if (!granted)
-            throw new QueryAspectViolationException(entityIri, aspect.Name);
+            throw new QueryAspectViolationException(entityIri, aspect.Iri);
     }
 
     // ------------------------------------------------------------------ Filter injection
@@ -86,10 +87,10 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
 
         if (!sparqlQuery.Contains(FilterPlaceholder, StringComparison.Ordinal))
             throw new QueryAspectViolationException(
-                message: $"Aspect '{aspect.Name}' declares a FilterWhere but the dynamic SPARQL query " +
+                message: $"Aspect '{aspect.Iri}' declares a FilterWhere but the dynamic SPARQL query " +
                          $"does not contain the required placeholder '{FilterPlaceholder}'. " +
                          $"Add the placeholder to the WHERE block of the query.",
-                sourceAspectName: aspect.Name,
+                sourceAspectIri: aspect.Iri,
                 _: false);
 
         return sparqlQuery.Replace(FilterPlaceholder, filter, StringComparison.Ordinal);
@@ -120,6 +121,6 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
             .ToList();
 
         if (violations.Count > 0)
-            throw new QueryAspectViolationException(violations, entityIri, aspect.Name);
+            throw new QueryAspectViolationException(violations, entityIri, aspect.Iri);
     }
 }

@@ -1,3 +1,4 @@
+using Forge.Aspects;
 using Forge.Aspects.Message;
 using Shouldly;
 
@@ -35,15 +36,15 @@ public sealed class MessageAspectTypeTests
     [Fact]
     public void InlineTtlMessageAspect_noop_name_throws()
     {
-        var ex = Should.Throw<ArgumentException>(() => new InlineTtlMessageAspect("noop", shapeTtl: null));
-        ex.ParamName.ShouldBe("name");
+        var ex = Should.Throw<ArgumentException>(() => new InlineTtlMessageAspect(Aspect.NoOpIri, shapeTtl: null));
+        ex.ParamName.ShouldBe("iri");
     }
 
     [Fact]
     public void InlineTtlMessageAspect_null_shapeTtl_is_valid()
     {
         var aspect = new InlineTtlMessageAspect("my-message-aspect", shapeTtl: null);
-        aspect.Name.ShouldBe("my-message-aspect");
+        aspect.Iri.ShouldBe("my-message-aspect");
         aspect.ShapeTtl.ShouldBeNull();
     }
 
@@ -52,7 +53,7 @@ public sealed class MessageAspectTypeTests
     {
         const string ttl = "@prefix sh: <http://www.w3.org/ns/shacl#> .";
         var aspect = new InlineTtlMessageAspect("shaped-aspect", ttl);
-        aspect.Name.ShouldBe("shaped-aspect");
+        aspect.Iri.ShouldBe("shaped-aspect");
         aspect.ShapeTtl.ShouldBe(ttl);
     }
 
@@ -67,7 +68,7 @@ public sealed class MessageAspectTypeTests
     public void InlineTtlMessageAspect_implements_IAspect()
     {
         var aspect = new InlineTtlMessageAspect("test", shapeTtl: null);
-        aspect.ShouldBeAssignableTo<Forge.Repository.IAspect>();
+        aspect.ShouldBeAssignableTo<Forge.Aspects.IAspect>();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ public sealed class MessageAspectTypeTests
             violations);
 
         ex.MessageType.ShouldBe(typeof(string));
-        ex.AspectName.ShouldBe("my-aspect");
+        ex.AspectIri.ShouldBe("my-aspect");
         ex.Violations.ShouldBeSameAs(violations);
         ex.Violations.Count.ShouldBe(1);
     }

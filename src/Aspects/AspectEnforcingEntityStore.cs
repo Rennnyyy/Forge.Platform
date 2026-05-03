@@ -19,20 +19,24 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
 {
     private readonly IEntityStore _inner;
     private readonly IQueryAspectEngine _engine;
+    private readonly IAspectStore _store;
     private readonly IRdfMapperRegistry _mappers;
     private readonly EntityRepositoryOptions _options;
 
     public AspectEnforcingEntityStore(
         IEntityStore inner,
         IQueryAspectEngine engine,
+        IAspectStore store,
         IRdfMapperRegistry mappers,
         IOptions<EntityRepositoryOptions> options)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(mappers);
         _inner = inner;
         _engine = engine;
+        _store = store;
         _mappers = mappers;
         _options = options.Value;
     }
@@ -44,7 +48,7 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
     public async ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
-        var aspect = QueryAspectScope.Current;
+        var aspect = ResolveCurrentQueryAspect();
         if (aspect is not null && _inner is ISparqlQueryStore sparql)
             await _engine.ValidateAccessAsync(iri, aspect, sparql, cancellationToken)
                          .ConfigureAwait(false);
@@ -60,7 +64,7 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
     public IAsyncEnumerable<T> QueryByTypeAsync<T>(CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
-        var aspect = QueryAspectScope.Current;
+        var aspect = ResolveCurrentQueryAspect();
         if (aspect is null)
             return _inner.QueryByTypeAsync<T>(cancellationToken);
 
@@ -92,7 +96,7 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
                 $"Inner entity store '{_inner.GetType().FullName}' does not implement " +
                 $"ISparqlQueryStore. LINQ queries require a SPARQL-capable backend.");
 
-        var aspect = QueryAspectScope.Current;
+        var aspect = ResolveCurrentQueryAspect();
         if (aspect is null)
             return sparql.ExecuteSelectAsync(sparqlQuery, cancellationToken);
 
@@ -146,13 +150,16 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
         _engine.ValidateResultGraph(aggregate, aspect, iri);
     }
 
+    private IQueryAspect? ResolveCurrentQueryAspect()
+        => QueryAspectScope.CurrentIri is { } iri ? _store.TryResolveQuery(iri) : null;
+
     private static IQueryAspect AdaptFilterForLinq(IQueryAspect aspect)
     {
         if (aspect.FilterWhere is not { } filter) return aspect;
         var adapted = filter.Replace("?entityIri", "?s", StringComparison.Ordinal);
         return ReferenceEquals(adapted, filter)
             ? aspect
-            : new InlineTtlQueryAspect(aspect.Name, adapted, aspect.ResultShapeTtl);
+            : new InlineTtlQueryAspect(aspect.Iri, adapted, aspect.ResultShapeTtl);
     }
 
     private void AppendEntityTriples(IEntity entity, Type entityType, Graph target)

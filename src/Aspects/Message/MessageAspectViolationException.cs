@@ -10,30 +10,30 @@ public sealed class MessageAspectViolationException : Exception
     /// <summary>The CLR type of the message that was rejected.</summary>
     public Type MessageType { get; }
 
-    /// <summary>The name of the aspect whose shape produced the violation.</summary>
-    public string AspectName { get; }
+    /// <summary>The IRI of the aspect whose shape produced the violation.</summary>
+    public string AspectIri { get; }
 
     /// <summary>All violations reported for the rejected message.</summary>
     public IReadOnlyList<AspectViolation> Violations { get; }
 
     public MessageAspectViolationException(
         Type messageType,
-        string aspectName,
+        string aspectIri,
         IReadOnlyList<AspectViolation> violations)
-        : base(BuildMessage(messageType, aspectName, violations))
+        : base(BuildMessage(messageType, aspectIri, violations))
     {
         MessageType = messageType;
-        AspectName = aspectName;
+        AspectIri = aspectIri;
         Violations = violations;
     }
 
     private static string BuildMessage(
         Type messageType,
-        string aspectName,
+        string aspectIri,
         IReadOnlyList<AspectViolation> violations)
     {
         var first = violations.Count > 0 ? violations[0].Message : "(no message)";
-        return $"Aspect '{aspectName}' rejected message of type '{messageType.Name}': {first}" +
+        return $"Aspect '{aspectIri}' rejected message of type '{messageType.Name}': {first}" +
                (violations.Count > 1 ? $" (+{violations.Count - 1} more)" : string.Empty);
     }
 }

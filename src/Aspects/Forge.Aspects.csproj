@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Aspects.Abstractions\Forge.Aspects.Abstractions.csproj" />
     <ProjectReference Include="..\Entity\Forge.Entity.csproj" />
     <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
   </ItemGroup>

@@ -27,6 +27,9 @@
   <Folder Name="/src/Aspects/">
     <Project Path="src/Aspects/Forge.Aspects.csproj" />
   </Folder>
+  <Folder Name="/src/Aspects.Abstractions/">
+    <Project Path="src/Aspects.Abstractions/Forge.Aspects.Abstractions.csproj" />
+  </Folder>
   <Folder Name="/src/Capability/">
     <Project Path="src/Capability/Forge.Capability.csproj" />
   </Folder>

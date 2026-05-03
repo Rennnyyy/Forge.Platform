@@ -62,7 +62,7 @@ public sealed class AspectsStartupTests : IClassFixture<EntityOptionsFixture>
             services.AddForgeEntityRepository()
                     .UseInMemory();
 
-            services.AddCodeAspect(tempFile, typeof(Artist), AspectKind.Create, "malformed-aspect");
+            services.AddOperationAspect(tempFile, "https://forge-it.net/aspects/test/malformed-aspect");
             services.AddForgeAspects();
 
             using var sp = services.BuildServiceProvider();

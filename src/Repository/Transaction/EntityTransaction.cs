@@ -1,5 +1,5 @@
+using Forge.Aspects;
 using Forge.Entity;
-using Forge.Repository;
 namespace Forge.Repository.Transaction;
 
 /// <summary>
@@ -40,56 +40,55 @@ public sealed class EntityTransaction : IAsyncDisposable
     /// if an entity with the same IRI already exists.
     /// </summary>
     public EntityTransaction Create<T>(T entity) where T : class, IEntity
-        => Create(entity, Aspect.NoOp);
+        => Create(entity, Aspect.NoOpIri);
 
-    /// <summary>Enqueues a Create operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Create<T>(T entity, IAspect aspect) where T : class, IEntity
+    /// <summary>Enqueues a Create operation with an explicit validation aspect IRI (see Aspects ADR-0003).</summary>
+    public EntityTransaction Create<T>(T entity, string aspectIri) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
-        ArgumentNullException.ThrowIfNull(aspect);
-        _operations.Add(new CreateOperation<T>(entity) { Aspect = aspect });
+        ArgumentException.ThrowIfNullOrWhiteSpace(aspectIri);
+        _operations.Add(new CreateOperation<T>(entity) { AspectIri = aspectIri });
         return this;
     }
 
     /// <summary>Enqueues an Update (Replace) operation for <paramref name="entity"/>.</summary>
     public EntityTransaction Update<T>(T entity) where T : class, IEntity
-        => Update(entity, Aspect.NoOp);
+        => Update(entity, Aspect.NoOpIri);
 
-    /// <summary>Enqueues an Update operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Update<T>(T entity, IAspect aspect) where T : class, IEntity
+    /// <summary>Enqueues an Update operation with an explicit validation aspect IRI (see Aspects ADR-0003).</summary>
+    public EntityTransaction Update<T>(T entity, string aspectIri) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentNullException.ThrowIfNull(entity);
-        ArgumentNullException.ThrowIfNull(aspect);
-        _operations.Add(new UpdateOperation<T>(entity) { Aspect = aspect });
+        ArgumentException.ThrowIfNullOrWhiteSpace(aspectIri);
+        _operations.Add(new UpdateOperation<T>(entity) { AspectIri = aspectIri });
         return this;
     }
 
     /// <summary>Enqueues a Delete operation for the entity with the given <paramref name="iri"/>.</summary>
     public EntityTransaction Delete(string iri)
-        => Delete(iri, Aspect.NoOp);
+        => Delete(iri, Aspect.NoOpIri);
 
-    /// <summary>Enqueues a Delete operation with an explicit validation aspect (see Aspects ADR-0003).</summary>
-    public EntityTransaction Delete(string iri, IAspect aspect)
+    /// <summary>Enqueues a Delete operation with an explicit validation aspect IRI (see Aspects ADR-0003).</summary>
+    public EntityTransaction Delete(string iri, string aspectIri)
     {
         ThrowIfFinished();
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
-        ArgumentNullException.ThrowIfNull(aspect);
-        _operations.Add(new DeleteOperation(iri) { Aspect = aspect });
+        ArgumentException.ThrowIfNullOrWhiteSpace(aspectIri);
+        _operations.Add(new DeleteOperation(iri) { AspectIri = aspectIri });
         return this;
     }
 
     /// <summary>
-    /// Enqueues a Delete operation with an explicit validation aspect and entity type hint.
-    /// The type hint is required so the Aspects engine can resolve which shape to apply.
+    /// Enqueues a Delete operation with an explicit validation aspect IRI and entity type hint.
     /// </summary>
-    public EntityTransaction Delete<T>(string iri, IAspect aspect) where T : class, IEntity
+    public EntityTransaction Delete<T>(string iri, string aspectIri) where T : class, IEntity
     {
         ThrowIfFinished();
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
-        ArgumentNullException.ThrowIfNull(aspect);
-        _operations.Add(new DeleteOperation(iri) { Aspect = aspect, EntityType = typeof(T) });
+        ArgumentException.ThrowIfNullOrWhiteSpace(aspectIri);
+        _operations.Add(new DeleteOperation(iri) { AspectIri = aspectIri, EntityType = typeof(T) });
         return this;
     }
 

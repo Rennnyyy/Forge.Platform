@@ -2,7 +2,6 @@ using Forge.Entity;
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
 using Forge.Aspects.Operation;
-using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
@@ -22,19 +21,14 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
 {
     // ------------------------------------------------------------------ Helpers
 
-    private static ServiceProvider BuildProvider(Action<IShapeRegistry>? configureRegistry = null)
+    private static ServiceProvider BuildProvider(Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.Configure<EntityRepositoryOptions>(_ => { });
         services.AddForgeEntityRepository().UseInMemory();
+        configure?.Invoke(services);
         services.AddForgeAspects();
-
-        var sp = services.BuildServiceProvider();
-
-        if (configureRegistry is not null)
-            configureRegistry(sp.GetRequiredService<IShapeRegistry>());
-
-        return sp;
+        return services.BuildServiceProvider();
     }
 
     private static Artist MakeArtist(string name = "Test Artist", string country = "us")
@@ -62,19 +56,20 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         sh:message ""Artist name must match required pattern."" ;
     ] .
 ";
-        var aspect = new InlineTtlWriteAspect("test-local-violation", localTtl, contextWhere: null);
+        const string aspectIri = "https://forge-it.net/aspects/test/test-local-violation";
+        var aspect = new InlineTtlOperationAspect(aspectIri, localTtl, contextWhere: null);
 
-        await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Create));
+        await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Wrong Name");
         await using var tx = new EntityTransaction(txStore);
-        tx.Create(artist, aspect);
+        tx.Create(artist, aspect.Iri);
 
         var ex = await Should.ThrowAsync<AspectViolationException>(() => tx.CommitAsync().AsTask());
 
-        ex.SourceAspectName.ShouldBe("test-local-violation");
+        ex.SourceAspectIri.ShouldBe(aspectIri);
         ex.Violations.Count.ShouldBeGreaterThan(0);
         (await rawStore.LoadAsync<Artist>(artist.Iri)).ShouldBeNull();
     }
@@ -90,9 +85,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (?entityIri AS ?focusNode)
   BIND (""Context constraint always fails in test."" AS ?message)
 ";
-        var aspect = new InlineTtlWriteAspect("test-context-violation", null, contextWhere);
+        const string aspectIri = "https://forge-it.net/aspects/test/test-context-violation";
+        var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
-        await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Update));
+        await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
@@ -101,10 +97,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
 
         var updated = new Artist { Name = artist.Name, Country = "gb" };
         await using var tx = new EntityTransaction(txStore);
-        tx.Update(updated, aspect);
+        tx.Update(updated, aspect.Iri);
 
         var ex = await Should.ThrowAsync<AspectViolationException>(() => tx.CommitAsync().AsTask());
-        ex.SourceAspectName.ShouldBe("test-context-violation");
+        ex.SourceAspectIri.ShouldBe(aspectIri);
 
         var reloaded = await rawStore.LoadAsync<Artist>(artist.Iri);
         reloaded.ShouldNotBeNull();
@@ -126,16 +122,17 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (<{artistB.Iri}> AS ?focusNode)
   BIND (""Artist A must exist before Artist B."" AS ?message)
 ";
-        var aspectForB = new InlineTtlWriteAspect("requires-a", null, contextWhere);
+        const string aspectIri = "https://forge-it.net/aspects/test/requires-a";
+        var aspectForB = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
-        await using var sp = BuildProvider(r => r.Register(aspectForB, typeof(Artist), AspectKind.Create));
+        await using var sp = BuildProvider(s => s.AddOperationAspect(aspectForB));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         // Scenario 1: B before A → fails
         await using (var tx = new EntityTransaction(txStore))
         {
-            tx.Create(artistB, aspectForB).Create(artistA);
+            tx.Create(artistB, aspectForB.Iri).Create(artistA);
             await Should.ThrowAsync<AspectViolationException>(() => tx.CommitAsync().AsTask());
         }
 
@@ -145,7 +142,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         // Scenario 2: A before B → succeeds
         await using (var tx = new EntityTransaction(txStore))
         {
-            tx.Create(artistA).Create(artistB, aspectForB);
+            tx.Create(artistA).Create(artistB, aspectForB.Iri);
             await tx.CommitAsync();
         }
 
@@ -158,9 +155,9 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Unregistered_aspect_throws_AspectNotRegisteredException_at_commit()
+    public async Task Unregistered_aspect_throws_AspectNotFoundException_at_commit()
     {
-        var unregistered = new InlineTtlWriteAspect("unregistered-aspect", null, null);
+        const string unregisteredIri = "https://forge-it.net/aspects/test/unregistered-aspect";
 
         await using var sp = BuildProvider();
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -168,12 +165,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
 
         var artist = MakeArtist();
         await using var tx = new EntityTransaction(txStore);
-        tx.Create(artist, unregistered);
+        tx.Create(artist, unregisteredIri);
 
-        var ex = await Should.ThrowAsync<AspectNotRegisteredException>(() => tx.CommitAsync().AsTask());
-        ex.AspectName.ShouldBe("unregistered-aspect");
-        ex.EntityType.ShouldBe(typeof(Artist));
-        ex.Kind.ShouldBe(AspectKind.Create);
+        var ex = await Should.ThrowAsync<AspectNotFoundException>(() => tx.CommitAsync().AsTask());
+        ex.AspectIri.ShouldBe(unregisteredIri);
         (await rawStore.LoadAsync<Artist>(artist.Iri)).ShouldBeNull();
     }
 
@@ -209,9 +204,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (?entityIri AS ?focusNode)
   BIND (""Delete rejected by integrity guard."" AS ?message)
 ";
-        var aspect = new InlineTtlWriteAspect("delete-guard", null, contextWhere);
+        const string aspectIri = "https://forge-it.net/aspects/test/delete-guard";
+        var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
-        await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Delete));
+        await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
@@ -219,10 +215,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         await rawStore.SaveAsync(artist, WriteMode.Create);
 
         await using var tx = new EntityTransaction(txStore);
-        tx.Delete<Artist>(artist.Iri, aspect);
+        tx.Delete<Artist>(artist.Iri, aspect.Iri);
 
         var ex = await Should.ThrowAsync<AspectViolationException>(() => tx.CommitAsync().AsTask());
-        ex.SourceAspectName.ShouldBe("delete-guard");
+        ex.SourceAspectIri.ShouldBe(aspectIri);
         ex.RejectedOperation.ShouldBeOfType<DeleteOperation>();
 
         // Entity must still exist — the transaction was rolled back.
@@ -236,9 +232,10 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         const string contextWhere = @"
   FILTER (false)
 ";
-        var aspect = new InlineTtlWriteAspect("delete-allow", null, contextWhere);
+        const string aspectIri = "https://forge-it.net/aspects/test/delete-allow";
+        var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
-        await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Delete));
+        await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
@@ -246,7 +243,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         await rawStore.SaveAsync(artist, WriteMode.Create);
 
         await using var tx = new EntityTransaction(txStore);
-        tx.Delete<Artist>(artist.Iri, aspect);
+        tx.Delete<Artist>(artist.Iri, aspect.Iri);
         await tx.CommitAsync();
 
         // Entity must be gone — the deletion was committed.

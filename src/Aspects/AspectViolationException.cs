@@ -17,27 +17,27 @@ public sealed class AspectViolationException : Exception
     /// <summary>The operation that was rejected.</summary>
     public TransactionOperation RejectedOperation { get; }
 
-    /// <summary>The name of the aspect whose shape produced the violation.</summary>
-    public string SourceAspectName { get; }
+    /// <summary>The IRI of the aspect whose shape produced the violation.</summary>
+    public string SourceAspectIri { get; }
 
     public AspectViolationException(
         IReadOnlyList<AspectViolation> violations,
         TransactionOperation rejectedOperation,
-        string sourceAspectName)
-        : base(BuildMessage(violations, rejectedOperation, sourceAspectName))
+        string sourceAspectIri)
+        : base(BuildMessage(violations, rejectedOperation, sourceAspectIri))
     {
         Violations = violations;
         RejectedOperation = rejectedOperation;
-        SourceAspectName = sourceAspectName;
+        SourceAspectIri = sourceAspectIri;
     }
 
     private static string BuildMessage(
         IReadOnlyList<AspectViolation> violations,
         TransactionOperation op,
-        string aspectName)
+        string aspectIri)
     {
         var first = violations.Count > 0 ? violations[0].Message : "(no message)";
-        return $"Aspect '{aspectName}' rejected operation on <{op.EntityIri}>: {first}" +
+        return $"Aspect '{aspectIri}' rejected operation on <{op.EntityIri}>: {first}" +
                (violations.Count > 1 ? $" (+{violations.Count - 1} more)" : string.Empty);
     }
 }

@@ -1,5 +1,5 @@
 using System.Reflection;
-using Forge.Aspects.Shape;
+using Forge.Aspects.Operation;
 using VDS.RDF;
 using VDS.RDF.Shacl;
 
@@ -52,7 +52,7 @@ internal sealed class MessageAspectEngine : IMessageAspectEngine
             .ToList();
 
         if (violations.Count > 0)
-            throw new MessageAspectViolationException(message.GetType(), aspect.Name, violations);
+            throw new MessageAspectViolationException(message.GetType(), aspect.Iri, violations);
 
         return ValueTask.CompletedTask;
     }

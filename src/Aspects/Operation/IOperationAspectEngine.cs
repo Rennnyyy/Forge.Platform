@@ -1,22 +1,22 @@
-using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 
-namespace Forge.Aspects;
+namespace Forge.Aspects.Operation;
 
 /// <summary>
 /// Orchestrates the Local and Context validation passes for a single
 /// <see cref="TransactionOperation"/>. See Aspects ADR-0001 for pipeline details.
 /// </summary>
-public interface IAspectEngine
+public interface IOperationAspectEngine
 {
     /// <summary>
     /// Validate <paramref name="operation"/> against its declared aspect.
     /// <list type="bullet">
-    ///   <item>If the aspect is <see cref="Aspect.NoOp"/>, returns immediately.</item>
-    ///   <item>Otherwise resolves the shape, runs the Local pass, then the Context pass.</item>
-    ///   <item>On violation (sh:Violation severity) throws <see cref="AspectViolationException"/>.</item>
-    ///   <item>On unregistered aspect throws <see cref="AspectNotRegisteredException"/>.</item>
+    ///   <item>If <c>AspectIri</c> equals <see cref="Forge.Aspects.Aspect.NoOpIri"/>, returns immediately.</item>
+    ///   <item>Otherwise resolves the <see cref="IOperationAspect"/> from <see cref="IAspectStore"/>,
+    ///   runs the Local SHACL pass, then the Context SPARQL pass.</item>
+    ///   <item>On violation throws <see cref="AspectViolationException"/>.</item>
+    ///   <item>On unregistered IRI throws <see cref="AspectNotFoundException"/>.</item>
     /// </list>
     /// </summary>
     ValueTask ValidateAsync(

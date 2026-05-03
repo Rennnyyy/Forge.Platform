@@ -1,38 +1,36 @@
-using Forge.Entity;
 using System.Text;
-using Forge.Aspects.Operation;
-using Forge.Aspects.Shape;
 using Forge.Repository;
 using Forge.Repository.Mapping;
 using Forge.Repository.Rdf;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.Options;
 using VDS.RDF;
-using VDS.RDF.Shacl;
 using VDS.RDF.Shacl.Validation;
 
-namespace Forge.Aspects;
+namespace Forge.Aspects.Operation;
 
 /// <summary>
-/// Default <see cref="IAspectEngine"/>. Implements the two-pass pipeline defined in
+/// Default <see cref="IOperationAspectEngine"/>. Implements the two-pass pipeline defined in
 /// Aspects ADR-0001: Local pass (SHACL graph validate) then Context pass (SPARQL SELECT).
+/// Resolves the concrete <see cref="IOperationAspect"/> from <see cref="IAspectStore"/> using
+/// the operation's <see cref="TransactionOperation.AspectIri"/>.
 /// </summary>
-internal sealed class AspectEngine : IAspectEngine
+internal sealed class OperationAspectEngine : IOperationAspectEngine
 {
     private static readonly string ShaclViolationIri = "http://www.w3.org/ns/shacl#Violation";
 
-    private readonly IAspectResolver _resolver;
+    private readonly IAspectStore _store;
     private readonly IShapeCache _cache;
     private readonly IRdfMapperRegistry _mappers;
     private readonly EntityRepositoryOptions _options;
 
-    public AspectEngine(
-        IAspectResolver resolver,
+    public OperationAspectEngine(
+        IAspectStore store,
         IShapeCache cache,
         IRdfMapperRegistry mappers,
         IOptions<EntityRepositoryOptions> options)
     {
-        _resolver = resolver;
+        _store = store;
         _cache = cache;
         _mappers = mappers;
         _options = options.Value;
@@ -44,29 +42,27 @@ internal sealed class AspectEngine : IAspectEngine
         CancellationToken cancellationToken = default)
     {
         // Fast-path: NoOp aspect — no validation.
-        if (ReferenceEquals(operation.Aspect, Aspect.NoOp))
+        if (operation.AspectIri == Aspect.NoOpIri)
             return;
 
-        var kind = OperationKind(operation);
-        var entityType = ResolveEntityType(operation);
-        var shapeAspect = _resolver.Resolve(operation.Aspect, entityType, kind);
+        var operationAspect = _store.ResolveOperation(operation.AspectIri);
 
         // 1. Local pass
-        if (shapeAspect.LocalShapeTtl is { } localTtl)
+        if (operationAspect.LocalShapeTtl is { } localTtl)
         {
             var localGraph = BuildLocalGraph(operation);
             var shapesGraph = _cache.GetOrParse(localTtl);
             var report = shapesGraph.Validate(localGraph);
-            ThrowIfViolations(report, operation, shapeAspect.Name);
+            ThrowIfViolations(report, operation, operationAspect.Iri);
         }
 
         // 2. Context pass
-        if (shapeAspect.ContextWhere is { } whereBody)
+        if (operationAspect.ContextWhere is { } whereBody)
         {
-            // Inject the operation entity IRI as ?entityIri so WHERE bodies can reference it.
-            // ?focusNode is unset by default; the engine falls back to op.EntityIri per row.
-            var fullQuery = $"SELECT ?focusNode ?message ?path WHERE {{ VALUES ?entityIri {{ <{operation.EntityIri}> }} {whereBody} }}";
-            await RunContextPassAsync(fullQuery, queryStore, operation, shapeAspect.Name, cancellationToken)
+            var fullQuery =
+                $"SELECT ?focusNode ?message ?path WHERE {{ " +
+                $"VALUES ?entityIri {{ <{operation.EntityIri}> }} {whereBody} }}";
+            await RunContextPassAsync(fullQuery, queryStore, operation, operationAspect.Iri, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
@@ -94,7 +90,7 @@ internal sealed class AspectEngine : IAspectEngine
         return dotNetGraph;
     }
 
-    private static void ThrowIfViolations(Report report, TransactionOperation op, string aspectName)
+    private static void ThrowIfViolations(Report report, TransactionOperation op, string aspectIri)
     {
         if (report.Conforms) return;
 
@@ -110,7 +106,7 @@ internal sealed class AspectEngine : IAspectEngine
             .ToList();
 
         if (violations.Count > 0)
-            throw new AspectViolationException(violations, op, aspectName);
+            throw new AspectViolationException(violations, op, aspectIri);
     }
 
     // ------------------------------------------------------------------ Context pass helpers
@@ -119,14 +115,13 @@ internal sealed class AspectEngine : IAspectEngine
         string sparql,
         ISparqlQueryStore queryStore,
         TransactionOperation op,
-        string aspectName,
+        string aspectIri,
         CancellationToken ct)
     {
         var violations = new List<AspectViolation>();
 
         await foreach (var row in queryStore.ExecuteSelectAsync(sparql, ct).ConfigureAwait(false))
         {
-            // Any row returned by the constraint query is a violation.
             var focusNode = row.GetIri("focusNode") ?? op.EntityIri;
             var path = row.GetIri("path") ?? row.GetLiteral("path");
             var message = row.GetLiteral("message") ?? "Context constraint violated.";
@@ -140,7 +135,7 @@ internal sealed class AspectEngine : IAspectEngine
         }
 
         if (violations.Count > 0)
-            throw new AspectViolationException(violations, op, aspectName);
+            throw new AspectViolationException(violations, op, aspectIri);
     }
 
     // ------------------------------------------------------------------ Conversion helpers
@@ -165,24 +160,4 @@ internal sealed class AspectEngine : IAspectEngine
             _ => throw new NotSupportedException($"Unsupported RdfTermKind: {term.Kind}"),
         };
     }
-
-    // ------------------------------------------------------------------ Kind helpers
-
-    private static AspectKind OperationKind(TransactionOperation op) => op switch
-    {
-        CreateOperation<IEntity> => AspectKind.Create,
-        DeleteOperation => AspectKind.Delete,
-        EntityWriteOperation w when w.Mode == WriteMode.Replace => AspectKind.Update,
-        EntityWriteOperation w when w.Mode == WriteMode.Create => AspectKind.Create,
-        _ => throw new NotSupportedException($"Cannot determine AspectKind for {op.GetType().Name}"),
-    };
-
-    private static Type ResolveEntityType(TransactionOperation op) => op switch
-    {
-        EntityWriteOperation w => w.Entity.GetType(),
-        DeleteOperation { EntityType: { } t } => t,
-        _ => throw new NotSupportedException(
-            $"Cannot resolve entity type for non-write operation {op.GetType().Name}. " +
-            $"Delete operations with a non-NoOp aspect must use EntityTransaction.Delete<T>(iri, aspect)."),
-    };
 }

@@ -1,6 +1,7 @@
 using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
+using Forge.Aspects.Operation;
 
 namespace Forge.Aspects;
 
@@ -15,12 +16,12 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
 {
     private readonly ITransactionalEntityStore _inner;
     private readonly ISparqlQueryStore _queryStore;
-    private readonly IAspectEngine _engine;
+    private readonly IOperationAspectEngine _engine;
 
     public AspectEnforcingTransactionalStore(
         ITransactionalEntityStore inner,
         ISparqlQueryStore queryStore,
-        IAspectEngine engine)
+        IOperationAspectEngine engine)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(queryStore);

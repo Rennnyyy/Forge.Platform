@@ -1,3 +1,4 @@
+using Forge.Aspects;
 using Forge.Entity;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
@@ -323,7 +324,7 @@ public sealed class GuardedTransactionalStoreTests : IClassFixture<EntityOptions
         var guarded = new GuardedTransactionalStore(mockInner, mockGuard);
         await guarded.LoadAsync<Artist>("https://forge-it.net/artists/test");
 
-        capturedAspect.ShouldBe(Aspect.NoOp.Name);
+        capturedAspect.ShouldBe(Aspect.NoOpIri);
     }
 
     // ── Test 3.9 — denying guard blocks LoadAsync ────────────────────────────
@@ -447,7 +448,7 @@ public sealed class GuardedTransactionalStoreQueryByTypeAsyncTests : IClassFixtu
         var guarded = new GuardedTransactionalStore(mockInner, mockGuard);
         await foreach (var _ in guarded.QueryByTypeAsync<Artist>()) { }
 
-        capturedAspect.ShouldBe(Aspect.NoOp.Name);
+        capturedAspect.ShouldBe(Aspect.NoOpIri);
     }
 
     // ── Test 5.3 — guard receives current agent token ────────────────────────
@@ -628,7 +629,7 @@ public sealed class GuardedTransactionalStoreDelegationTests : IClassFixture<Ent
 
         result.ShouldBeNull();
         await mockGuard.Received(1).AuthorizeAsync(
-            Arg.Any<string>(), Aspect.NoOp.Name, Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Aspect.NoOpIri, Arg.Any<CancellationToken>());
         await mockInner.Received(1).LoadAsync<Artist>(
             "https://forge-it.net/artists/explicit-iface", Arg.Any<CancellationToken>());
     }
