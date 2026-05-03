@@ -10,3 +10,6 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0002 — `CapabilityContext` carries resolved aspects to the handler](0002-capability-context.md)
 - [0003 — `[Command]`, `[Response]`, `[Event]` drive SHACL generation](0003-message-attributes-drive-generation.md)
 - [0004 — No transaction / query scope in v1](0004-no-transaction-query-scope.md)
+- [0005 — `CapabilityResult<TResponse>` carries a failure state](0005-capability-result-failure-state.md)
+- [0006 — `ICapabilityDispatcher<TCommand,TResponse>`: dispatcher pipeline implementation](0006-capability-dispatcher-design.md)
+- [0007 — Shapes provided dynamically per dispatch call; no generator](0007-dynamic-per-call-aspects.md)

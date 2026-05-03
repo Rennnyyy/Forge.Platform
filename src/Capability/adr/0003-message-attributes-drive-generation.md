@@ -1,6 +1,6 @@
 # 0003 — `[Command]`, `[Response]`, `[Event]` drive SHACL generation
 
-- **Status**: accepted
+- **Status**: superseded by [0007](0007-dynamic-per-call-aspects.md)
 - **Date**: 2026-05-03
 - **Author**: agent
 
