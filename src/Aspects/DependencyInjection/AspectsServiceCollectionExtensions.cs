@@ -169,7 +169,7 @@ public static class AspectsServiceCollectionExtensions
                 : Path.Combine(AppContext.BaseDirectory, ttlPath);
             var ttl = File.ReadAllText(fullPath);
             cache.GetOrParse(ttl); // throws AspectTtlParseException if malformed
-            var aspect = new InlineTtlShapeAspect(aspectName, ttl, contextWhere: null);
+            var aspect = new InlineTtlWriteAspect(aspectName, ttl, contextWhere: null);
             registry.Register(aspect, entityType, kind);
         }
     }

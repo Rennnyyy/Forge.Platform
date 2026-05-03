@@ -15,11 +15,11 @@ public interface IShapeRegistry
     /// <paramref name="kind"/>. Throws <see cref="InvalidOperationException"/> if the
     /// aspect's name is <c>"noop"</c> (reserved) or if an identical registration already exists.
     /// </summary>
-    void Register(IShapeAspect aspect, Type entityType, AspectKind kind);
+    void Register(IWriteAspect aspect, Type entityType, AspectKind kind);
 
     /// <summary>
-    /// Return the registered <see cref="IShapeAspect"/> for the given identity, entity type,
+    /// Return the registered <see cref="IWriteAspect"/> for the given identity, entity type,
     /// and kind, or <c>null</c> if no such registration exists.
     /// </summary>
-    IShapeAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind);
+    IWriteAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind);
 }

@@ -59,7 +59,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         sh:message ""Artist name must match required pattern."" ;
     ] .
 ";
-        var aspect = new InlineTtlShapeAspect("test-local-violation", localTtl, contextWhere: null);
+        var aspect = new InlineTtlWriteAspect("test-local-violation", localTtl, contextWhere: null);
 
         await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Create));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -87,7 +87,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (?entityIri AS ?focusNode)
   BIND (""Context constraint always fails in test."" AS ?message)
 ";
-        var aspect = new InlineTtlShapeAspect("test-context-violation", null, contextWhere);
+        var aspect = new InlineTtlWriteAspect("test-context-violation", null, contextWhere);
 
         await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Update));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -123,7 +123,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (<{artistB.Iri}> AS ?focusNode)
   BIND (""Artist A must exist before Artist B."" AS ?message)
 ";
-        var aspectForB = new InlineTtlShapeAspect("requires-a", null, contextWhere);
+        var aspectForB = new InlineTtlWriteAspect("requires-a", null, contextWhere);
 
         await using var sp = BuildProvider(r => r.Register(aspectForB, typeof(Artist), AspectKind.Create));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -157,7 +157,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
     [Fact]
     public async Task Unregistered_aspect_throws_AspectNotRegisteredException_at_commit()
     {
-        var unregistered = new InlineTtlShapeAspect("unregistered-aspect", null, null);
+        var unregistered = new InlineTtlWriteAspect("unregistered-aspect", null, null);
 
         await using var sp = BuildProvider();
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -206,7 +206,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
   BIND (?entityIri AS ?focusNode)
   BIND (""Delete rejected by integrity guard."" AS ?message)
 ";
-        var aspect = new InlineTtlShapeAspect("delete-guard", null, contextWhere);
+        var aspect = new InlineTtlWriteAspect("delete-guard", null, contextWhere);
 
         await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Delete));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
@@ -233,7 +233,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         const string contextWhere = @"
   FILTER (false)
 ";
-        var aspect = new InlineTtlShapeAspect("delete-allow", null, contextWhere);
+        var aspect = new InlineTtlWriteAspect("delete-allow", null, contextWhere);
 
         await using var sp = BuildProvider(r => r.Register(aspect, typeof(Artist), AspectKind.Delete));
         var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();

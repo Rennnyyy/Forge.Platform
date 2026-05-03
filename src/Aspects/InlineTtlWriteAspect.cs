@@ -2,10 +2,10 @@ using Forge.Entity;
 namespace Forge.Aspects;
 
 /// <summary>
-/// A <see cref="IShapeAspect"/> that holds shape data as inline strings.
+/// A <see cref="IWriteAspect"/> that holds shape data as inline strings.
 /// Used for code-origin aspects registered via the DI extension or in tests.
 /// </summary>
-public sealed class InlineTtlShapeAspect : IShapeAspect
+public sealed class InlineTtlWriteAspect : IWriteAspect
 {
     /// <inheritdoc/>
     public string Name { get; }
@@ -22,7 +22,7 @@ public sealed class InlineTtlShapeAspect : IShapeAspect
     /// Do not include the <c>SELECT</c> header or the <c>WHERE { }</c> delimiters — supply
     /// only the inner content. The engine projects <c>?focusNode</c>, <c>?message</c>, and
     /// <c>?path</c>.</param>
-    public InlineTtlShapeAspect(string name, string? localShapeTtl, string? contextWhere)
+    public InlineTtlWriteAspect(string name, string? localShapeTtl, string? contextWhere)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (name == "noop")

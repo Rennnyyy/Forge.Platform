@@ -11,12 +11,12 @@ namespace Forge.Aspects;
 internal sealed class ShapeRegistry : IShapeRegistry, IAspectResolver
 {
     // Key: (aspectName, entityType, flags-expanded single kind)
-    private readonly ConcurrentDictionary<(string AspectName, Type EntityType, AspectKind Kind), IShapeAspect>
+    private readonly ConcurrentDictionary<(string AspectName, Type EntityType, AspectKind Kind), IWriteAspect>
         _registrations = new();
 
     // ------------------------------------------------------------------ IShapeRegistry
 
-    public void Register(IShapeAspect aspect, Type entityType, AspectKind kind)
+    public void Register(IWriteAspect aspect, Type entityType, AspectKind kind)
     {
         ArgumentNullException.ThrowIfNull(aspect);
         ArgumentNullException.ThrowIfNull(entityType);
@@ -34,7 +34,7 @@ internal sealed class ShapeRegistry : IShapeRegistry, IAspectResolver
         }
     }
 
-    public IShapeAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind)
+    public IWriteAspect? TryGet(IOperationAspect aspect, Type entityType, AspectKind kind)
     {
         ArgumentNullException.ThrowIfNull(aspect);
         ArgumentNullException.ThrowIfNull(entityType);
@@ -46,7 +46,7 @@ internal sealed class ShapeRegistry : IShapeRegistry, IAspectResolver
 
     // ------------------------------------------------------------------ IAspectResolver
 
-    public IShapeAspect Resolve(IOperationAspect aspect, Type entityType, AspectKind kind)
+    public IWriteAspect Resolve(IOperationAspect aspect, Type entityType, AspectKind kind)
     {
         var result = TryGet(aspect, entityType, kind);
         if (result is null)
