@@ -60,7 +60,29 @@ Read the source files to be accurate about what each type actually does.
 #### 2.6 Test files
 List every file under `tests/` and explain what each one covers. Name a few representative test cases where helpful.
 
-### 3 — Guide to next steps
+### 3 — Spec trunks
+
+Whenever an architectural concept surfaces during the conversation — whether raised by the user or identified through analysis — write a **spec trunk** for it inline in your response.
+
+A spec trunk is a concise, structured draft that stakes out the concept before it becomes a full ADR. Format each trunk as follows:
+
+```
+## Spec Trunk: <concept name>
+
+**Problem** — One sentence: what pressure or gap motivates this concept?
+**Proposal** — Two to four sentences describing the idea, its scope, and the key design choices.
+**Open questions** — Bullet list of unresolved decisions that a follow-up ADR must answer.
+**Affected slices** — Which parts of the codebase (e.g. `Forge.Entity`, `Forge.Aspects`, generators) are touched.
+**Suggested next step** — One action: e.g. "Draft ADR under `src/<Slice>/adr/`", "Spike in a branch", "Discuss with stakeholders".
+```
+
+Guidelines:
+- Write a trunk whenever a concept lacks an existing ADR or is substantially different from existing decisions.
+- Keep trunks short — they are conversation artefacts, not finished documents.
+- One trunk per concept; if multiple concepts arise, list each in its own trunk block.
+- Do **not** create or modify files; trunks live only in the chat response.
+
+### 4 — Guide to next steps
 
 Close with a "Where to go from here" section:
 
