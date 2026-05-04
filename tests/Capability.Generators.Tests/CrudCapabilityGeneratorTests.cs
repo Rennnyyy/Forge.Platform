@@ -518,4 +518,20 @@ public sealed class CrudCapabilityGeneratorTests
         // Each handler class must be preceded by the [CrudCapabilityHandlerAttribute].
         code.ShouldContain("CrudCapabilityHandlerAttribute]");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // N+1. Create handler wraps CreateAsync in try/catch and returns ALREADY_EXISTS
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Create_handler_returns_ALREADY_EXISTS_error_on_InvalidOperationException()
+    {
+        var result = CrudCapabilityGeneratorRunner.Run(MinimalEntity());
+        var (_, code) = CapsFile(result, "Widget");
+
+        code.ShouldContain("try");
+        code.ShouldContain("catch (global::System.InvalidOperationException ex)");
+        code.ShouldContain("ALREADY_EXISTS");
+        code.ShouldContain("ex.Message");
+    }
 }

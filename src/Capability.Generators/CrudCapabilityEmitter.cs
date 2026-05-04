@@ -122,7 +122,15 @@ internal static class CrudCapabilityEmitter
             sb.Append("        var entity = new ").Append(m.FullyQualifiedName).AppendLine("();");
         }
 
-        sb.AppendLine("        await entity.CreateAsync(cancellationToken);");
+        sb.AppendLine("        try");
+        sb.AppendLine("        {");
+        sb.AppendLine("            await entity.CreateAsync(cancellationToken);");
+        sb.AppendLine("        }");
+        sb.AppendLine("        catch (global::System.InvalidOperationException ex)");
+        sb.AppendLine("        {");
+        sb.Append("            return new ").Append(Cap).Append(".CapabilityResult<").Append(resType).AppendLine(">.Fail(");
+        sb.Append("                new ").Append(Cap).AppendLine(".CapabilityError(\"ALREADY_EXISTS\", ex.Message));");
+        sb.AppendLine("        }");
         sb.Append("        return new ").Append(Cap).Append(".CapabilityResult<").Append(resType).AppendLine(">.Ok(");
         sb.Append("            new ").Append(resType).AppendLine("(entity.Iri));");
         sb.AppendLine("    }");
