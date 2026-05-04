@@ -1,0 +1,27 @@
+meta {
+  name: Aspect demo - with registered aspect + invalid command (SHACL violation → 422)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/demo/aspect
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:demo-v1
+}
+
+body:json {
+  {
+    "name": ""
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq SHACL_VIOLATION
+}

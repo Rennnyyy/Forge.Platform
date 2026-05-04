@@ -1,5 +1,7 @@
 using Forge.Application.Sample;
+using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
+using Forge.Aspects.Message;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
@@ -77,7 +79,41 @@ app.Use(async (ctx, next) =>
 //   PUT   api/capabilities/demo/catalog/items/update                         (UpdateItemHandler)
 //   PATCH api/capabilities/demo/catalog/items/patch                          (PatchItemHandler)
 //   POST  api/capabilities/demo/fault                                        (TriggerFaultHandler — always 422)
+//   POST  api/capabilities/demo/aspect                                       (AspectDemoHandler — see sample ADR-0003)
 app.MapCapabilities();
+
+// ── 8. Capability aspect registration ────────────────────────────────────────
+// Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore
+// before the first request arrives. See sample ADR-0003 for the rationale for
+// direct post-build registration over the AddMessageAspect DI helper.
+//
+// Active when the caller supplies the header:
+//   X-Forge-Capability-AspectIri: urn:forge:aspects:capability:demo-v1
+//
+// The SHACL shape enforces that AspectDemoCommand.Name has at least one character.
+var demoCommandAspect = new InlineTtlMessageAspect(
+    iri: "urn:forge:aspects:demo-command-v1",
+    shapeTtl: """
+        @prefix sh:    <http://www.w3.org/ns/shacl#> .
+        @prefix forge: <https://forge-it.net/> .
+
+        <urn:forge:aspects:demo-command-shape>
+            a sh:NodeShape ;
+            sh:targetClass <urn:Forge.Application.Sample.AspectDemoCommand> ;
+            sh:property [
+                sh:path forge:Name ;
+                sh:minLength 1 ;
+                sh:message "Name must not be empty." ;
+            ] .
+        """);
+
+var aspectStore = app.Services.GetRequiredService<IAspectStore>();
+aspectStore.RegisterMessage(demoCommandAspect);
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri              = "urn:forge:aspects:capability:demo-v1",
+    CommandAspectIri = "urn:forge:aspects:demo-command-v1",
+});
 
 app.Run();
 

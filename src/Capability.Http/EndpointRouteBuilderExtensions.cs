@@ -1,4 +1,5 @@
 using System.Reflection;
+using Forge.Aspects.Message;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -98,7 +99,20 @@ public static class EndpointRouteBuilderExtensions
             CancellationToken ct) =>
         {
             var iri = await provider.GetCapabilityAspectIriAsync(httpContext, ct);
-            var result = await dispatcher.DispatchAsync(command, iri, ct);
+
+            CapabilityResult<TResponse> result;
+            try
+            {
+                result = await dispatcher.DispatchAsync(command, iri, ct);
+            }
+            catch (MessageAspectViolationException ex)
+            {
+                // SHACL constraint rejected the command before the handler was reached.
+                // Surface as 422 so callers distinguish policy rejection from server errors.
+                // See Capability.Http ADR-0007.
+                return Results.UnprocessableEntity(
+                    new CapabilityError("SHACL_VIOLATION", ex.Message));
+            }
 
             return result switch
             {

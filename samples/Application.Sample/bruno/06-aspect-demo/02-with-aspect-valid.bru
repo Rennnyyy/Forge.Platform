@@ -1,0 +1,28 @@
+meta {
+  name: Aspect demo - with registered capability aspect (SHACL validates Name)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/demo/aspect
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:demo-v1
+}
+
+body:json {
+  {
+    "name": "Alice"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Alice
+  res.body.activeAspectIri: eq urn:forge:aspects:capability:demo-v1
+}

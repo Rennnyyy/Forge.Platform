@@ -152,6 +152,30 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 6 — Aspect demo: verifies the capability aspect pipeline.
+    /// Exercises permissive dispatch (no header) and policy-bound dispatch (with a
+    /// registered capability-aspect IRI). The handler reflects the active aspect IRI
+    /// back in the response. See sample ADR-0003.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_06_aspect_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "06-aspect-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

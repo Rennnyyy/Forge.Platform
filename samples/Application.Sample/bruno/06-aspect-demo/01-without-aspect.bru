@@ -1,0 +1,27 @@
+meta {
+  name: Aspect demo - permissive (no aspect header)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/demo/aspect
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Alice"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Alice
+  res.body.activeAspectIri: isNull
+}
