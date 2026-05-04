@@ -1,0 +1,17 @@
+meta {
+  name: Catalog - get item (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/demo/catalog/items/{{catalogItemId}}
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.name: isDefined
+  res.body.dimensions: isDefined
+}

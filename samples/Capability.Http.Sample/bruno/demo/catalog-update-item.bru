@@ -1,0 +1,37 @@
+meta {
+  name: Catalog - update item (PUT, full replace)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/demo/catalog/items/update
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "id": "{{catalogItemId}}",
+    "name": "Forge Demo Widget (Updated)",
+    "priceEur": 44.99,
+    "quantity": 38,
+    "isAvailable": true,
+    "tags": ["demo", "widget", "forge", "updated"],
+    "dimensions": {
+      "widthCm": 15.0,
+      "heightCm": 8.5,
+      "depthCm": 3.5
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.updatedAt: isDefined
+}

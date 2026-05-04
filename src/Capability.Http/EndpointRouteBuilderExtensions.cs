@@ -61,11 +61,13 @@ public static class EndpointRouteBuilderExtensions
                     $"Handler type '{descriptor.HandlerType.FullName}' is missing the [Capability] " +
                     "attribute. All handlers discovered by MapCapabilities() must carry [Capability(\"...\")].");
 
-            var routePath = attr.Identity.ToRoutePath();
+            var routePath    = attr.Identity.ToRoutePath();
+            var endpointAttr = descriptor.HandlerType.GetCustomAttribute<CapabilityEndpointAttribute>(inherit: false);
+            var httpMethod   = endpointAttr?.Method ?? "POST";
 
             RegisterEndpointMethod
                 .MakeGenericMethod(descriptor.CommandType, descriptor.ResponseType)
-                .Invoke(null, [app, routePath]);
+                .Invoke(null, [app, routePath, httpMethod]);
         }
 
         return app;
@@ -73,11 +75,12 @@ public static class EndpointRouteBuilderExtensions
 
     private static void RegisterEndpoint<TCommand, TResponse>(
         IEndpointRouteBuilder app,
-        string routePath)
+        string routePath,
+        string httpMethod)
         where TCommand : class
         where TResponse : class
     {
-        app.MapPost(routePath, async (
+        app.MapMethods(routePath, [httpMethod], async (
             TCommand command,
             ICapabilityDispatcher<TCommand, TResponse> dispatcher,
             ICapabilityAspectIriProvider provider,

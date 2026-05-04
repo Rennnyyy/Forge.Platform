@@ -1,0 +1,30 @@
+meta {
+  name: Catalog - patch item (PATCH, partial update)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/demo/catalog/items/patch
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "id": "{{catalogItemId}}",
+    "name": "Forge Demo Widget (Patched)",
+    "priceEur": 39.99,
+    "quantity": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.updatedAt: isDefined
+}

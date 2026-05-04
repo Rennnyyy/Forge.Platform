@@ -9,3 +9,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0001 — Capability.Http slice scope and public surface](0001-capability-http-slice.md)
 - [0002 — Route derivation and capability auto-discovery](0002-route-derivation-and-autodiscovery.md)
 - [0003 — Capability aspect IRI from X-Forge-Capability-AspectIri header](0003-capability-aspect-iri-from-http-header.md)
+- [0004 — Per-handler HTTP method via `[CapabilityEndpoint]`](0004-http-method-override.md)

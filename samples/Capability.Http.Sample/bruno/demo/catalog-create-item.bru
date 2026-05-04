@@ -1,0 +1,59 @@
+meta {
+  name: Catalog - create item (POST, all CLR types)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/demo/catalog/items/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Forge Demo Widget",
+    "isAvailable": true,
+    "quantity": 42,
+    "barcode": 9780201379624,
+    "weightKg": 0.5,
+    "priceEur": 49.99,
+    "taxRate": 0.19,
+    "availableFrom": "2026-01-01",
+    "createdAt": "2026-05-04T12:00:00+00:00",
+    "externalId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "thumbnailUri": "https://forge-it.net/images/demo-widget.png",
+    "description": "A demo widget showcasing every scalar CLR type.",
+    "isFeatured": true,
+    "reorderPoint": 10,
+    "alternateBarcode": 9780201379624,
+    "discountPct": 5.5,
+    "compareAtPrice": 59.99,
+    "shippingCost": 4.95,
+    "discontinuedOn": null,
+    "lastModifiedAt": null,
+    "parentItemId": null,
+    "canonicalUri": "https://forge-it.net/catalog/demo-widget",
+    "tags": ["demo", "widget", "forge"],
+    "categoryIds": ["b1b2b3b4-c5c6-7890-abcd-ef1234567890"],
+    "dimensions": {
+      "widthCm": 15.0,
+      "heightCm": 8.0,
+      "depthCm": 3.5
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.itemId: isDefined
+  res.body.storedAt: isDefined
+}
+
+script:post-response {
+  bru.setVar("catalogItemId", res.body.itemId);
+}
