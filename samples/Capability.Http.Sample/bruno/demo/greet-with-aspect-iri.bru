@@ -1,0 +1,27 @@
+meta {
+  name: Greet - with capability aspect IRI header (permissive; no aspect registered)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/demo/greet
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:demo-v1
+}
+
+body:json {
+  {
+    "name": "Bob"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.message: contains Hello, Bob
+}

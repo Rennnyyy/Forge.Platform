@@ -16,3 +16,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0008 — Dispatcher reads ambient agent token into `CapabilityContext`](0008-agent-token-in-capability-context.md)
 - [0009 — Rename `ICapabilityAspectGuard` → `IAspectGuard`; drop `MessageKind` parameter](0009-rename-iaspectguard-drop-messagekind.md)
 - [0010 — `[Capability]` identity attribute and `CapabilityIdentity` value object](0010-capability-identity-attribute.md)
+- [0011 — Assembly-scan autodiscovery for capability handler registration](0011-capability-handler-autodiscovery.md)

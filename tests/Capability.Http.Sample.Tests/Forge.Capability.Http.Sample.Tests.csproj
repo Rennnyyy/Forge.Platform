@@ -7,21 +7,25 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Xunit.SkippableFact" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!--
+    Build-only reference: ensures the sample DLL is up-to-date when the test runs
+    without importing the sample's types into this project.
+    See ADR-0012.
+  -->
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
-    <ProjectReference Include="..\..\src\Authorization\Forge.Authorization.csproj" />
+    <ProjectReference Include="..\..\samples\Capability.Http.Sample\Forge.Capability.Http.Sample.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

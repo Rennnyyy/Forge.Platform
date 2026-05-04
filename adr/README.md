@@ -47,3 +47,5 @@ What this enables or forecloses. Follow-ups.
 - [0008 — Remove `Entity.` prefix from satellite package/namespace names](0008-remove-entity-prefix-from-satellite-packages.md)
 - [0009 — ADR adjustment policy: inline notes for identifier-only changes](0009-adr-adjust-policy.md)
 - [0010 — Sub-folder structure inside slice directories](0010-slice-folder-structure.md)
+- [0011 — Samples folder for runnable demonstration applications](0011-samples-folder-layout.md)
+- [0012 — Integration-testing samples via Bruno CLI and a subprocess host](0012-sample-integration-tests-bruno.md)
