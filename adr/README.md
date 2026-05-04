@@ -49,3 +49,6 @@ What this enables or forecloses. Follow-ups.
 - [0010 — Sub-folder structure inside slice directories](0010-slice-folder-structure.md)
 - [0011 — Samples folder for runnable demonstration applications](0011-samples-folder-layout.md)
 - [0012 — Integration-testing samples via Bruno CLI and a subprocess host](0012-sample-integration-tests-bruno.md)
+- [0013 — Bruno collection organised as story chapters](0013-bruno-collection-story-structure.md)
+- [0014 — Error-path demonstration chapter in Application.Sample](0014-error-demo-chapter-in-application-sample.md)
+- [0012 — Integration-testing samples via Bruno CLI and a subprocess host](0012-sample-integration-tests-bruno.md)

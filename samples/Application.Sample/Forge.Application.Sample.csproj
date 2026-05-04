@@ -35,6 +35,8 @@
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <!-- In-memory RDF store (no infrastructure needed) -->
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+    <!-- Ontotext GraphDB HTTP backend (selected via Forge:EntityRepository:Backend = GraphDb) -->
+    <ProjectReference Include="..\..\src\Repository.GraphDb\Forge.Repository.GraphDb.csproj" />
   </ItemGroup>
 
 </Project>

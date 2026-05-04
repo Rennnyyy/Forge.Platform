@@ -41,44 +41,112 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
     // ─── Tests ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Runs all .bru files in samples/Application.Sample/bruno/demo/ (greet and catalog
-    /// hand-written handlers) via the Bruno CLI. Skips gracefully when npx is absent.
+    /// Chapter 1 — Greet: verifies the hand-written capability handler responds correctly
+    /// and that an aspect-IRI header is accepted without error (permissive guard).
+    /// See ADR-0013.
     /// </summary>
     [SkippableFact]
-    public async Task Bruno_demo_collection_requests_all_pass()
+    public async Task Bruno_01_greeting_requests_all_pass()
     {
         Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
 
         var repoRoot = FindRepoRoot();
         var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
-        var demoDir = Path.Combine(collectionRoot, "demo");
+        var chapterDir = Path.Combine(collectionRoot, "01-greeting");
 
         Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
-        Directory.Exists(demoDir).ShouldBeTrue($"Bruno demo folder not found at '{demoDir}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
 
-        var (exitCode, output) = await RunBrunoAsync(collectionRoot, demoDir, _baseUrl);
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
 
         exitCode.ShouldBe(0,
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
     /// <summary>
-    /// Runs all .bru files in samples/Application.Sample/bruno/books/ (generated Book
-    /// CRUD handlers) via the Bruno CLI. Skips gracefully when npx is absent.
+    /// Chapter 2 — Books: verifies the generated CRUD handlers (create/read/update/list/delete)
+    /// for the Book entity. See ADR-0013.
     /// </summary>
     [SkippableFact]
-    public async Task Bruno_books_collection_requests_all_pass()
+    public async Task Bruno_02_books_requests_all_pass()
     {
         Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
 
         var repoRoot = FindRepoRoot();
         var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
-        var booksDir = Path.Combine(collectionRoot, "books");
+        var chapterDir = Path.Combine(collectionRoot, "02-books");
 
         Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
-        Directory.Exists(booksDir).ShouldBeTrue($"Bruno books folder not found at '{booksDir}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
 
-        var (exitCode, output) = await RunBrunoAsync(collectionRoot, booksDir, _baseUrl);
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 3 — DataRecords: verifies the generated CRUD handlers for the DataRecord
+    /// entity, which exercises every supported scalar CLR type. See ADR-0013.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_03_data_records_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "03-data-records");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 4 — Catalog: verifies the hand-written POST/PUT/PATCH capability handlers
+    /// for catalog item management. See ADR-0013.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_04_catalog_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "04-catalog");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 5 — Error demo: verifies that an intentionally-failing capability handler
+    /// returns HTTP 422 with a structured <c>CapabilityError</c> payload.
+    /// See root ADR-0014 and Capability ADR-0005.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_05_error_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "05-error-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
 
         exitCode.ShouldBe(0,
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");

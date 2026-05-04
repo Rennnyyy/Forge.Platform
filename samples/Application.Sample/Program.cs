@@ -6,6 +6,7 @@ using Forge.Capability.Http.DependencyInjection;
 using Forge.Operations;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
+using Forge.Repository.GraphDb.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,12 +17,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddForgeAspects();
 
 // ── 2. Entity store ───────────────────────────────────────────────────────────
-// A singleton in-memory RDF store backed by dotNetRDF.
-// Replace UseInMemory() with UseGraphDb() and supply connection options when
-// targeting a real Ontotext GraphDB instance.
-builder.Services
-    .AddForgeEntityRepository()
-    .UseInMemory();
+// Backend is controlled by Forge:EntityRepository:Backend in appsettings.json.
+// Supported values:
+//   "InMemory"  — dotNetRDF in-memory store (default; no infrastructure required)
+//   "GraphDb"   — Ontotext GraphDB over HTTP (configure Forge:GraphDb:* accordingly)
+//
+// Switch via environment variable:  Forge__EntityRepository__Backend=GraphDb
+// Switch via named environment:     ASPNETCORE_ENVIRONMENT=GraphDb
+//   (loads appsettings.GraphDb.json which sets Backend + GraphDb connection details)
+var repoBuilder = builder.Services.AddForgeEntityRepository(builder.Configuration);
+if (string.Equals(
+        builder.Configuration["Forge:EntityRepository:Backend"],
+        "GraphDb",
+        StringComparison.OrdinalIgnoreCase))
+    repoBuilder.UseGraphDb();
+else
+    repoBuilder.UseInMemory();
 
 // ── 3. In-memory catalog store (used by the hand-written demo handlers) ───────
 builder.Services.AddSingleton<ItemStore>();
@@ -65,6 +76,7 @@ app.Use(async (ctx, next) =>
 //   POST  api/capabilities/demo/catalog/items/create                         (CreateItemHandler)
 //   PUT   api/capabilities/demo/catalog/items/update                         (UpdateItemHandler)
 //   PATCH api/capabilities/demo/catalog/items/patch                          (PatchItemHandler)
+//   POST  api/capabilities/demo/fault                                        (TriggerFaultHandler — always 422)
 app.MapCapabilities();
 
 app.Run();
