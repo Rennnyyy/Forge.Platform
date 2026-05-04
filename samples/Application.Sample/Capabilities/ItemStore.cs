@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Forge.Capability.Http.Sample;
+namespace Forge.Application.Sample;
 
 /// <summary>
 /// Thread-safe in-memory catalog store used by the demo sample handlers.

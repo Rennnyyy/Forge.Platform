@@ -1,0 +1,29 @@
+meta {
+  name: Books - read (POST)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/books/read
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "iri": "{{bookIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.isbn: eq 978-0-201-37962-4
+  res.body.title: contains Pragmatic
+  res.body.available: eq true
+}

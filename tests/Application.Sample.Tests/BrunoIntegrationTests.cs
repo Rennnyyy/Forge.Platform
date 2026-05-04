@@ -3,11 +3,11 @@ using System.Net;
 using System.Net.Sockets;
 using Shouldly;
 
-namespace Forge.Capability.Http.Sample.Tests;
+namespace Forge.Application.Sample.Tests;
 
 /// <summary>
-/// Integration tests that start the sample app as a subprocess and drive it via the
-/// committed Bruno collection. See ADR-0012 for the rationale.
+/// Integration tests that start the merged Application.Sample app as a subprocess and
+/// drive it via the committed Bruno collections. See ADR-0012 and ADR-0013.
 /// </summary>
 public sealed class BrunoIntegrationTests : IAsyncLifetime
 {
@@ -41,23 +41,44 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
     // ─── Tests ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Runs all .bru files in samples/Capability.Http.Sample/bruno/demo/ via the
-    /// Bruno CLI and asserts every request passes. Skips gracefully when npx is not
-    /// on PATH (so the test suite stays green on machines without Node.js).
+    /// Runs all .bru files in samples/Application.Sample/bruno/demo/ (greet and catalog
+    /// hand-written handlers) via the Bruno CLI. Skips gracefully when npx is absent.
     /// </summary>
     [SkippableFact]
-    public async Task Bruno_collection_demo_requests_all_pass()
+    public async Task Bruno_demo_collection_requests_all_pass()
     {
         Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
 
         var repoRoot = FindRepoRoot();
-        var collectionRoot = Path.Combine(repoRoot, "samples", "Capability.Http.Sample", "bruno");
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
         var demoDir = Path.Combine(collectionRoot, "demo");
 
         Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
         Directory.Exists(demoDir).ShouldBeTrue($"Bruno demo folder not found at '{demoDir}'.");
 
         var (exitCode, output) = await RunBrunoAsync(collectionRoot, demoDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Runs all .bru files in samples/Application.Sample/bruno/books/ (generated Book
+    /// CRUD handlers) via the Bruno CLI. Skips gracefully when npx is absent.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_books_collection_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var booksDir = Path.Combine(collectionRoot, "books");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(booksDir).ShouldBeTrue($"Bruno books folder not found at '{booksDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, booksDir, _baseUrl);
 
         exitCode.ShouldBe(0,
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
@@ -119,13 +140,13 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Invokes <c>npx @usebruno/cli run &lt;demoDir&gt; --env local --env-var baseUrl=&lt;url&gt;</c>
+    /// Invokes <c>npx @usebruno/cli run &lt;requestDir&gt; --env local --env-var baseUrl=&lt;url&gt;</c>
     /// with the collection root as the working directory (so Bruno can find environments/local.bru).
     /// Returns the combined stdout+stderr output and the exit code.
     /// </summary>
     private static async Task<(int ExitCode, string Output)> RunBrunoAsync(
         string collectionRoot,
-        string demoDir,
+        string requestDir,
         string baseUrl)
     {
         var psi = new ProcessStartInfo("npx")
@@ -138,7 +159,7 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
         psi.ArgumentList.Add("--yes");
         psi.ArgumentList.Add("@usebruno/cli");
         psi.ArgumentList.Add("run");
-        psi.ArgumentList.Add(demoDir);
+        psi.ArgumentList.Add(requestDir);
         psi.ArgumentList.Add("--env");
         psi.ArgumentList.Add("local");
         psi.ArgumentList.Add("--env-var");
@@ -197,9 +218,9 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
 
         var dll = Path.Combine(
             repoRoot,
-            "samples", "Capability.Http.Sample",
+            "samples", "Application.Sample",
             "bin", config, "net10.0",
-            "Forge.Capability.Http.Sample.dll");
+            "Forge.Application.Sample.dll");
 
         if (File.Exists(dll))
             return dll;

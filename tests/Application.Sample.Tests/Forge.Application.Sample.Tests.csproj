@@ -21,10 +21,10 @@
   <!--
     Build-only reference: ensures the sample DLL is up-to-date when the test runs
     without importing the sample's types into this project.
-    See ADR-0012.
+    See ADR-0012 / ADR-0013.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\samples\Capability.Http.Sample\Forge.Capability.Http.Sample.csproj"
+    <ProjectReference Include="..\..\samples\Application.Sample\Forge.Application.Sample.csproj"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 

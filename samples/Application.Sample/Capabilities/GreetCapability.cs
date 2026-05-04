@@ -1,4 +1,6 @@
-namespace Forge.Capability.Http.Sample;
+using Forge.Capability;
+
+namespace Forge.Application.Sample;
 
 /// <summary>
 /// Inbound command: ask the service to greet a person by name.

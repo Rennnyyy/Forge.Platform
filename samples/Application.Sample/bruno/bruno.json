@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "Capability.Http.Sample",
+  "name": "Application.Sample",
   "type": "collection",
   "ignore": []
 }

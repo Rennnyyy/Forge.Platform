@@ -1,0 +1,25 @@
+meta {
+  name: Books - delete (POST)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/books/delete
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "iri": "{{bookIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

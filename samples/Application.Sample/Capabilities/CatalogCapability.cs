@@ -1,4 +1,7 @@
-namespace Forge.Capability.Http.Sample;
+using Forge.Capability;
+using Forge.Capability.Http;
+
+namespace Forge.Application.Sample;
 
 // ── Shared nested POCO ─────────────────────────────────────────────────────────
 
@@ -168,5 +171,3 @@ public sealed class PatchItemHandler : ICapabilityHandler<PatchItemCommand, Patc
                 new PatchItemResponse(command.Id, updatedAt)));
     }
 }
-
-

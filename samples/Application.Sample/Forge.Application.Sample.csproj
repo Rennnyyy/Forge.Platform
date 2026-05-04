@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Forge.Application.Sample</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Entity type system + identity/predicate/relation attributes -->
+    <ProjectReference Include="..\..\src\Entity\Forge.Entity.csproj" />
+    <!-- Emits partial class halves (IRI, refs, constructors) for [Entity]-annotated types -->
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <!-- Active-record CRUD methods (CreateAsync, ReadAsync, …) on entity types -->
+    <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
+    <!-- Emits .g.ops.cs active-record partials for each [Entity] type -->
+    <ProjectReference Include="..\..\src\Operations.Generators\Forge.Operations.Generators.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <!-- Capability handler contract, dispatcher, context -->
+    <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
+    <!-- Emits .g.caps.cs CRUD handler types for [CrudCapabilities]-annotated entity types -->
+    <ProjectReference Include="..\..\src\Capability.Generators\Forge.Capability.Generators.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <!-- HTTP transport: MapCapabilities(), AddCapabilityHttp() -->
+    <ProjectReference Include="..\..\src\Capability.Http\Forge.Capability.Http.csproj" />
+    <!-- Aspect infrastructure (permissive when no aspects are registered) -->
+    <ProjectReference Include="..\..\src\Aspects\Forge.Aspects.csproj" />
+    <!-- RDF mapper + IEntityStore abstraction -->
+    <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
+    <!-- In-memory RDF store (no infrastructure needed) -->
+    <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+meta {
+  name: Books - create (POST)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/books/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "isbn": "978-0-201-37962-4",
+    "title": "The Pragmatic Programmer",
+    "author": "David Thomas, Andrew Hunt",
+    "publishedYear": 2019,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("bookIri", res.body.iri);
+}
+
+script:post-response {
+  bru.setVar("bookIri", res.body.iri);
+}

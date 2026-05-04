@@ -33,6 +33,9 @@
   <Folder Name="/src/Capability/">
     <Project Path="src/Capability/Forge.Capability.csproj" />
   </Folder>
+  <Folder Name="/src/Capability.Generators/">
+    <Project Path="src/Capability.Generators/Forge.Capability.Generators.csproj" />
+  </Folder>
   <Folder Name="/src/Authorization/">
     <Project Path="src/Authorization/Forge.Authorization.csproj" />
   </Folder>
@@ -43,7 +46,7 @@
     <Project Path="src/Capability.Http/Forge.Capability.Http.csproj" />
   </Folder>
   <Folder Name="/samples/">
-    <Project Path="samples/Capability.Http.Sample/Forge.Capability.Http.Sample.csproj" />
+    <Project Path="samples/Application.Sample/Forge.Application.Sample.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
@@ -58,6 +61,7 @@
     <Project Path="tests/Authorization.Tests/Forge.Authorization.Tests.csproj" />
     <Project Path="tests/Authorization.Http.Tests/Forge.Authorization.Http.Tests.csproj" />
     <Project Path="tests/Capability.Http.Tests/Forge.Capability.Http.Tests.csproj" />
-    <Project Path="tests/Capability.Http.Sample.Tests/Forge.Capability.Http.Sample.Tests.csproj" />
+    <Project Path="tests/Application.Sample.Tests/Forge.Application.Sample.Tests.csproj" />
+    <Project Path="tests/Capability.Generators.Tests/Forge.Capability.Generators.Tests.csproj" />
   </Folder>
 </Solution>
