@@ -1,0 +1,52 @@
+meta {
+  name: DataRecord - create (POST, all CLR types)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/data-records/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "key": "demo-record-001",
+    "label": "Forge Demo DataRecord",
+    "active": true,
+    "count": 42,
+    "serial": 9780201379624,
+    "ratio": 0.75,
+    "score": 98.6,
+    "amount": 1234.56,
+    "effectiveDate": "2026-01-01",
+    "timestamp": "2026-05-04T12:00:00+00:00",
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "reference": "https://forge-it.net/data-records/demo-record-001",
+    "notes": "A demo record exercising every supported scalar CLR type.",
+    "flagged": true,
+    "limit": 100,
+    "sequence": 1000000000000,
+    "factor": 1.5,
+    "precision": 3.14159265358979,
+    "fee": 9.99,
+    "expiresOn": "2027-12-31",
+    "archivedAt": null,
+    "alternateId": null,
+    "canonicalUri": "https://forge-it.net/canonical/demo-record-001"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("dataRecordIri", res.body.iri);
+}

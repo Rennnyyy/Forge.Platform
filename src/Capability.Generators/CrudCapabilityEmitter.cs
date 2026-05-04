@@ -280,6 +280,7 @@ internal static class CrudCapabilityEmitter
 
         sb.Append("[").Append(Cap).Append(".CapabilityAttribute(\"")
           .Append(m.CapabilityPathSegment).Append(".").Append(operation).AppendLine("\")]");
+        sb.Append("[").Append(Cap).AppendLine(".CrudCapabilityHandlerAttribute]");
         sb.Append("public sealed class ").Append(handlerName)
           .Append(" : ").Append(Cap).Append(".ICapabilityHandler<").Append(cmdType).Append(", ").Append(resType).AppendLine(">")
           .AppendLine("{");

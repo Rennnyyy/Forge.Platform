@@ -504,4 +504,18 @@ public sealed class CrudCapabilityGeneratorTests
         code.ShouldNotContain("Albums");      // owning ref excluded
         code.ShouldNotContain("Album");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // N. Every generated handler carries [CrudCapabilityHandlerAttribute]
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Every_generated_handler_carries_CrudCapabilityHandler_attribute()
+    {
+        var result = CrudCapabilityGeneratorRunner.Run(MinimalEntity());
+        var (_, code) = CapsFile(result, "Widget");
+
+        // Each handler class must be preceded by the [CrudCapabilityHandlerAttribute].
+        code.ShouldContain("CrudCapabilityHandlerAttribute]");
+    }
 }

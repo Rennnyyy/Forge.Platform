@@ -19,3 +19,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0011 — Assembly-scanning registration: `AddCapabilityHandlersFromAssemblyContaining<T>`](0011-assembly-scanning-registration.md)
 - [0011 — Assembly-scan autodiscovery for capability handler registration](0011-capability-handler-autodiscovery.md)
 - [0012 — `Forge.Capability.Generators`: CRUD capability generator](0012-crud-capability-generator.md)
+- [0013 — `[CrudCapabilityHandler]` marker attribute on generated handlers](0013-crud-handler-marker-attribute.md)

@@ -1,0 +1,36 @@
+meta {
+  name: DataRecord - read (POST)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/entities/data-records/read
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "iri": "{{dataRecordIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.key: eq demo-record-001
+  res.body.label: contains Forge Demo
+  res.body.active: eq true
+  res.body.count: eq 42
+  res.body.amount: eq 1234.56
+  res.body.effectiveDate: eq 2026-01-01
+  res.body.correlationId: isDefined
+  res.body.reference: isDefined
+  res.body.notes: isDefined
+  res.body.flagged: eq true
+}

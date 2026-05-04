@@ -61,7 +61,9 @@ public static class EndpointRouteBuilderExtensions
                     $"Handler type '{descriptor.HandlerType.FullName}' is missing the [Capability] " +
                     "attribute. All handlers discovered by MapCapabilities() must carry [Capability(\"...\")].");
 
-            var routePath    = attr.Identity.ToRoutePath();
+            var isCrud       = descriptor.HandlerType.GetCustomAttribute<CrudCapabilityHandlerAttribute>(inherit: false) is not null;
+            var prefix       = isCrud ? "api/entities" : "api/capabilities";
+            var routePath    = $"{prefix}/{attr.Identity.ToRoutePath()}";
             var endpointAttr = descriptor.HandlerType.GetCustomAttribute<CapabilityEndpointAttribute>(inherit: false);
             var httpMethod   = endpointAttr?.Method ?? "POST";
 

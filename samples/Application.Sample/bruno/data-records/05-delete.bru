@@ -1,11 +1,11 @@
 meta {
-  name: Books - delete (POST)
+  name: DataRecord - delete (POST)
   type: http
   seq: 5
 }
 
 post {
-  url: {{baseUrl}}/api/entities/books/delete
+  url: {{baseUrl}}/api/entities/data-records/delete
   body: json
   auth: none
 }
@@ -16,7 +16,7 @@ headers {
 
 body:json {
   {
-    "iri": "{{bookIri}}"
+    "iri": "{{dataRecordIri}}"
   }
 }
 

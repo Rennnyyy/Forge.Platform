@@ -81,6 +81,19 @@ public sealed class DeleteHandler : ICapabilityHandler<PingCommand, PingResponse
             new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
 }
 
+// Handler with [CrudCapabilityHandler] — used to verify api/entities/ routing (ADR-0006).
+[Capability("test.crud-ping")]
+[CrudCapabilityHandler]
+public sealed class CrudPingHandler : ICapabilityHandler<PingCommand, PingResponse>
+{
+    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+        PingCommand command,
+        CapabilityContext context,
+        CancellationToken cancellationToken = default)
+        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
+            new CapabilityResult<PingResponse>.Ok(new PingResponse("pong:" + command.Input)));
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Helper to capture the aspect IRI seen by the dispatcher
 // ────────────────────────────────────────────────────────────────────────
@@ -147,7 +160,7 @@ public sealed class MapCapabilitiesTests
             services.AddCapabilityHandler<PingCommand, PingResponse, PingHandler>());
         var client = app.GetTestClient();
 
-        var response = await client.PostAsJsonAsync("/test/ping", new PingCommand("hello"));
+        var response = await client.PostAsJsonAsync("/api/capabilities/test/ping", new PingCommand("hello"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PingResponse>();
@@ -166,7 +179,7 @@ public sealed class MapCapabilitiesTests
             services.AddCapabilityHandler<PingCommand, PingResponse, FailingHandler>());
         var client = app.GetTestClient();
 
-        var response = await client.PostAsJsonAsync("/test/fail", new PingCommand("x"));
+        var response = await client.PostAsJsonAsync("/api/capabilities/test/fail", new PingCommand("x"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         var body = await response.Content.ReadFromJsonAsync<CapabilityError>();
@@ -203,7 +216,7 @@ public sealed class MapCapabilitiesTests
         await app.StartAsync();
         var client = app.GetTestClient();
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/test/ping")
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/capabilities/test/ping")
         {
             Content = JsonContent.Create(new PingCommand("z")),
         };
@@ -251,8 +264,8 @@ public sealed class MapCapabilitiesTests
             services.AddCapabilityHandler<PingCommand, PingResponse, PingHandler>());
         var client = app.GetTestClient();
 
-        // "test.ping" → "/test/ping"
-        var response = await client.PostAsJsonAsync("/test/ping", new PingCommand("route-test"));
+        // "test.ping" → "/api/capabilities/test/ping"
+        var response = await client.PostAsJsonAsync("/api/capabilities/test/ping", new PingCommand("route-test"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -279,7 +292,7 @@ public sealed class MapCapabilitiesTests
         await app.StartAsync();
         var client = app.GetTestClient();
 
-        var response = await client.PostAsJsonAsync("/test/ping", new PingCommand("permissive"));
+        var response = await client.PostAsJsonAsync("/api/capabilities/test/ping", new PingCommand("permissive"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         // No aspect IRI → store was never asked to resolve a capability aspect.
@@ -332,5 +345,42 @@ public sealed class MapCapabilitiesTests
         var ex = Should.Throw<InvalidOperationException>(() => app.MapCapabilities());
         ex.Message.ShouldContain(nameof(DeleteHandler));
         ex.Message.ShouldContain("DELETE");
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 9. [CrudCapabilityHandler] routes handler under api/entities/
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CrudCapabilityHandler_attribute_routes_under_api_entities_prefix()
+    {
+        await using var app = await BuildAsync(services =>
+            services.AddCapabilityHandler<PingCommand, PingResponse, CrudPingHandler>());
+        var client = app.GetTestClient();
+
+        // [CrudCapabilityHandler] → "test.crud-ping" maps to /api/entities/test/crud-ping
+        var response = await client.PostAsJsonAsync("/api/entities/test/crud-ping", new PingCommand("crud"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PingResponse>();
+        body.ShouldNotBeNull();
+        body!.Output.ShouldBe("pong:crud");
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 10. Regular handler is NOT reachable under api/entities/
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Regular_handler_is_not_reachable_under_api_entities_prefix()
+    {
+        await using var app = await BuildAsync(services =>
+            services.AddCapabilityHandler<PingCommand, PingResponse, PingHandler>());
+        var client = app.GetTestClient();
+
+        // PingHandler has no [CrudCapabilityHandler] → must NOT be reachable at api/entities/
+        var response = await client.PostAsJsonAsync("/api/entities/test/ping", new PingCommand("x"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }

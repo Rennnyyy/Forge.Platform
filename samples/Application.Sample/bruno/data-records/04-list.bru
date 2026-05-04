@@ -1,11 +1,11 @@
 meta {
-  name: Books - delete (POST)
+  name: DataRecord - list (POST)
   type: http
-  seq: 5
+  seq: 4
 }
 
 post {
-  url: {{baseUrl}}/api/entities/books/delete
+  url: {{baseUrl}}/api/entities/data-records/list
   body: json
   auth: none
 }
@@ -15,11 +15,10 @@ headers {
 }
 
 body:json {
-  {
-    "iri": "{{bookIri}}"
-  }
+  {}
 }
 
 assert {
   res.status: eq 200
+  res.body.items: isDefined
 }

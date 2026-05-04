@@ -53,13 +53,18 @@ app.Use(async (ctx, next) =>
 });
 
 // ── 7. Capability endpoints ───────────────────────────────────────────────────
-// Auto-registers all endpoints derived from [Capability] on each handler:
+// Auto-registers all endpoints derived from [Capability] on each handler.
+// Handlers with [CrudCapabilityHandler] (generated) are routed under api/entities/:
 //
-//   POST  /books/create,read,update,delete,list  (generated Book handlers)
-//   POST  /demo/greet                            (GreetHandler)
-//   POST  /demo/catalog/items/create             (CreateItemHandler)
-//   PUT   /demo/catalog/items/update             (UpdateItemHandler)
-//   PATCH /demo/catalog/items/patch              (PatchItemHandler)
+//   POST  api/entities/books/create,read,update,delete,list                  (generated Book handlers)
+//   POST  api/entities/data-records/create,read,update,delete,list           (generated DataRecord handlers)
+//
+// Hand-written handlers are routed under api/capabilities/:
+//
+//   POST  api/capabilities/demo/greet                                        (GreetHandler)
+//   POST  api/capabilities/demo/catalog/items/create                         (CreateItemHandler)
+//   PUT   api/capabilities/demo/catalog/items/update                         (UpdateItemHandler)
+//   PATCH api/capabilities/demo/catalog/items/patch                          (PatchItemHandler)
 app.MapCapabilities();
 
 app.Run();

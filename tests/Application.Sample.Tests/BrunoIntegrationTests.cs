@@ -126,7 +126,7 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
                     "{\"name\":\"_probe\"}",
                     System.Text.Encoding.UTF8,
                     "application/json");
-                var response = await client.PostAsync($"{baseUrl}/demo/greet", content);
+                var response = await client.PostAsync($"{baseUrl}/api/capabilities/demo/greet", content);
                 if (response.IsSuccessStatusCode)
                     return;
             }
