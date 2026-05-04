@@ -22,14 +22,8 @@ builder.Services.AddCapabilityHandler<UpdateItemCommand, UpdateItemResponse, Upd
 builder.Services.AddCapabilityHandler<PatchItemCommand, PatchItemResponse, PatchItemHandler>();
 
 // 4. HTTP transport. Scans the registrations above and builds endpoint metadata.
-//    Must be called after all auto-routed AddCapabilityHandler<>() calls.
+//    Must be called after all AddCapabilityHandler<>() calls.
 builder.Services.AddCapabilityHttp();
-
-// 5. GetItemHandler is registered AFTER AddCapabilityHttp() and is therefore NOT
-//    auto-discovered by MapCapabilities(). The dispatcher is still in DI and is
-//    injected into the manual MapGet endpoint below.
-//    See Capability.Http ADR-0004 for the GET-with-route-param pattern.
-builder.Services.AddCapabilityHandler<GetItemQuery, GetItemResponse, GetItemHandler>();
 
 var app = builder.Build();
 
@@ -39,27 +33,6 @@ var app = builder.Build();
 //   PUT   /demo/catalog/items/update   ([CapabilityEndpoint("PUT")])
 //   PATCH /demo/catalog/items/patch    ([CapabilityEndpoint("PATCH")])
 app.MapCapabilities();
-
-// GET /demo/catalog/items/{id}
-// Route-parameter binding requires explicit wiring; the full dispatcher pipeline
-// (including aspect validation) is still exercised via ICapabilityDispatcher<,>.
-app.MapGet("demo/catalog/items/{id}", async (
-    Guid id,
-    ICapabilityDispatcher<GetItemQuery, GetItemResponse> dispatcher,
-    ICapabilityAspectIriProvider provider,
-    HttpContext httpContext,
-    CancellationToken ct) =>
-{
-    var iri    = await provider.GetCapabilityAspectIriAsync(httpContext, ct);
-    var result = await dispatcher.DispatchAsync(new GetItemQuery(id), iri, ct);
-
-    return result switch
-    {
-        CapabilityResult<GetItemResponse>.Ok ok     => Results.Ok(ok.Response),
-        CapabilityResult<GetItemResponse>.Fail fail  => Results.UnprocessableEntity(fail.Error),
-        _                                            => Results.StatusCode(500),
-    };
-});
 
 app.Run();
 

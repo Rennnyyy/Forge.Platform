@@ -56,6 +56,31 @@ public sealed class NoAttributeHandler : ICapabilityHandler<PingCommand, PingRes
             new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
 }
 
+// Handlers with bodyless methods — used for ADR-0005 guard tests only.
+[Capability("test.get")]
+[CapabilityEndpoint("GET")]
+public sealed class GetHandler : ICapabilityHandler<PingCommand, PingResponse>
+{
+    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+        PingCommand command,
+        CapabilityContext context,
+        CancellationToken cancellationToken = default)
+        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
+            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+}
+
+[Capability("test.delete")]
+[CapabilityEndpoint("DELETE")]
+public sealed class DeleteHandler : ICapabilityHandler<PingCommand, PingResponse>
+{
+    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+        PingCommand command,
+        CapabilityContext context,
+        CancellationToken cancellationToken = default)
+        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
+            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Helper to capture the aspect IRI seen by the dispatcher
 // ────────────────────────────────────────────────────────────────────────
@@ -259,5 +284,53 @@ public sealed class MapCapabilitiesTests
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         // No aspect IRI → store was never asked to resolve a capability aspect.
         store.DidNotReceive().TryResolveCapabilityAspect(Arg.Any<string>());
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 7. GET handler throws at MapCapabilities() time (ADR-0005)
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Get_method_throws_at_map_time()
+    {
+        var engine = Substitute.For<IMessageAspectEngine>();
+        var store  = Substitute.For<IAspectStore>();
+
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddSingleton(engine);
+        builder.Services.AddSingleton(store);
+        builder.Services.AddCapabilityHandler<PingCommand, PingResponse, GetHandler>();
+        builder.Services.AddCapabilityHttp();
+
+        await using var app = builder.Build();
+
+        var ex = Should.Throw<InvalidOperationException>(() => app.MapCapabilities());
+        ex.Message.ShouldContain(nameof(GetHandler));
+        ex.Message.ShouldContain("GET");
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 8. DELETE handler throws at MapCapabilities() time (ADR-0005)
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Delete_method_throws_at_map_time()
+    {
+        var engine = Substitute.For<IMessageAspectEngine>();
+        var store  = Substitute.For<IAspectStore>();
+
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddSingleton(engine);
+        builder.Services.AddSingleton(store);
+        builder.Services.AddCapabilityHandler<PingCommand, PingResponse, DeleteHandler>();
+        builder.Services.AddCapabilityHttp();
+
+        await using var app = builder.Build();
+
+        var ex = Should.Throw<InvalidOperationException>(() => app.MapCapabilities());
+        ex.Message.ShouldContain(nameof(DeleteHandler));
+        ex.Message.ShouldContain("DELETE");
     }
 }

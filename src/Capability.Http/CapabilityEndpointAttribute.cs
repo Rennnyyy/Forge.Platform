@@ -9,9 +9,11 @@ namespace Forge.Capability.Http;
 /// When absent, the endpoint is registered as <c>POST</c> (default per Capability.Http ADR-0002).
 /// </para>
 /// <para>
-/// <b>GET endpoints are not supported by <c>MapCapabilities()</c></b> — Minimal API does not
-/// bind complex types from the request body for GET requests. Register GET endpoints manually
-/// via <c>app.MapGet</c>; see Capability.Http ADR-0004 for the recommended pattern.
+/// <b>GET and DELETE are rejected by <c>MapCapabilities()</c></b> — Minimal API does not
+/// bind complex types from the request body for those methods. Annotating a handler with
+/// <c>[CapabilityEndpoint("GET")]</c> or <c>[CapabilityEndpoint("DELETE")]</c> will cause
+/// <see cref="EndpointRouteBuilderExtensions.MapCapabilities"/> to throw
+/// <see cref="InvalidOperationException"/> at startup. See Capability.Http ADR-0005.
 /// </para>
 /// See Capability.Http ADR-0004.
 /// </summary>

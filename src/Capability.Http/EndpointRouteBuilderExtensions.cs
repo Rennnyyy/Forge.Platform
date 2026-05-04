@@ -65,6 +65,14 @@ public static class EndpointRouteBuilderExtensions
             var endpointAttr = descriptor.HandlerType.GetCustomAttribute<CapabilityEndpointAttribute>(inherit: false);
             var httpMethod   = endpointAttr?.Method ?? "POST";
 
+            // Guard: bodyless HTTP methods (ADR-0005)
+            if (httpMethod is "GET" or "DELETE")
+                throw new InvalidOperationException(
+                    $"Handler type '{descriptor.HandlerType.FullName}' uses HTTP method '{httpMethod}', " +
+                    "which is not supported by MapCapabilities(). ASP.NET Minimal API does not bind " +
+                    "complex types from the request body for GET or DELETE requests. " +
+                    "Remove [CapabilityEndpoint] or use POST, PUT, or PATCH instead.");
+
             RegisterEndpointMethod
                 .MakeGenericMethod(descriptor.CommandType, descriptor.ResponseType)
                 .Invoke(null, [app, routePath, httpMethod]);
