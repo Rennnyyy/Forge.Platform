@@ -36,6 +36,12 @@
   <Folder Name="/src/Authorization/">
     <Project Path="src/Authorization/Forge.Authorization.csproj" />
   </Folder>
+  <Folder Name="/src/Authorization.Http/">
+    <Project Path="src/Authorization.Http/Forge.Authorization.Http.csproj" />
+  </Folder>
+  <Folder Name="/src/Capability.Http/">
+    <Project Path="src/Capability.Http/Forge.Capability.Http.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
@@ -47,5 +53,7 @@
     <Project Path="tests/Aspects.Tests/Forge.Aspects.Tests.csproj" />
     <Project Path="tests/Capability.Tests/Forge.Capability.Tests.csproj" />
     <Project Path="tests/Authorization.Tests/Forge.Authorization.Tests.csproj" />
+    <Project Path="tests/Authorization.Http.Tests/Forge.Authorization.Http.Tests.csproj" />
+    <Project Path="tests/Capability.Http.Tests/Forge.Capability.Http.Tests.csproj" />
   </Folder>
 </Solution>
