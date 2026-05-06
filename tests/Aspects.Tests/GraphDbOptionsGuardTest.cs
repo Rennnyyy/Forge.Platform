@@ -24,7 +24,7 @@ public sealed class GraphDbOptionsGuardTest
         var type = typeof(GraphDbOptions);
         var allMembers = type.GetMembers(
             BindingFlags.Public | BindingFlags.Instance |
-            BindingFlags.Static  | BindingFlags.NonPublic);
+            BindingFlags.Static | BindingFlags.NonPublic);
 
         foreach (var member in allMembers)
         {

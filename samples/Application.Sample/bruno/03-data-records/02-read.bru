@@ -1,23 +1,13 @@
 meta {
-  name: DataRecord - read (POST)
+  name: DataRecord - read (GET ?iri=)
   type: http
   seq: 2
 }
 
-post {
-  url: {{baseUrl}}/api/entities/data-records/read
-  body: json
+get {
+  url: {{baseUrl}}/api/entities/data-records?iri={{dataRecordIri}}
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {
-    "iri": "{{dataRecordIri}}"
-  }
 }
 
 assert {

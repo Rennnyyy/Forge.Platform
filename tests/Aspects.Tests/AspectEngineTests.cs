@@ -60,7 +60,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspect = new InlineTtlOperationAspect(aspectIri, localTtl, contextWhere: null);
 
         await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Wrong Name");
@@ -89,7 +89,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
         await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Existing Artist");
@@ -126,7 +126,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspectForB = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
         await using var sp = BuildProvider(s => s.AddOperationAspect(aspectForB));
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         // Scenario 1: B before A → fails
@@ -160,7 +160,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         const string unregisteredIri = "https://forge-it.net/aspects/test/unregistered-aspect";
 
         await using var sp = BuildProvider();
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist();
@@ -180,7 +180,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
     public async Task NoOp_aspect_bypasses_validation_and_entity_is_persisted()
     {
         await using var sp = BuildProvider();
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist();
@@ -208,7 +208,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
         await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Protected Artist");
@@ -236,7 +236,7 @@ public sealed class AspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspect = new InlineTtlOperationAspect(aspectIri, null, contextWhere);
 
         await using var sp = BuildProvider(s => s.AddOperationAspect(aspect));
-        var txStore  = sp.GetRequiredService<ITransactionalEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
         var rawStore = sp.GetRequiredService<IEntityStore>();
 
         var artist = MakeArtist("Removable Artist");

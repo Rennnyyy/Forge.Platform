@@ -229,7 +229,8 @@ SELECT ?member WHERE {{
         return doc.RootElement.TryGetProperty("boolean", out var b) && b.GetBoolean();
     }
 
-    private async Task<List<string>> SelectIrisAsync(string sparql, string varName, CancellationToken ct)    {
+    private async Task<List<string>> SelectIrisAsync(string sparql, string varName, CancellationToken ct)
+    {
         using var req = new HttpRequestMessage(HttpMethod.Post, _gdb.QueryEndpoint)
         {
             Content = new StringContent(sparql, Encoding.UTF8, "application/sparql-query"),

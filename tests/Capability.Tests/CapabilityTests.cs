@@ -30,7 +30,7 @@ public sealed class CapabilityContextTests
 
         var context = new CapabilityContext
         {
-            Aspect     = capAspect,
+            Aspect = capAspect,
             AgentToken = "agent-x",
         };
 
@@ -86,13 +86,13 @@ public sealed class CapabilityResultTests
 
         var okBranch = ok switch
         {
-            CapabilityResult<MyResponse>.Ok o  => o.Response.Value,
+            CapabilityResult<MyResponse>.Ok o => o.Response.Value,
             CapabilityResult<MyResponse>.Fail f => f.Error.Code,
             _ => "unexpected",
         };
         var failBranch = fail switch
         {
-            CapabilityResult<MyResponse>.Ok o  => o.Response.Value,
+            CapabilityResult<MyResponse>.Ok o => o.Response.Value,
             CapabilityResult<MyResponse>.Fail f => f.Error.Code,
             _ => "unexpected",
         };
@@ -153,8 +153,8 @@ public sealed class CapabilityHandlerTests
     public async Task Handler_reads_agent_token_from_context_established_by_dispatcher()
     {
         // Arrange: host code establishes the ambient scope before calling DispatchAsync.
-        var engine     = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
-        var store      = NSubstitute.Substitute.For<Forge.Aspects.IAspectStore>();
+        var engine = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
+        var store = NSubstitute.Substitute.For<Forge.Aspects.IAspectStore>();
         var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
 
         CapabilityResult<PingResponse> result;

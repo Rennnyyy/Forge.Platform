@@ -101,9 +101,9 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
                 break;
 
             case EntityWriteOperation write:
-                var mapper  = _registry.ForEntityType(write.Entity.GetType());
+                var mapper = _registry.ForEntityType(write.Entity.GetType());
                 var typeIri = mapper.ResolveTypeIri(_repoOptions);
-                var sink    = new CollectingTripleSink();
+                var sink = new CollectingTripleSink();
                 mapper.ProjectEntity(write.Entity, sink, typeIri);
 
                 if (write.Mode == WriteMode.Create)

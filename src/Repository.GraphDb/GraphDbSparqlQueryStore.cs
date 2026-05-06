@@ -60,17 +60,17 @@ public sealed partial class GraphDbEntityStore : ISparqlQueryStore
             || !binding.TryGetProperty("value", out var valueEl))
             return false;
 
-        var type  = typeEl.GetString();
+        var type = typeEl.GetString();
         var value = valueEl.GetString() ?? string.Empty;
 
         term = type switch
         {
-            "uri"     => RdfTerm.Iri(value),
-            "bnode"   => RdfTerm.Blank(value),
+            "uri" => RdfTerm.Iri(value),
+            "bnode" => RdfTerm.Blank(value),
             "literal" => RdfTerm.Literal(
                 value,
-                binding.TryGetProperty("datatype",  out var dt)   ? dt.GetString()   : null,
-                binding.TryGetProperty("xml:lang",  out var lang)  ? lang.GetString() : null),
+                binding.TryGetProperty("datatype", out var dt) ? dt.GetString() : null,
+                binding.TryGetProperty("xml:lang", out var lang) ? lang.GetString() : null),
             _ => default,
         };
 

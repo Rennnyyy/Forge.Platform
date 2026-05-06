@@ -1,0 +1,34 @@
+meta {
+  name: Artists - create (POST)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/artists
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Aria Nova",
+    "country": "UK",
+    "bio": "Electronic music producer known for ambient soundscapes.",
+    "active": true,
+    "debutYear": 2018
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("artistIri", res.body.iri);
+}

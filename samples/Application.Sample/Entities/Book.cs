@@ -1,5 +1,5 @@
-using Forge.Capability;
 using Forge.Entity;
+using Forge.Operations;
 
 namespace Forge.Application.Sample;
 
@@ -10,16 +10,14 @@ namespace Forge.Application.Sample;
 ///   <item><c>Forge.Operations.Generators</c> emits active-record CRUD methods
 ///         (<c>CreateAsync</c>, <c>ReadAsync</c>, <c>UpdateAsync</c>, <c>DeleteAsync</c>,
 ///         <c>ListAsync</c>).</item>
-///   <item><c>Forge.Capability.Generators</c> emits five <c>ICapabilityHandler</c>
-///         implementations (<c>CreateBookHandler</c> … <c>ListBookHandler</c>) that
-///         delegate to those active-record methods. Each handler is wired to an HTTP
-///         endpoint by <c>MapCapabilities()</c>.</item>
+///   <item><c>[OperationEndpoints]</c> + <c>MapOperations()</c> expose five REST endpoints
+///         under <c>api/entities/books</c> (POST, GET, PUT, DELETE).</item>
 /// </list>
-/// See Capability ADR-0012, Operations ADR-*, Entity ADR-*.
+/// See Operations.Http ADR-0001, Operations ADR-*, Entity ADR-*.
 /// </summary>
 [Entity(Path = "books")]
 [Identity(IdentityGenerator.PropertyBasedPlain)]
-[CrudCapabilities]
+[OperationEndpoints]
 public partial class Book
 {
     /// <summary>

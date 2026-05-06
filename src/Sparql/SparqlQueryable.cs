@@ -180,7 +180,7 @@ public sealed class SparqlQueryProvider<T> : IQueryProvider where T : class, IEn
 
     private static TResult ConvertCount<TResult>(long n)
     {
-        if (typeof(TResult) == typeof(int))  return (TResult)(object)checked((int)n);
+        if (typeof(TResult) == typeof(int)) return (TResult)(object)checked((int)n);
         if (typeof(TResult) == typeof(long)) return (TResult)(object)n;
         return (TResult)Convert.ChangeType(n, typeof(TResult), System.Globalization.CultureInfo.InvariantCulture)!;
     }

@@ -27,10 +27,10 @@ public sealed class LinqToSparqlBehavioralTests : IClassFixture<EntityOptionsFix
     private static async Task<InMemoryEntityStore> BuildPopulatedStoreAsync()
     {
         var store = BuildStore();
-        await store.SaveAsync(new Artist { Name = "Aria",  Country = "us", Active = true,  DebutYear = 2010 });
+        await store.SaveAsync(new Artist { Name = "Aria", Country = "us", Active = true, DebutYear = 2010 });
         await store.SaveAsync(new Artist { Name = "Bjorn", Country = "se", Active = false, DebutYear = 2005 });
-        await store.SaveAsync(new Artist { Name = "Cleo",  Country = "us", Active = true,  DebutYear = 2018, Bio = "soulful" });
-        await store.SaveAsync(new Artist { Name = "Dora",  Country = "de", Active = true,  DebutYear = 2001 });
+        await store.SaveAsync(new Artist { Name = "Cleo", Country = "us", Active = true, DebutYear = 2018, Bio = "soulful" });
+        await store.SaveAsync(new Artist { Name = "Dora", Country = "de", Active = true, DebutYear = 2001 });
         return store;
     }
 

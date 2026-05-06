@@ -4,21 +4,14 @@ meta {
   seq: 4
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/delete
-  body: json
+delete {
+  url: {{baseUrl}}/api/entities/books?iri={{entityAspectBookIri}}
+  body: none
   auth: none
 }
 
 headers {
-  Content-Type: application/json
-  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-delete-v1
-}
-
-body:json {
-  {
-    "iri": "{{entityAspectBookIri}}"
-  }
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:book-delete-v1
 }
 
 assert {

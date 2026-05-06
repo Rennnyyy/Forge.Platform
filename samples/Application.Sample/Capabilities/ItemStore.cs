@@ -15,13 +15,13 @@ public sealed class ItemStore
         var id = Guid.Parse("11111111-1111-1111-1111-111111111111");
         _items[id] = new StoredItem(
             id,
-            Name:        "Seed Widget",
+            Name: "Seed Widget",
             IsAvailable: true,
-            Quantity:    10,
-            PriceEur:    9.99,
-            Tags:        ["seed", "demo"],
-            Dimensions:  new ItemDimensions(5.0, 5.0, 5.0),
-            CreatedAt:   DateTimeOffset.UtcNow);
+            Quantity: 10,
+            PriceEur: 9.99,
+            Tags: ["seed", "demo"],
+            Dimensions: new ItemDimensions(5.0, 5.0, 5.0),
+            CreatedAt: DateTimeOffset.UtcNow);
     }
 
     public StoredItem? TryGet(Guid id) =>
@@ -32,11 +32,11 @@ public sealed class ItemStore
 }
 
 public sealed record StoredItem(
-    Guid                  Id,
-    string                Name,
-    bool                  IsAvailable,
-    int                   Quantity,
-    double                PriceEur,
+    Guid Id,
+    string Name,
+    bool IsAvailable,
+    int Quantity,
+    double PriceEur,
     IReadOnlyList<string> Tags,
-    ItemDimensions        Dimensions,
-    DateTimeOffset        CreatedAt);
+    ItemDimensions Dimensions,
+    DateTimeOffset CreatedAt);

@@ -232,8 +232,8 @@ public sealed partial class InMemoryEntityStore : IEntityStore
         if (head is IBlankNode)
         {
             var rdfFirst = _graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
-            var rdfRest  = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
-            var rdfNil   = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
+            var rdfRest = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
+            var rdfNil = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
             while (head is IBlankNode bn && !bn.Equals(rdfNil))
             {
                 cancellationToken.ThrowIfCancellationRequested();

@@ -372,19 +372,19 @@ internal static class LinqToSparqlVisitor
             ? value.GetType()
             : Nullable.GetUnderlyingType(expectedType) ?? expectedType;
 
-        if (t == typeof(string))    return EmitTypedLiteral((string)value, XsdString);
-        if (t == typeof(bool))      return EmitTypedLiteral(((bool)value) ? "true" : "false", XsdBoolean);
-        if (t == typeof(int))       return EmitTypedLiteral(Convert.ToInt32(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdInt);
-        if (t == typeof(long))      return EmitTypedLiteral(Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdLong);
-        if (t == typeof(short))     return EmitTypedLiteral(Convert.ToInt16(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdInt);
-        if (t == typeof(double))    return EmitTypedLiteral(Convert.ToDouble(value, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture), XsdDouble);
-        if (t == typeof(float))     return EmitTypedLiteral(Convert.ToSingle(value, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture), XsdFloat);
-        if (t == typeof(decimal))   return EmitTypedLiteral(Convert.ToDecimal(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdDecimal);
-        if (t == typeof(Guid))      return EmitTypedLiteral(((Guid)value).ToString("D"), XsdString);
-        if (t == typeof(DateTime))      return EmitTypedLiteral(((DateTime)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
-        if (t == typeof(DateTimeOffset))return EmitTypedLiteral(((DateTimeOffset)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
-        if (t == typeof(DateOnly))      return EmitTypedLiteral(((DateOnly)value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), XsdDate);
-        if (t == typeof(Uri))           return $"<{((Uri)value)}>";
+        if (t == typeof(string)) return EmitTypedLiteral((string)value, XsdString);
+        if (t == typeof(bool)) return EmitTypedLiteral(((bool)value) ? "true" : "false", XsdBoolean);
+        if (t == typeof(int)) return EmitTypedLiteral(Convert.ToInt32(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdInt);
+        if (t == typeof(long)) return EmitTypedLiteral(Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdLong);
+        if (t == typeof(short)) return EmitTypedLiteral(Convert.ToInt16(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdInt);
+        if (t == typeof(double)) return EmitTypedLiteral(Convert.ToDouble(value, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture), XsdDouble);
+        if (t == typeof(float)) return EmitTypedLiteral(Convert.ToSingle(value, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture), XsdFloat);
+        if (t == typeof(decimal)) return EmitTypedLiteral(Convert.ToDecimal(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture), XsdDecimal);
+        if (t == typeof(Guid)) return EmitTypedLiteral(((Guid)value).ToString("D"), XsdString);
+        if (t == typeof(DateTime)) return EmitTypedLiteral(((DateTime)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
+        if (t == typeof(DateTimeOffset)) return EmitTypedLiteral(((DateTimeOffset)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
+        if (t == typeof(DateOnly)) return EmitTypedLiteral(((DateOnly)value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), XsdDate);
+        if (t == typeof(Uri)) return $"<{((Uri)value)}>";
         return EmitTypedLiteral(Convert.ToString(value, CultureInfo.InvariantCulture) ?? "", XsdString);
     }
 
@@ -402,11 +402,11 @@ internal static class LinqToSparqlVisitor
             switch (ch)
             {
                 case '\\': sb.Append("\\\\"); break;
-                case '"':  sb.Append("\\\""); break;
+                case '"': sb.Append("\\\""); break;
                 case '\n': sb.Append("\\n"); break;
                 case '\r': sb.Append("\\r"); break;
                 case '\t': sb.Append("\\t"); break;
-                default:   sb.Append(ch); break;
+                default: sb.Append(ch); break;
             }
         }
         return sb.ToString();

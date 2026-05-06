@@ -4,20 +4,20 @@ meta {
   seq: 4
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/update
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{availableBookIri}}
   body: json
   auth: none
 }
 
 headers {
   Content-Type: application/json
-  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-update-strict-v1
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:book-update-strict-v1
 }
 
 body:json {
   {
-    "iri": "{{availableBookIri}}",
+    "isbn": "strict-update-001",
     "title": "Available Book",
     "author": "Test Author",
     "publishedYear": 1750,

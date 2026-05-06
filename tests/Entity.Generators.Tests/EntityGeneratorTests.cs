@@ -266,7 +266,7 @@ public class EntityGeneratorTests
         result.Diagnostics.ShouldBeEmpty();
 
         var authorCode = result.EmittedFiles.Single(f => f.FileName.Contains(".Author.")).Source;
-        var tagCode    = result.EmittedFiles.Single(f => f.FileName.Contains(".Tag.")).Source;
+        var tagCode = result.EmittedFiles.Single(f => f.FileName.Contains(".Tag.")).Source;
 
         // Owning side must call the inverse add/remove helpers
         authorCode.ShouldContain("__Forge_AddTo_Authors");

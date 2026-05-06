@@ -12,9 +12,9 @@ public sealed partial class Color
 
     private Color(string name) { Name = name; }
 
-    public static readonly Color Red   = new("red");
+    public static readonly Color Red = new("red");
     public static readonly Color Green = new("green");
-    public static readonly Color Blue  = new("blue");
+    public static readonly Color Blue = new("blue");
 
     public static IReadOnlyList<Color> All { get; } = [Red, Green, Blue];
 }

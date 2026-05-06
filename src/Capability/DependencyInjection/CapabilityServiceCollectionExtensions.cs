@@ -96,9 +96,9 @@ public static class CapabilityServiceCollectionExtensions
         Type responseType,
         Type handlerType)
     {
-        var handlerServiceType    = typeof(ICapabilityHandler<,>).MakeGenericType(commandType, responseType);
+        var handlerServiceType = typeof(ICapabilityHandler<,>).MakeGenericType(commandType, responseType);
         var dispatcherServiceType = typeof(ICapabilityDispatcher<,>).MakeGenericType(commandType, responseType);
-        var dispatcherImplType    = typeof(CapabilityDispatcher<,>).MakeGenericType(commandType, responseType);
+        var dispatcherImplType = typeof(CapabilityDispatcher<,>).MakeGenericType(commandType, responseType);
 
         services.TryAddTransient(handlerServiceType, handlerType);
         services.TryAdd(ServiceDescriptor.Describe(
@@ -106,9 +106,9 @@ public static class CapabilityServiceCollectionExtensions
             sp =>
             {
                 var handler = sp.GetRequiredService(handlerServiceType);
-                var engine  = sp.GetRequiredService<IMessageAspectEngine>();
-                var store   = sp.GetRequiredService<IAspectStore>();
-                var guard   = sp.GetService<IAspectGuard>();
+                var engine = sp.GetRequiredService<IMessageAspectEngine>();
+                var store = sp.GetRequiredService<IAspectStore>();
+                var guard = sp.GetService<IAspectGuard>();
                 return Activator.CreateInstance(dispatcherImplType, handler, engine, store, guard)!;
             },
             ServiceLifetime.Transient));

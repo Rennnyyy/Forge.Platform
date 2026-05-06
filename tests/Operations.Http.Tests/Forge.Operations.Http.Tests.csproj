@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Forge.Operations.Http.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Operations.Http\Forge.Operations.Http.csproj" />
+    <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
+    <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\Aspects\Forge.Aspects.csproj" />
+    <!-- Emit entity partial halves for test fixture types -->
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <!-- Emit active-record CRUD methods for test fixture types -->
+    <ProjectReference Include="..\..\src\Operations.Generators\Forge.Operations.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <!-- Shared fixture types with well-known entity types (Artist, Album, …) -->
+    <ProjectReference Include="..\..\tests\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+  </ItemGroup>
+
+</Project>

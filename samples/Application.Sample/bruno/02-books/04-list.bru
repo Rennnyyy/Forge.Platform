@@ -1,21 +1,13 @@
 meta {
-  name: Books - list (POST)
+  name: Books - list (GET)
   type: http
   seq: 4
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/list
-  body: json
+get {
+  url: {{baseUrl}}/api/entities/books
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {}
 }
 
 assert {

@@ -10,8 +10,8 @@ internal sealed class CapabilityHandlerDescriptor
 {
     public CapabilityHandlerDescriptor(Type handlerType, Type commandType, Type responseType)
     {
-        HandlerType  = handlerType;
-        CommandType  = commandType;
+        HandlerType = handlerType;
+        CommandType = commandType;
         ResponseType = responseType;
     }
 

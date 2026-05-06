@@ -1,11 +1,11 @@
 meta {
-  name: Books - update (POST)
+  name: Books - update (PUT ?iri=)
   type: http
   seq: 3
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/update
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{bookIri}}
   body: json
   auth: none
 }
@@ -16,7 +16,7 @@ headers {
 
 body:json {
   {
-    "iri": "{{bookIri}}",
+    "isbn": "978-0-201-37962-4",
     "title": "The Pragmatic Programmer (20th Anniversary Edition)",
     "author": "David Thomas, Andrew Hunt",
     "publishedYear": 2019,

@@ -39,10 +39,10 @@ public sealed class GraphDbFixture : IAsyncLifetime
     /// </summary>
     private static readonly string ContainerCli = FindContainerCli();
 
-    public string BaseUrl      { get; } = Environment.GetEnvironmentVariable("FORGE_GRAPHDB_URL")
+    public string BaseUrl { get; } = Environment.GetEnvironmentVariable("FORGE_GRAPHDB_URL")
                                           ?? "http://localhost:7200";
     public string RepositoryId { get; } = "forge-tests";
-    public bool   Available    { get; private set; }
+    public bool Available { get; private set; }
 
     /// <summary>Whether this fixture started the compose stack.</summary>
     private bool _weStartedCompose;
@@ -198,8 +198,8 @@ public sealed class GraphDbFixture : IAsyncLifetime
                 using var probe = Process.Start(new ProcessStartInfo(candidate, "--version")
                 {
                     RedirectStandardOutput = true,
-                    RedirectStandardError  = true,
-                    UseShellExecute        = false,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
                 });
                 probe?.WaitForExit();
                 if (probe?.ExitCode == 0) return candidate;
@@ -251,8 +251,8 @@ public sealed class GraphDbFixture : IAsyncLifetime
         proc.StartInfo = new ProcessStartInfo(fileName, arguments)
         {
             RedirectStandardOutput = true,
-            RedirectStandardError  = true,
-            UseShellExecute        = false,
+            RedirectStandardError = true,
+            UseShellExecute = false,
         };
         try
         {

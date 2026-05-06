@@ -1,23 +1,13 @@
 meta {
-  name: DataRecord - delete (POST)
+  name: DataRecord - delete (DELETE ?iri=)
   type: http
   seq: 5
 }
 
-post {
-  url: {{baseUrl}}/api/entities/data-records/delete
-  body: json
+delete {
+  url: {{baseUrl}}/api/entities/data-records?iri={{dataRecordIri}}
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {
-    "iri": "{{dataRecordIri}}"
-  }
 }
 
 assert {

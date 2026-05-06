@@ -62,7 +62,7 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
 
         // All three effects must be visible.
         var loadedAria = await repo.FindAsync(aria.Iri);
-        var loadedKai  = await repo.FindAsync(kaiUpdated.Iri);
+        var loadedKai = await repo.FindAsync(kaiUpdated.Iri);
         var deletedKai = await repo.FindAsync(kai.Iri);
 
         loadedAria.ShouldNotBeNull();
@@ -88,7 +88,7 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
 
         // Transaction: delete Aria, then attempt to create a duplicate (same IRI via
         // Create on the same Name+Country → same generated IRI) → second Create fails.
-        var newArtist  = new Artist { Name = "Brand New", Country = "de" };
+        var newArtist = new Artist { Name = "Brand New", Country = "de" };
         var duplicateAria = new Artist { Name = "Aria Nova", Country = "us" }; // same IRI
 
         var tx = new EntityTransaction((ITransactionalEntityStore)store);
@@ -200,14 +200,14 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
 
         // Two independent artists, one per concurrent transaction.
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        var kai  = new Artist { Name = "Kai Storm",  Country = "de" };
+        var kai = new Artist { Name = "Kai Storm", Country = "de" };
 
         await Task.WhenAll(
             CommitCreateAsync(store, aria),
             CommitCreateAsync(store, kai));
 
         var loadedAria = await repo.FindAsync(aria.Iri);
-        var loadedKai  = await repo.FindAsync(kai.Iri);
+        var loadedKai = await repo.FindAsync(kai.Iri);
 
         loadedAria.ShouldNotBeNull();
         loadedKai.ShouldNotBeNull();

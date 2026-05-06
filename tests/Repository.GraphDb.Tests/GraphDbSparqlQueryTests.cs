@@ -36,11 +36,11 @@ public sealed class GraphDbSparqlQueryTests
     {
         var registry = new RdfMapperRegistry();
         var repoOpts = Options.Create(new EntityRepositoryOptions());
-        var gdbOpts  = Options.Create(new GraphDbOptions
+        var gdbOpts = Options.Create(new GraphDbOptions
         {
-            BaseUrl      = _fx.BaseUrl,
+            BaseUrl = _fx.BaseUrl,
             RepositoryId = _fx.RepositoryId,
-            Timeout      = TimeSpan.FromSeconds(15),
+            Timeout = TimeSpan.FromSeconds(15),
         });
         return new GraphDbEntityStore(new HttpClient(), registry, repoOpts, gdbOpts);
     }
@@ -48,10 +48,10 @@ public sealed class GraphDbSparqlQueryTests
     private async Task<GraphDbEntityStore> BuildPopulatedStoreAsync()
     {
         var store = BuildStore();
-        await store.SaveAsync(new Artist { Name = "Aria",  Country = "us", Active = true,  DebutYear = 2010 });
+        await store.SaveAsync(new Artist { Name = "Aria", Country = "us", Active = true, DebutYear = 2010 });
         await store.SaveAsync(new Artist { Name = "Bjorn", Country = "se", Active = false, DebutYear = 2005 });
-        await store.SaveAsync(new Artist { Name = "Cleo",  Country = "us", Active = true,  DebutYear = 2018, Bio = "soulful" });
-        await store.SaveAsync(new Artist { Name = "Dora",  Country = "de", Active = true,  DebutYear = 2001 });
+        await store.SaveAsync(new Artist { Name = "Cleo", Country = "us", Active = true, DebutYear = 2018, Bio = "soulful" });
+        await store.SaveAsync(new Artist { Name = "Dora", Country = "de", Active = true, DebutYear = 2001 });
         return store;
     }
 
@@ -171,7 +171,7 @@ SELECT ?s ?name WHERE {{
         await _fx.ClearAsync();
         await using var store = await BuildPopulatedStoreAsync();
 
-        var withBio    = await store.Query<Artist>().Where(a => a.Bio != null).ToListAsync();
+        var withBio = await store.Query<Artist>().Where(a => a.Bio != null).ToListAsync();
         var withoutBio = await store.Query<Artist>().Where(a => a.Bio == null).ToListAsync();
 
         withBio.Single().Name.ShouldBe("Cleo");
@@ -209,7 +209,7 @@ SELECT ?s ?name WHERE {{
         await using var store = await BuildPopulatedStoreAsync();
 
         var totalActive = await store.Query<Artist>().CountAsync(a => a.Active);
-        var totalAll    = await store.Query<Artist>().CountAsync();
+        var totalAll = await store.Query<Artist>().CountAsync();
 
         totalActive.ShouldBe(3);
         totalAll.ShouldBe(4);

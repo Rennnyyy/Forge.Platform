@@ -60,7 +60,7 @@ internal static class SparqlEmitter
             {
                 sb.Append(' ');
                 if (o.Descending) sb.Append("DESC(?").Append(o.Property.Variable).Append(')');
-                else              sb.Append("ASC(?").Append(o.Property.Variable).Append(')');
+                else sb.Append("ASC(?").Append(o.Property.Variable).Append(')');
             }
         }
 

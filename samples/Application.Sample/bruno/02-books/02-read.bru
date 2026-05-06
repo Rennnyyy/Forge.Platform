@@ -1,23 +1,13 @@
 meta {
-  name: Books - read (POST)
+  name: Books - read (GET ?iri=)
   type: http
   seq: 2
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/read
-  body: json
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{bookIri}}
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {
-    "iri": "{{bookIri}}"
-  }
 }
 
 assert {

@@ -283,7 +283,7 @@ public class EntityFixtureTests
         using var scope = EntitySession.Begin(new InMemoryEntityLoader());
 
         var author = new Author { Name = "Alice" };
-        var tag    = new Tag   { Label = "csharp" };
+        var tag = new Tag { Label = "csharp" };
 
         await author.Tags.AddAsync(tag);
 
@@ -299,7 +299,7 @@ public class EntityFixtureTests
         using var scope = EntitySession.Begin(new InMemoryEntityLoader());
 
         var author = new Author { Name = "Bob" };
-        var tag    = new Tag   { Label = "dotnet" };
+        var tag = new Tag { Label = "dotnet" };
 
         await author.Tags.AddAsync(tag);
         await author.Tags.RemoveAsync(tag);
@@ -313,8 +313,8 @@ public class EntityFixtureTests
         using var scope = EntitySession.Begin(new InMemoryEntityLoader());
 
         var alice = new Author { Name = "Alice" };
-        var bob   = new Author { Name = "Bob" };
-        var tag   = new Tag   { Label = "oss" };
+        var bob = new Author { Name = "Bob" };
+        var tag = new Tag { Label = "oss" };
 
         await alice.Tags.AddAsync(tag);
         await bob.Tags.AddAsync(tag);
@@ -331,7 +331,7 @@ public class EntityFixtureTests
     [Fact]
     public async Task Deferred_collection_loads_iris_and_entities_from_store_on_first_enumeration()
     {
-        var tag    = new Tag   { Label = "oss" };
+        var tag = new Tag { Label = "oss" };
         var author = new Author { Name = "Charlie" };
 
         var loader = new InMemoryEntityLoader()
@@ -353,7 +353,7 @@ public class EntityFixtureTests
     [Fact]
     public async Task EnsureLoadedAsync_is_idempotent_and_does_not_reload()
     {
-        var tag    = new Tag   { Label = "net" };
+        var tag = new Tag { Label = "net" };
         var author = new Author { Name = "Dana" };
 
         var loader = new InMemoryEntityLoader()

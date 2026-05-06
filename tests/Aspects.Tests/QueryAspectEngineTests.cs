@@ -375,9 +375,9 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
         await using var sp = BuildProvider();
         var store = sp.GetRequiredService<IEntityStore>();
 
-        await store.SaveAsync(MakeArtist("Aria",  "us"), WriteMode.Create);
+        await store.SaveAsync(MakeArtist("Aria", "us"), WriteMode.Create);
         await store.SaveAsync(MakeArtist("Bjorn", "se"), WriteMode.Create);
-        await store.SaveAsync(MakeArtist("Cleo",  "us"), WriteMode.Create);
+        await store.SaveAsync(MakeArtist("Cleo", "us"), WriteMode.Create);
 
         // FilterWhere uses ?entityIri — the same convention as the per-entity access gate.
         const string usCountryFilter =
@@ -387,9 +387,9 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
         var aspect = new InlineTtlQueryAspect("us-only-linq", usCountryFilter, null);
         await using var sp2 = BuildProvider(s => s.AddQueryAspect(aspect));
         var store2 = sp2.GetRequiredService<IEntityStore>();
-        await store2.SaveAsync(MakeArtist("Aria",  "us"), WriteMode.Create);
+        await store2.SaveAsync(MakeArtist("Aria", "us"), WriteMode.Create);
         await store2.SaveAsync(MakeArtist("Bjorn", "se"), WriteMode.Create);
-        await store2.SaveAsync(MakeArtist("Cleo",  "us"), WriteMode.Create);
+        await store2.SaveAsync(MakeArtist("Cleo", "us"), WriteMode.Create);
 
         using var _ = QueryAspectScope.Use(aspect.Iri);
         var results = await store2.Query<Artist>().ToListAsync();

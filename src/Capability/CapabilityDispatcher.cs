@@ -37,9 +37,9 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
         ArgumentNullException.ThrowIfNull(store);
 
         _handler = handler;
-        _engine  = engine;
-        _store   = store;
-        _guard   = guard ?? AllowAllAspectGuard.Instance;
+        _engine = engine;
+        _store = store;
+        _guard = guard ?? AllowAllAspectGuard.Instance;
     }
 
     /// <inheritdoc/>
@@ -56,7 +56,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
             : null;
 
         // Resolve per-slot message aspects from the store.
-        var commandAspect  = ResolveMessageAspect(capAspect?.CommandAspectIri);
+        var commandAspect = ResolveMessageAspect(capAspect?.CommandAspectIri);
         var responseAspect = ResolveMessageAspect(capAspect?.ResponseAspectIri);
 
         // ② Capture the ambient agent token.
@@ -75,7 +75,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
         // ⑤ Build context — handler sees the CapabilityAspect record and the agent token.
         var context = new CapabilityContext
         {
-            Aspect    = capAspect,
+            Aspect = capAspect,
             AgentToken = agentToken,
         };
 

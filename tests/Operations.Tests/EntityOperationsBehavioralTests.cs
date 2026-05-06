@@ -200,9 +200,9 @@ public sealed class EntityOperationsBehavioralTests : IClassFixture<EntityOption
         await using var store = BuildStore();
         using var _ = EntityOperations.Use(store);
 
-        await new Artist { Name = "Aurora", Country = "no", Active = true  }.CreateAsync();
-        await new Artist { Name = "Bjorn",  Country = "se", Active = false }.CreateAsync();
-        await new Artist { Name = "Cleo",   Country = "us", Active = true  }.CreateAsync();
+        await new Artist { Name = "Aurora", Country = "no", Active = true }.CreateAsync();
+        await new Artist { Name = "Bjorn", Country = "se", Active = false }.CreateAsync();
+        await new Artist { Name = "Cleo", Country = "us", Active = true }.CreateAsync();
 
         var actives = await EntityOperations.Query<Artist>()
             .Where(a => a.Active)

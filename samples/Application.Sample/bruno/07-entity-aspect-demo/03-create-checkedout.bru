@@ -5,14 +5,14 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/api/entities/books/create
+  url: {{baseUrl}}/api/entities/books
   body: json
   auth: none
 }
 
 headers {
   Content-Type: application/json
-  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-create-v1
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:book-write-v1
 }
 
 body:json {

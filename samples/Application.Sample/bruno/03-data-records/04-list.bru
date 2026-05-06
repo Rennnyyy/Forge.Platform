@@ -1,21 +1,13 @@
 meta {
-  name: DataRecord - list (POST)
+  name: DataRecord - list (GET)
   type: http
   seq: 4
 }
 
-post {
-  url: {{baseUrl}}/api/entities/data-records/list
-  body: json
+get {
+  url: {{baseUrl}}/api/entities/data-records
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {}
 }
 
 assert {

@@ -86,23 +86,23 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         switch (plan.Strategy)
         {
             case IdentityStrategy.UuidV4 or IdentityStrategy.UuidV5:
-            {
-                // Use the generator-emitted internal ctor `internal {Type}(Guid persistedUuid)`
-                // when the suffix is a parseable GUID, else fall through to parameterless + HydrateIri.
-                var suffix = ExtractIriSuffix(iri);
-                if (Guid.TryParse(suffix, out var g) && plan.GuidCtor is not null)
-                    return (T)plan.GuidCtor.Invoke(new object[] { g });
-                goto case IdentityStrategy.Path;
-            }
+                {
+                    // Use the generator-emitted internal ctor `internal {Type}(Guid persistedUuid)`
+                    // when the suffix is a parseable GUID, else fall through to parameterless + HydrateIri.
+                    var suffix = ExtractIriSuffix(iri);
+                    if (Guid.TryParse(suffix, out var g) && plan.GuidCtor is not null)
+                        return (T)plan.GuidCtor.Invoke(new object[] { g });
+                    goto case IdentityStrategy.Path;
+                }
 
             case IdentityStrategy.Path:
             default:
-            {
-                var inst = (T)Activator.CreateInstance(typeof(T), nonPublic: true)!;
-                // EntityBase.HydrateIri is protected internal — invoke via reflection.
-                plan.HydrateIriMethod.Invoke(inst, new object?[] { iri });
-                return inst;
-            }
+                {
+                    var inst = (T)Activator.CreateInstance(typeof(T), nonPublic: true)!;
+                    // EntityBase.HydrateIri is protected internal — invoke via reflection.
+                    plan.HydrateIriMethod.Invoke(inst, new object?[] { iri });
+                    return inst;
+                }
         }
     }
 
@@ -287,10 +287,10 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
 
         foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            var owning   = prop.GetCustomAttribute<OwningAttribute>();
-            var inverse  = prop.GetCustomAttribute<InverseAttribute>();
-            var idPart   = prop.GetCustomAttribute<IdentityPartAttribute>();
-            var pred     = prop.GetCustomAttribute<PredicateAttribute>();
+            var owning = prop.GetCustomAttribute<OwningAttribute>();
+            var inverse = prop.GetCustomAttribute<InverseAttribute>();
+            var idPart = prop.GetCustomAttribute<IdentityPartAttribute>();
+            var pred = prop.GetCustomAttribute<PredicateAttribute>();
 
             // Inverse refs/collections are not projected, not hydrated (ADR-0013, v1).
             if (inverse is not null) continue;

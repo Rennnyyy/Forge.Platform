@@ -39,11 +39,11 @@ public sealed class GraphDbTransactionTests
     {
         var registry = new RdfMapperRegistry();
         var repoOpts = Options.Create(new EntityRepositoryOptions());
-        var gdbOpts  = Options.Create(new GraphDbOptions
+        var gdbOpts = Options.Create(new GraphDbOptions
         {
-            BaseUrl      = _fx.BaseUrl,
+            BaseUrl = _fx.BaseUrl,
             RepositoryId = _fx.RepositoryId,
-            Timeout      = TimeSpan.FromSeconds(30),
+            Timeout = TimeSpan.FromSeconds(30),
         });
         return new GraphDbEntityStore(new HttpClient(), registry, repoOpts, gdbOpts);
     }
@@ -64,8 +64,8 @@ public sealed class GraphDbTransactionTests
         var kai = new Artist { Name = "Kai Storm", Country = "us" };
         await repo.SaveAsync(kai, WriteMode.Create);
 
-        var aria       = new Artist { Name = "Aria Nova",  Country = "us" };
-        var kaiUpdated = new Artist { Name = "Kai Storm",  Country = "gb" }; // changed Country → new IRI
+        var aria = new Artist { Name = "Aria Nova", Country = "us" };
+        var kaiUpdated = new Artist { Name = "Kai Storm", Country = "gb" }; // changed Country → new IRI
 
         await using var tx = new EntityTransaction((ITransactionalEntityStore)store);
         tx.Delete(kai.Iri)
@@ -74,7 +74,7 @@ public sealed class GraphDbTransactionTests
         await tx.CommitAsync();
 
         var loadedAria = await repo.FindAsync(aria.Iri);
-        var loadedKai  = await repo.FindAsync(kaiUpdated.Iri);
+        var loadedKai = await repo.FindAsync(kaiUpdated.Iri);
         var deletedKai = await repo.FindAsync(kai.Iri);
 
         loadedAria.ShouldNotBeNull();
@@ -101,8 +101,8 @@ public sealed class GraphDbTransactionTests
         await repo.SaveAsync(aria, WriteMode.Create);
 
         // Transaction: create a new artist, then attempt a duplicate — should fail + rollback.
-        var newArtist     = new Artist { Name = "Brand New",  Country = "de" };
-        var duplicateAria = new Artist { Name = "Aria Nova",  Country = "us" }; // same IRI
+        var newArtist = new Artist { Name = "Brand New", Country = "de" };
+        var duplicateAria = new Artist { Name = "Aria Nova", Country = "us" }; // same IRI
 
         var tx = new EntityTransaction((ITransactionalEntityStore)store);
         tx.Create(newArtist)
@@ -110,7 +110,7 @@ public sealed class GraphDbTransactionTests
 
         await Should.ThrowAsync<InvalidOperationException>(() => tx.CommitAsync().AsTask());
 
-        var shouldBeNull   = await repo.FindAsync(newArtist.Iri);
+        var shouldBeNull = await repo.FindAsync(newArtist.Iri);
         var ariaStillThere = await repo.FindAsync(aria.Iri);
 
         shouldBeNull.ShouldBeNull("rolled-back Create must not be visible on GraphDB");

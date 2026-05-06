@@ -408,14 +408,14 @@ internal static class EntityEmitter
         if (r.IsLazy)
         {
             sb.Append("        return new global::Forge.Entity.DeferredEntityRefCollectionImpl<")
-              .Append(targetDisplay).AppendLine(">(" );
+              .Append(targetDisplay).AppendLine(">(");
             sb.AppendLine("            ownerIriSelector: () => Iri,");
             sb.Append("            predicate: \"").Append(r.Predicate).AppendLine("\",");
         }
         else
         {
             sb.Append("        return new global::Forge.Entity.EntityRefCollectionImpl<")
-              .Append(targetDisplay).AppendLine(">(" );
+              .Append(targetDisplay).AppendLine(">(");
         }
     }
 

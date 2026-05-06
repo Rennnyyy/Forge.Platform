@@ -1,0 +1,30 @@
+meta {
+  name: Artists - update (PUT ?iri=)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/entities/artists?iri={{artistIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Aria Nova",
+    "country": "UK",
+    "bio": "Electronic music producer — now touring internationally.",
+    "active": true,
+    "debutYear": 2018
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

@@ -7,6 +7,8 @@ using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
 using Forge.Operations;
+using Forge.Operations.Http;
+using Forge.Operations.Http.DependencyInjection;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.GraphDb.DependencyInjection;
@@ -41,39 +43,27 @@ else
 builder.Services.AddSingleton<ItemStore>();
 
 // ── 4. Capability handlers ────────────────────────────────────────────────────
-// The generated CRUD handlers for Book (CreateBookHandler … ListBookHandler) and
-// the hand-written demo handlers (GreetHandler, CreateItemHandler, UpdateItemHandler,
-// PatchItemHandler) are all discovered automatically by scanning this assembly.
-// This call MUST come before AddCapabilityHttp() (see Capability ADR-0011).
+// Discovers hand-written capability handlers (GreetHandler, CreateItemHandler,
+// UpdateItemHandler, PatchItemHandler, TriggerFaultHandler, AspectDemoHandler) by
+// scanning this assembly. Must be called before AddCapabilityHttp() (Capability ADR-0011).
 builder.Services.AddCapabilityHandlersFromAssemblyContaining<Book>();
 
-// ── 5. HTTP transport ─────────────────────────────────────────────────────────
+// ── 5. HTTP transport (capability) ───────────────────────────────────────────
 // Scans the handler registrations above and builds the endpoint metadata used
 // by MapCapabilities(). Must be called AFTER AddCapabilityHandlers…().
 builder.Services.AddCapabilityHttp();
 
-var app = builder.Build();
+// ── 6. HTTP transport (entity operations) ────────────────────────────────────
+// Scans the assembly for [Entity]+[OperationEndpoints] types (Book, DataRecord,
+// Artist) and registers one OperationEndpointDescriptor per entity.
+// MapOperations() wires the five REST endpoints per entity. See Operations.Http ADR-0001.
+builder.Services.AddOperationEndpointsHttpFromAssemblyContaining<Book>();
 
-// ── 6. EntityOperations middleware ────────────────────────────────────────────
-// The generated handlers delegate to active-record methods such as
-// entity.CreateAsync() which resolve the ambient IEntityStore via AsyncLocal.
-// This middleware binds the DI-resolved store to the current request context so
-// every capability handler within that request can call entity operations.
-app.Use(async (ctx, next) =>
-{
-    var store = ctx.RequestServices.GetRequiredService<IEntityStore>();
-    using var _ = EntityOperations.Use(store);
-    await next(ctx);
-});
+var app = builder.Build();
 
 // ── 7. Capability endpoints ───────────────────────────────────────────────────
 // Auto-registers all endpoints derived from [Capability] on each handler.
-// Handlers with [CrudCapabilityHandler] (generated) are routed under api/entities/:
-//
-//   POST  api/entities/books/create,read,update,delete,list                  (generated Book handlers)
-//   POST  api/entities/data-records/create,read,update,delete,list           (generated DataRecord handlers)
-//
-// Hand-written handlers are routed under api/capabilities/:
+// All capability handlers are routed under api/capabilities/:
 //
 //   POST  api/capabilities/demo/greet                                        (GreetHandler)
 //   POST  api/capabilities/demo/catalog/items/create                         (CreateItemHandler)
@@ -82,6 +72,19 @@ app.Use(async (ctx, next) =>
 //   POST  api/capabilities/demo/fault                                        (TriggerFaultHandler — always 422)
 //   POST  api/capabilities/demo/aspect                                       (AspectDemoHandler — see sample ADR-0003)
 app.MapCapabilities();
+
+// ── 8. Entity operation endpoints ────────────────────────────────────────────
+// Registers five REST endpoints per [OperationEndpoints] entity (Book, DataRecord, Artist):
+//
+//   POST   api/entities/books                  — Create
+//   GET    api/entities/books                  — List
+//   GET    api/entities/books?iri=…            — Read
+//   PUT    api/entities/books?iri=…            — Update
+//   DELETE api/entities/books?iri=…            — Delete
+//
+// Same pattern for api/entities/data-records and api/entities/artists.
+// The optional X-Forge-Operation-AspectIri header activates IOperationAspect validation.
+app.MapOperations();
 
 // ── 8. Capability aspect registration ────────────────────────────────────────
 // Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore
@@ -112,22 +115,21 @@ var aspectStore = app.Services.GetRequiredService<IAspectStore>();
 aspectStore.RegisterMessage(demoCommandAspect);
 aspectStore.RegisterCapabilityAspect(new CapabilityAspect
 {
-    Iri              = "urn:forge:aspects:capability:demo-v1",
+    Iri = "urn:forge:aspects:capability:demo-v1",
     CommandAspectIri = "urn:forge:aspects:demo-command-v1",
 });
 
 // ── 9. Book entity operation aspects ─────────────────────────────────────────
-// Demonstrates IOperationAspect validation on generated CUD handlers via
-// EntityTransaction. See sample ADR-0004, Aspects ADR-0010, Capability ADR-0015.
+// Demonstrates IOperationAspect validation on Book entity endpoints via
+// EntityTransaction and MapOperations(). See sample ADR-0004, Aspects ADR-0010.
 //
-// Two operation aspects:
-//   book-write-v1 : Local SHACL pass — publishedYear must be >= 1800
-//                  Active for Create and Update when aspect header is supplied.
-//   book-delete-v1: Context SPARQL pass — rejects delete when available = false
-//                  (cannot delete a checked-out book).
+// Two operation aspects are registered directly; callers supply their IRIs via
+//   X-Forge-Operation-AspectIri: <iri>
 //
-// Three capability aspects (one per CUD operation) bundle the operation aspect IRI
-// so the caller supplies a single X-Forge-Capability-AspectIri header.
+//   book-write-v1         : Local SHACL — publishedYear must be >= 1800.
+//                           Use for Create and Update.
+//   book-delete-v1        : Context SPARQL — rejects delete when available = false
+//                           (cannot delete a checked-out book).
 var bookWriteAspect = new InlineTtlOperationAspect(
     iri: "urn:forge:aspects:operation:book-write-v1",
     localShapeTtl: """
@@ -157,23 +159,13 @@ var bookDeleteAspect = new InlineTtlOperationAspect(
 
 aspectStore.RegisterOperation(bookWriteAspect);
 aspectStore.RegisterOperation(bookDeleteAspect);
-aspectStore.RegisterCapabilityAspect(new CapabilityAspect
-{
-    Iri = "urn:forge:aspects:capability:book-create-v1",
-    OperationAspectIri = "urn:forge:aspects:operation:book-write-v1",
-});
-aspectStore.RegisterCapabilityAspect(new CapabilityAspect
-{
-    Iri = "urn:forge:aspects:capability:book-update-v1",
-    OperationAspectIri = "urn:forge:aspects:operation:book-write-v1",
-});
 
 // ── 10. Book strict-update aspect (SHACL + WHERE combined) ───────────────────
 // Demonstrates combining both validation passes in a single IOperationAspect:
 //   Local SHACL pass: publishedYear must be >= 1800
 //   Context WHERE pass: cannot update a checked-out book (available = false)
 // The caller supplies:
-//   X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-update-strict-v1
+//   X-Forge-Operation-AspectIri: urn:forge:aspects:operation:book-update-strict-v1
 var bookUpdateStrictAspect = new InlineTtlOperationAspect(
     iri: "urn:forge:aspects:operation:book-update-strict-v1",
     localShapeTtl: """
@@ -197,16 +189,6 @@ var bookUpdateStrictAspect = new InlineTtlOperationAspect(
         """);
 
 aspectStore.RegisterOperation(bookUpdateStrictAspect);
-aspectStore.RegisterCapabilityAspect(new CapabilityAspect
-{
-    Iri = "urn:forge:aspects:capability:book-update-strict-v1",
-    OperationAspectIri = "urn:forge:aspects:operation:book-update-strict-v1",
-});
-aspectStore.RegisterCapabilityAspect(new CapabilityAspect
-{
-    Iri = "urn:forge:aspects:capability:book-delete-v1",
-    OperationAspectIri = "urn:forge:aspects:operation:book-delete-v1",
-});
 
 app.Run();
 

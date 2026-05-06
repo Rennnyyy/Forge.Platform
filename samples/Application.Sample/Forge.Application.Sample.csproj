@@ -22,11 +22,8 @@
     </ProjectReference>
     <!-- Capability handler contract, dispatcher, context -->
     <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
-    <!-- Emits .g.caps.cs CRUD handler types for [CrudCapabilities]-annotated entity types -->
-    <ProjectReference Include="..\..\src\Capability.Generators\Forge.Capability.Generators.csproj">
-      <OutputItemType>Analyzer</OutputItemType>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
+    <!-- HTTP transport: MapOperations(), AddOperationEndpointsHttp() -->
+    <ProjectReference Include="..\..\src\Operations.Http\Forge.Operations.Http.csproj" />
     <!-- HTTP transport: MapCapabilities(), AddCapabilityHttp() -->
     <ProjectReference Include="..\..\src\Capability.Http\Forge.Capability.Http.csproj" />
     <!-- Aspect infrastructure (permissive when no aspects are registered) -->

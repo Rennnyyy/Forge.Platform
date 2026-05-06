@@ -1,23 +1,13 @@
 meta {
-  name: Books - delete (POST)
+  name: Books - delete (DELETE ?iri=)
   type: http
   seq: 5
 }
 
-post {
-  url: {{baseUrl}}/api/entities/books/delete
-  body: json
+delete {
+  url: {{baseUrl}}/api/entities/books?iri={{bookIri}}
+  body: none
   auth: none
-}
-
-headers {
-  Content-Type: application/json
-}
-
-body:json {
-  {
-    "iri": "{{bookIri}}"
-  }
 }
 
 assert {

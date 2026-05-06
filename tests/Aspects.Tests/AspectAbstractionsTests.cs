@@ -99,10 +99,10 @@ public sealed class CapabilityAspectTests
 
         var aspect = new CapabilityAspect
         {
-            Iri               = "urn:cap",
-            CommandAspectIri  = "urn:cmd",
+            Iri = "urn:cap",
+            CommandAspectIri = "urn:cmd",
             ResponseAspectIri = "urn:resp",
-            EventAspectIris   = eventMap,
+            EventAspectIris = eventMap,
         };
 
         aspect.Iri.ShouldBe("urn:cap");
@@ -141,7 +141,7 @@ public sealed class CapabilityAspectTests
     public void With_expression_produces_new_record_with_updated_field()
     {
         var original = new CapabilityAspect { Iri = "urn:cap" };
-        var updated  = original with { CommandAspectIri = "urn:cmd" };
+        var updated = original with { CommandAspectIri = "urn:cmd" };
 
         updated.Iri.ShouldBe("urn:cap");
         updated.CommandAspectIri.ShouldBe("urn:cmd");

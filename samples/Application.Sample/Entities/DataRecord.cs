@@ -1,5 +1,5 @@
-using Forge.Capability;
 using Forge.Entity;
+using Forge.Operations;
 
 namespace Forge.Application.Sample;
 
@@ -10,14 +10,12 @@ namespace Forge.Application.Sample;
 /// <c>double</c>, <c>decimal</c>, <c>DateOnly</c>, <c>DateTimeOffset</c>,
 /// <c>Guid</c>, <c>Uri</c> — non-nullable and nullable.
 /// <br/>
-/// Uses <c>[CrudCapabilities]</c> to auto-generate five
-/// <c>ICapabilityHandler</c> implementations (Create, Read, Update, Delete,
-/// List) wired to HTTP endpoints under <c>/data-records/</c> by
-/// <c>MapCapabilities()</c>.
+/// Uses <c>[OperationEndpoints]</c> + <c>MapOperations()</c> to expose five REST
+/// endpoints under <c>api/entities/data-records</c> (POST, GET, PUT, DELETE).
 /// </summary>
 [Entity(Path = "data-records")]
 [Identity(IdentityGenerator.PropertyBasedPlain)]
-[CrudCapabilities]
+[OperationEndpoints]
 public partial class DataRecord
 {
     /// <summary>

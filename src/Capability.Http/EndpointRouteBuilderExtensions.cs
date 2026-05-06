@@ -63,11 +63,9 @@ public static class EndpointRouteBuilderExtensions
                     $"Handler type '{descriptor.HandlerType.FullName}' is missing the [Capability] " +
                     "attribute. All handlers discovered by MapCapabilities() must carry [Capability(\"...\")].");
 
-            var isCrud       = descriptor.HandlerType.GetCustomAttribute<CrudCapabilityHandlerAttribute>(inherit: false) is not null;
-            var prefix       = isCrud ? "api/entities" : "api/capabilities";
-            var routePath    = $"{prefix}/{attr.Identity.ToRoutePath()}";
+            var routePath = $"api/capabilities/{attr.Identity.ToRoutePath()}";
             var endpointAttr = descriptor.HandlerType.GetCustomAttribute<CapabilityEndpointAttribute>(inherit: false);
-            var httpMethod   = endpointAttr?.Method ?? "POST";
+            var httpMethod = endpointAttr?.Method ?? "POST";
 
             // Guard: bodyless HTTP methods (ADR-0005)
             if (httpMethod is "GET" or "DELETE")
@@ -124,9 +122,9 @@ public static class EndpointRouteBuilderExtensions
 
             return result switch
             {
-                CapabilityResult<TResponse>.Ok ok     => Results.Ok(ok.Response),
-                CapabilityResult<TResponse>.Fail fail  => Results.UnprocessableEntity(fail.Error),
-                _                                      => Results.StatusCode(500),
+                CapabilityResult<TResponse>.Ok ok => Results.Ok(ok.Response),
+                CapabilityResult<TResponse>.Fail fail => Results.UnprocessableEntity(fail.Error),
+                _ => Results.StatusCode(500),
             };
         });
     }

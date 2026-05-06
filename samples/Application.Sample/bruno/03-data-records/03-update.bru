@@ -1,11 +1,11 @@
 meta {
-  name: DataRecord - update (POST)
+  name: DataRecord - update (PUT ?iri=)
   type: http
   seq: 3
 }
 
-post {
-  url: {{baseUrl}}/api/entities/data-records/update
+put {
+  url: {{baseUrl}}/api/entities/data-records?iri={{dataRecordIri}}
   body: json
   auth: none
 }
@@ -16,7 +16,7 @@ headers {
 
 body:json {
   {
-    "iri": "{{dataRecordIri}}",
+    "key": "demo-record-001",
     "label": "Forge Demo DataRecord (updated)",
     "active": false,
     "count": 99,

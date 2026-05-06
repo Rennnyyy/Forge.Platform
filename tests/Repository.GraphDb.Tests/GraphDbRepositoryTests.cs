@@ -25,21 +25,21 @@ public sealed class GraphDbRepositoryTests
     // ── Store + repo factory ─────────────────────────────────────────────────
 
     private sealed record Stores(
-        GraphDbEntityStore           Store,
-        EntityRepository<Artist>     Artists,
-        EntityRepository<Label>      Labels,
-        EntityRepository<Album>      Albums,
-        EntityRepository<Track>      Tracks);
+        GraphDbEntityStore Store,
+        EntityRepository<Artist> Artists,
+        EntityRepository<Label> Labels,
+        EntityRepository<Album> Albums,
+        EntityRepository<Track> Tracks);
 
     private Stores Build()
     {
         var registry = new RdfMapperRegistry();
         var repoOpts = Options.Create(new EntityRepositoryOptions());
-        var gdbOpts  = Options.Create(new GraphDbOptions
+        var gdbOpts = Options.Create(new GraphDbOptions
         {
-            BaseUrl      = _fx.BaseUrl,
+            BaseUrl = _fx.BaseUrl,
             RepositoryId = _fx.RepositoryId,
-            Timeout      = TimeSpan.FromSeconds(15),
+            Timeout = TimeSpan.FromSeconds(15),
         });
         var store = new GraphDbEntityStore(new HttpClient(), registry, repoOpts, gdbOpts);
         return new Stores(
@@ -61,23 +61,23 @@ public sealed class GraphDbRepositoryTests
         await _fx.ClearAsync();
         var s = Build();
 
-        var externalId   = Guid.NewGuid();
-        var bornOn       = new DateOnly(1990, 6, 15);
+        var externalId = Guid.NewGuid();
+        var bornOn = new DateOnly(1990, 6, 15);
         var registeredAt = new DateTimeOffset(2010, 3, 1, 12, 0, 0, TimeSpan.FromHours(1));
-        var website      = new Uri("https://arianowa.example");
+        var website = new Uri("https://arianowa.example");
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        aria.Bio           = "Indie-electronic producer from New York.";
-        aria.Active        = true;
-        aria.DebutYear     = 2010;
-        aria.StreamCount   = 4_200_000_000L;
-        aria.AvgBpm        = 128.5f;
-        aria.Popularity    = 8.75;
+        aria.Bio = "Indie-electronic producer from New York.";
+        aria.Active = true;
+        aria.DebutYear = 2010;
+        aria.StreamCount = 4_200_000_000L;
+        aria.AvgBpm = 128.5f;
+        aria.Popularity = 8.75;
         aria.TotalEarnings = 123_456.78m;
-        aria.BornOn        = bornOn;
-        aria.RegisteredAt  = registeredAt;
-        aria.ExternalId    = externalId;
-        aria.Website       = website;
+        aria.BornOn = bornOn;
+        aria.RegisteredAt = registeredAt;
+        aria.ExternalId = externalId;
+        aria.Website = website;
         await s.Artists.SaveAsync(aria);
 
         var loaded = await s.Artists.LoadAsync(aria.Iri);
@@ -184,10 +184,10 @@ public sealed class GraphDbRepositoryTests
         var s = Build();
         using var session = EntitySession.Begin(s.Store);
 
-        var merge   = new Label { Slug = "merge" };
+        var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
         var eclipse = new Album { Title = "Eclipse", ReleaseYear = 2023 };
-        var voltage  = new Album { Title = "Voltage",  ReleaseYear = 2024 };
+        var voltage = new Album { Title = "Voltage", ReleaseYear = 2024 };
         await s.Albums.SaveAsync(eclipse);
         await s.Albums.SaveAsync(voltage);
         await merge.Albums.AddAsync(eclipse);
@@ -212,9 +212,9 @@ public sealed class GraphDbRepositoryTests
         var s = Build();
         using var session = EntitySession.Begin(s.Store);
 
-        var t1 = new Track { Title = "Sunrise",      Position = 1, DurationSeconds = 240 };
-        var t2 = new Track { Title = "Midnight Run",  Position = 2, DurationSeconds = 195 };
-        var t3 = new Track { Title = "Fade Out",     Position = 3, DurationSeconds = 310 };
+        var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
+        var t2 = new Track { Title = "Midnight Run", Position = 2, DurationSeconds = 195 };
+        var t3 = new Track { Title = "Fade Out", Position = 3, DurationSeconds = 310 };
         await s.Tracks.SaveAsync(t1);
         await s.Tracks.SaveAsync(t2);
         await s.Tracks.SaveAsync(t3);
@@ -226,7 +226,7 @@ public sealed class GraphDbRepositoryTests
         await s.Albums.SaveAsync(eclipse);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
-        var seen   = new List<(string Title, int Dur)>();
+        var seen = new List<(string Title, int Dur)>();
         await foreach (var t in loaded.Tracks) seen.Add((t.Title, t.DurationSeconds));
         seen.ShouldBe(new[] { ("Sunrise", 240), ("Midnight Run", 195), ("Fade Out", 310) });
     }
@@ -244,7 +244,7 @@ public sealed class GraphDbRepositoryTests
         using var session = EntitySession.Begin(s.Store);
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        var kai  = new Artist { Name = "Kai Storm",  Country = "uk" };
+        var kai = new Artist { Name = "Kai Storm", Country = "uk" };
         await s.Artists.SaveAsync(aria);
         await s.Artists.SaveAsync(kai);
 
@@ -310,9 +310,9 @@ public sealed class GraphDbRepositoryTests
         var s = Build();
         using var session = EntitySession.Begin(s.Store);
 
-        var t1 = new Track { Title = "Sunrise",  Position = 1, DurationSeconds = 240 };
+        var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         var t2 = new Track { Title = "Fade Out", Position = 2, DurationSeconds = 310 };
-        var t3 = new Track { Title = "Encore",   Position = 3, DurationSeconds = 180 };
+        var t3 = new Track { Title = "Encore", Position = 3, DurationSeconds = 180 };
         await s.Tracks.SaveAsync(t1);
         await s.Tracks.SaveAsync(t2);
         await s.Tracks.SaveAsync(t3);
@@ -364,8 +364,8 @@ public sealed class GraphDbRepositoryTests
         var s = Build();
         using var session = EntitySession.Begin(s.Store);
 
-        var aria  = new Artist { Name = "Aria Nova", Country = "us" };
-        var merge = new Label  { Slug = "merge" };
+        var aria = new Artist { Name = "Aria Nova", Country = "us" };
+        var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
         await s.Artists.SaveAsync(aria);
         await s.Labels.SaveAsync(merge);

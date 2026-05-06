@@ -17,34 +17,34 @@ public sealed record ItemDimensions(double WidthCm, double HeightCm, double Dept
 /// </summary>
 public sealed record CreateItemCommand(
     // ── Non-nullable scalars (one of each supported CLR type) ──
-    string           Name,
-    bool             IsAvailable,
-    int              Quantity,
-    long             Barcode,
-    float            WeightKg,
-    double           PriceEur,
-    decimal          TaxRate,
-    DateOnly         AvailableFrom,
-    DateTimeOffset   CreatedAt,
-    Guid             ExternalId,
-    Uri              ThumbnailUri,
+    string Name,
+    bool IsAvailable,
+    int Quantity,
+    long Barcode,
+    float WeightKg,
+    double PriceEur,
+    decimal TaxRate,
+    DateOnly AvailableFrom,
+    DateTimeOffset CreatedAt,
+    Guid ExternalId,
+    Uri ThumbnailUri,
     // ── Nullable variants ──
-    string?          Description,
-    bool?            IsFeatured,
-    int?             ReorderPoint,
-    long?            AlternateBarcode,
-    float?           DiscountPct,
-    double?          CompareAtPrice,
-    decimal?         ShippingCost,
-    DateOnly?        DiscontinuedOn,
-    DateTimeOffset?  LastModifiedAt,
-    Guid?            ParentItemId,
-    Uri?             CanonicalUri,
+    string? Description,
+    bool? IsFeatured,
+    int? ReorderPoint,
+    long? AlternateBarcode,
+    float? DiscountPct,
+    double? CompareAtPrice,
+    decimal? ShippingCost,
+    DateOnly? DiscontinuedOn,
+    DateTimeOffset? LastModifiedAt,
+    Guid? ParentItemId,
+    Uri? CanonicalUri,
     // ── Collections ──
     IReadOnlyList<string> Tags,
-    IReadOnlyList<Guid>   CategoryIds,
+    IReadOnlyList<Guid> CategoryIds,
     // ── Nested POCO ──
-    ItemDimensions   Dimensions);
+    ItemDimensions Dimensions);
 
 public sealed record CreateItemResponse(Guid ItemId, DateTimeOffset StoredAt);
 
@@ -60,18 +60,18 @@ public sealed class CreateItemHandler : ICapabilityHandler<CreateItemCommand, Cr
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
-        var itemId   = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
         var storedAt = DateTimeOffset.UtcNow;
 
         _store.Save(new StoredItem(
             itemId,
-            Name:        command.Name,
+            Name: command.Name,
             IsAvailable: command.IsAvailable,
-            Quantity:    command.Quantity,
-            PriceEur:    command.PriceEur,
-            Tags:        command.Tags,
-            Dimensions:  command.Dimensions,
-            CreatedAt:   storedAt));
+            Quantity: command.Quantity,
+            PriceEur: command.PriceEur,
+            Tags: command.Tags,
+            Dimensions: command.Dimensions,
+            CreatedAt: storedAt));
 
         return ValueTask.FromResult<CapabilityResult<CreateItemResponse>>(
             new CapabilityResult<CreateItemResponse>.Ok(
@@ -82,13 +82,13 @@ public sealed class CreateItemHandler : ICapabilityHandler<CreateItemCommand, Cr
 // ── UPDATE  PUT /demo/catalog/items/update ─────────────────────────────────────
 
 public sealed record UpdateItemCommand(
-    Guid                  Id,
-    string                Name,
-    double                PriceEur,
-    int                   Quantity,
-    bool                  IsAvailable,
+    Guid Id,
+    string Name,
+    double PriceEur,
+    int Quantity,
+    bool IsAvailable,
     IReadOnlyList<string> Tags,
-    ItemDimensions        Dimensions);
+    ItemDimensions Dimensions);
 
 public sealed record UpdateItemResponse(Guid Id, DateTimeOffset UpdatedAt);
 
@@ -114,12 +114,12 @@ public sealed class UpdateItemHandler : ICapabilityHandler<UpdateItemCommand, Up
         var updatedAt = DateTimeOffset.UtcNow;
         _store.Save(existing with
         {
-            Name        = command.Name,
-            PriceEur    = command.PriceEur,
-            Quantity    = command.Quantity,
+            Name = command.Name,
+            PriceEur = command.PriceEur,
+            Quantity = command.Quantity,
             IsAvailable = command.IsAvailable,
-            Tags        = command.Tags,
-            Dimensions  = command.Dimensions,
+            Tags = command.Tags,
+            Dimensions = command.Dimensions,
         });
 
         return ValueTask.FromResult<CapabilityResult<UpdateItemResponse>>(
@@ -132,10 +132,10 @@ public sealed class UpdateItemHandler : ICapabilityHandler<UpdateItemCommand, Up
 
 /// <summary>Partial-update command. Null properties are left unchanged in the store.</summary>
 public sealed record PatchItemCommand(
-    Guid    Id,
+    Guid Id,
     string? Name,
     double? PriceEur,
-    int?    Quantity);
+    int? Quantity);
 
 public sealed record PatchItemResponse(Guid Id, DateTimeOffset UpdatedAt);
 
@@ -161,7 +161,7 @@ public sealed class PatchItemHandler : ICapabilityHandler<PatchItemCommand, Patc
         var updatedAt = DateTimeOffset.UtcNow;
         _store.Save(existing with
         {
-            Name     = command.Name     ?? existing.Name,
+            Name = command.Name ?? existing.Name,
             PriceEur = command.PriceEur ?? existing.PriceEur,
             Quantity = command.Quantity ?? existing.Quantity,
         });

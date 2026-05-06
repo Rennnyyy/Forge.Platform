@@ -1,0 +1,15 @@
+meta {
+  name: Artists - delete (DELETE ?iri=)
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/artists?iri={{artistIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
