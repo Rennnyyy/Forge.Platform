@@ -1,0 +1,31 @@
+meta {
+  name: Entity aspect demo - create invalid year (< 1800) → 422
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-create-v1
+}
+
+body:json {
+  {
+    "isbn": "aspect-test-002",
+    "title": "Ancient Tome",
+    "author": "Unknown Scribe",
+    "publishedYear": 1600,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

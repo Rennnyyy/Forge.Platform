@@ -1,0 +1,26 @@
+meta {
+  name: Entity aspect demo - delete available book → 200
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/delete
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-delete-v1
+}
+
+body:json {
+  {
+    "iri": "{{entityAspectBookIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

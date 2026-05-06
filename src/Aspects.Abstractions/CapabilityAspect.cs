@@ -31,4 +31,12 @@ public sealed record CapabilityAspect : IAspect
     /// </summary>
     public IReadOnlyDictionary<Type, string> EventAspectIris { get; init; }
         = ImmutableDictionary<Type, string>.Empty;
+
+    /// <summary>
+    /// IRI of the <see cref="IOperationAspect"/> applied when this capability
+    /// performs a write transaction (Create, Update, Delete). <c>null</c> = no
+    /// entity-graph validation; the generated handler falls back to
+    /// <see cref="Aspect.NoOpIri"/>. See Aspects ADR-0010.
+    /// </summary>
+    public string? OperationAspectIri { get; init; }
 }

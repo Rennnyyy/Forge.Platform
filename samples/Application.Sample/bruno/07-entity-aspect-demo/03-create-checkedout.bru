@@ -1,0 +1,35 @@
+meta {
+  name: Entity aspect demo - create checked-out book (available=false, year valid)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-create-v1
+}
+
+body:json {
+  {
+    "isbn": "aspect-test-003",
+    "title": "Clean Architecture",
+    "author": "Robert C. Martin",
+    "publishedYear": 2017,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("checkedOutBookIri", res.body.iri);
+}

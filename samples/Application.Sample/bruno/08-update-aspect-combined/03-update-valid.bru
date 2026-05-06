@@ -1,0 +1,30 @@
+meta {
+  name: Update aspect combined - update valid book (SHACL + WHERE both pass)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/update
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-update-strict-v1
+}
+
+body:json {
+  {
+    "iri": "{{availableBookIri}}",
+    "title": "Available Book (Updated)",
+    "author": "Test Author",
+    "publishedYear": 2022,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+}

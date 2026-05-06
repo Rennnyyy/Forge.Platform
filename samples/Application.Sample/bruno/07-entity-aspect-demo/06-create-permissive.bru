@@ -1,0 +1,30 @@
+meta {
+  name: Entity aspect demo - create with invalid year but NO aspect header → 200 (permissive)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "isbn": "aspect-test-006",
+    "title": "Very Old Book",
+    "author": "Ancient Author",
+    "publishedYear": 1400,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

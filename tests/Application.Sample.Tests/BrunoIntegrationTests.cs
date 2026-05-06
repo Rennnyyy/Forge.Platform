@@ -176,6 +176,63 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 7 — Entity aspect demo: verifies <see cref="IOperationAspect"/> validation
+    /// on generated CUD handlers via <c>EntityTransaction</c>.
+    /// Exercises Local SHACL pass (publishedYear &lt; 1800 → 422), Context SPARQL pass
+    /// (delete checked-out book → 422), and permissive bypass (no aspect header → 200
+    /// regardless of year). See sample ADR-0004, Aspects ADR-0010, Capability ADR-0015.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_07_entity_aspect_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "07-entity-aspect-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 8 — Update aspect with combined conditions: verifies that a single
+    /// <see cref="IOperationAspect"/> can enforce both passes simultaneously.
+    /// The <c>book-update-strict-v1</c> aspect applies a Local SHACL pass
+    /// (publishedYear ≥ 1800) <em>and</em> a Context WHERE pass (reject if
+    /// <c>available = false</c>). Exercises:
+    /// <list type="bullet">
+    ///   <item>Both passes clear → 200</item>
+    ///   <item>SHACL violation (year &lt; 1800) → 422 <c>ENTITY_SHACL_VIOLATION</c></item>
+    ///   <item>WHERE violation (checked-out book) → 422 <c>ENTITY_SHACL_VIOLATION</c></item>
+    ///   <item>Permissive bypass (no aspect header) → 200 regardless of data</item>
+    /// </list>
+    /// See sample ADR-0004, Aspects ADR-0010, Capability ADR-0015.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_08_update_aspect_combined_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "08-update-aspect-combined");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

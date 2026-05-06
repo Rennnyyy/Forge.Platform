@@ -11,3 +11,4 @@ See [root ADR README](../../../adr/README.md) for format and rules.
 - [0001 — Configuration-switchable repository backend](0001-configuration-switchable-backend.md)
 - [0002 — Error-path demonstration chapter in Application.Sample](0002-error-demo-chapter-in-application-sample.md)
 - [0003 — Capability-aspect demonstration chapter in Application.Sample](0003-aspect-demo-chapter.md)
+- [0004 — Entity operation aspect demonstration for generated CUD handlers](0004-entity-operation-aspect-book-demo.md)

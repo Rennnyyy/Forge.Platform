@@ -13,3 +13,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0005 — Reject GET and DELETE in `MapCapabilities()` at startup](0005-reject-get-delete-at-startup.md)
 - [0006 — Route prefix: `api/capabilities/` and `api/entities/`](0006-route-prefix.md)
 - [0007 — Map `MessageAspectViolationException` to 422 in `RegisterEndpoint`](0007-shacl-violation-mapped-to-422.md)
+- [0008 — Map `AspectViolationException` to 422 in `RegisterEndpoint`](0008-entity-aspect-violation-mapped-to-422.md)

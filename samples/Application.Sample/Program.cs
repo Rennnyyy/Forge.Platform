@@ -2,6 +2,7 @@ using Forge.Application.Sample;
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
 using Forge.Aspects.Message;
+using Forge.Aspects.Operation;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
@@ -113,6 +114,98 @@ aspectStore.RegisterCapabilityAspect(new CapabilityAspect
 {
     Iri              = "urn:forge:aspects:capability:demo-v1",
     CommandAspectIri = "urn:forge:aspects:demo-command-v1",
+});
+
+// ── 9. Book entity operation aspects ─────────────────────────────────────────
+// Demonstrates IOperationAspect validation on generated CUD handlers via
+// EntityTransaction. See sample ADR-0004, Aspects ADR-0010, Capability ADR-0015.
+//
+// Two operation aspects:
+//   book-write-v1 : Local SHACL pass — publishedYear must be >= 1800
+//                  Active for Create and Update when aspect header is supplied.
+//   book-delete-v1: Context SPARQL pass — rejects delete when available = false
+//                  (cannot delete a checked-out book).
+//
+// Three capability aspects (one per CUD operation) bundle the operation aspect IRI
+// so the caller supplies a single X-Forge-Capability-AspectIri header.
+var bookWriteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:book-write-v1",
+    localShapeTtl: """
+        @prefix sh:    <http://www.w3.org/ns/shacl#> .
+        @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+        @prefix books: <https://forge-it.net/predicates/books/> .
+
+        <urn:forge:aspects:shape:book-write-shape>
+            a sh:NodeShape ;
+            sh:targetClass <https://forge-it.net/types/books> ;
+            sh:property [
+                sh:path books:publishedYear ;
+                sh:minInclusive "1800"^^xsd:integer ;
+                sh:message "Published year must be 1800 or later." ;
+            ] .
+        """,
+    contextWhere: null);
+
+var bookDeleteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:book-delete-v1",
+    localShapeTtl: null,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/books/available> false .
+        BIND(?entityIri AS ?focusNode)
+        BIND("Cannot delete a checked-out book (available = false)." AS ?message)
+        """);
+
+aspectStore.RegisterOperation(bookWriteAspect);
+aspectStore.RegisterOperation(bookDeleteAspect);
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri = "urn:forge:aspects:capability:book-create-v1",
+    OperationAspectIri = "urn:forge:aspects:operation:book-write-v1",
+});
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri = "urn:forge:aspects:capability:book-update-v1",
+    OperationAspectIri = "urn:forge:aspects:operation:book-write-v1",
+});
+
+// ── 10. Book strict-update aspect (SHACL + WHERE combined) ───────────────────
+// Demonstrates combining both validation passes in a single IOperationAspect:
+//   Local SHACL pass: publishedYear must be >= 1800
+//   Context WHERE pass: cannot update a checked-out book (available = false)
+// The caller supplies:
+//   X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-update-strict-v1
+var bookUpdateStrictAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:book-update-strict-v1",
+    localShapeTtl: """
+        @prefix sh:    <http://www.w3.org/ns/shacl#> .
+        @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+        @prefix books: <https://forge-it.net/predicates/books/> .
+
+        <urn:forge:aspects:shape:book-update-strict-shape>
+            a sh:NodeShape ;
+            sh:targetClass <https://forge-it.net/types/books> ;
+            sh:property [
+                sh:path books:publishedYear ;
+                sh:minInclusive "1800"^^xsd:integer ;
+                sh:message "Published year must be 1800 or later." ;
+            ] .
+        """,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/books/available> false .
+        BIND(?entityIri AS ?focusNode)
+        BIND("Cannot update a checked-out book (available = false)." AS ?message)
+        """);
+
+aspectStore.RegisterOperation(bookUpdateStrictAspect);
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri = "urn:forge:aspects:capability:book-update-strict-v1",
+    OperationAspectIri = "urn:forge:aspects:operation:book-update-strict-v1",
+});
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri = "urn:forge:aspects:capability:book-delete-v1",
+    OperationAspectIri = "urn:forge:aspects:operation:book-delete-v1",
 });
 
 app.Run();

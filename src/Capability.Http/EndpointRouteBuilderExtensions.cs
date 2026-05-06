@@ -1,4 +1,5 @@
 using System.Reflection;
+using Forge.Aspects;
 using Forge.Aspects.Message;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -112,6 +113,13 @@ public static class EndpointRouteBuilderExtensions
                 // See Capability.Http ADR-0007.
                 return Results.UnprocessableEntity(
                     new CapabilityError("SHACL_VIOLATION", ex.Message));
+            }
+            catch (AspectViolationException ex)
+            {
+                // Entity-graph constraint (IOperationAspect Local SHACL or Context SPARQL)
+                // fired during transaction commit. Surface as 422. See Capability.Http ADR-0008.
+                return Results.UnprocessableEntity(
+                    new CapabilityError("ENTITY_SHACL_VIOLATION", ex.Message));
             }
 
             return result switch

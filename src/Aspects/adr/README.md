@@ -15,3 +15,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0007 — `IQueryAspect`: filter injection + result-graph SHACL for reads and queries](0007-iquery-aspect-model.md)
 - [0008 — Rename `IShapeAspect` → `IWriteAspect`](0008-rename-ishapeaspect-to-ioperationaspect.md)
 - [0009 — Restore `IAspect` as base token; rename `IWriteAspect` → `IOperationAspect`](0009-rename-ioperationaspect-to-iaspect-iwriteaspect-to-ioperationaspect.md)
+- [0010 — `CapabilityAspect.OperationAspectIri` for entity-graph validation in CUD capabilities](0010-operation-aspect-iri-in-capability-aspect.md)

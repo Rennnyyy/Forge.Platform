@@ -11,11 +11,14 @@ namespace Forge.Capability.Generators;
 /// </summary>
 internal static class CrudCapabilityEmitter
 {
-    private const string Cap  = "global::Forge.Capability";
-    private const string List = "global::System.Collections.Generic.List";
-    private const string RoList = "global::System.Collections.Generic.IReadOnlyList";
-    private const string Vt   = "global::System.Threading.Tasks.ValueTask";
-    private const string Ct   = "global::System.Threading.CancellationToken";
+    private const string Cap        = "global::Forge.Capability";
+    private const string List       = "global::System.Collections.Generic.List";
+    private const string RoList     = "global::System.Collections.Generic.IReadOnlyList";
+    private const string Vt         = "global::System.Threading.Tasks.ValueTask";
+    private const string Ct         = "global::System.Threading.CancellationToken";
+    private const string TxStoreType = "global::Forge.Repository.Transaction.ITransactionalEntityStore";
+    private const string EntityTx   = "global::Forge.Repository.Transaction.EntityTransaction";
+    private const string AspectNoOp = "global::Forge.Aspects.Aspect.NoOpIri";
 
     public static string Emit(CrudCapabilityEntityModel m)
     {
@@ -105,7 +108,7 @@ internal static class CrudCapabilityEmitter
         // Handler
         var cmdType = $"Create{m.TypeName}Command";
         var resType = $"Create{m.TypeName}Response";
-        EmitHandlerHeader(sb, m, "create", cmdType, resType);
+        EmitHandlerHeader(sb, m, "create", cmdType, resType, withTxStore: true);
         sb.AppendLine("    {");
 
         // Body: build object initializer
@@ -122,9 +125,12 @@ internal static class CrudCapabilityEmitter
             sb.Append("        var entity = new ").Append(m.FullyQualifiedName).AppendLine("();");
         }
 
+        sb.Append("        var aspectIri = context.Aspect?.OperationAspectIri ?? ").Append(AspectNoOp).AppendLine(";");
         sb.AppendLine("        try");
         sb.AppendLine("        {");
-        sb.AppendLine("            await entity.CreateAsync(cancellationToken);");
+        sb.Append("            await using var tx = new ").Append(EntityTx).AppendLine("(_txStore);");
+        sb.AppendLine("            tx.Create(entity, aspectIri);");
+        sb.AppendLine("            await tx.CommitAsync(cancellationToken);");
         sb.AppendLine("        }");
         sb.AppendLine("        catch (global::System.InvalidOperationException ex)");
         sb.AppendLine("        {");
@@ -190,7 +196,7 @@ internal static class CrudCapabilityEmitter
         // Handler
         var cmdType = $"Update{m.TypeName}Command";
         var resType = $"Update{m.TypeName}Response";
-        EmitHandlerHeader(sb, m, "update", cmdType, resType);
+        EmitHandlerHeader(sb, m, "update", cmdType, resType, withTxStore: true);
         sb.AppendLine("    {");
 
         // Load entity
@@ -203,7 +209,10 @@ internal static class CrudCapabilityEmitter
         foreach (var p in updateProps)
             sb.Append("        entity.").Append(p.Name).Append(" = command.").Append(p.Name).AppendLine(";");
 
-        sb.AppendLine("        await entity.UpdateAsync(cancellationToken);");
+        sb.Append("        var aspectIri = context.Aspect?.OperationAspectIri ?? ").Append(AspectNoOp).AppendLine(";");
+        sb.Append("        await using var tx = new ").Append(EntityTx).AppendLine("(_txStore);");
+        sb.AppendLine("        tx.Update(entity, aspectIri);");
+        sb.AppendLine("        await tx.CommitAsync(cancellationToken);");
         sb.Append("        return new ").Append(Cap).Append(".CapabilityResult<").Append(resType).AppendLine(">.Ok(");
         sb.Append("            new ").Append(resType).AppendLine("(entity.Iri));");
         sb.AppendLine("    }");
@@ -223,7 +232,7 @@ internal static class CrudCapabilityEmitter
         sb.Append("public sealed record ").Append(resType).AppendLine("();");
         sb.AppendLine();
 
-        EmitHandlerHeader(sb, m, "delete", cmdType, resType);
+        EmitHandlerHeader(sb, m, "delete", cmdType, resType, withTxStore: true);
         sb.AppendLine("    {");
 
         sb.Append("        var entity = await ").Append(m.FullyQualifiedName)
@@ -231,7 +240,10 @@ internal static class CrudCapabilityEmitter
 
         EmitNotFoundGuard(sb, m.TypeName, resType);
 
-        sb.AppendLine("        await entity.DeleteAsync(cancellationToken);");
+        sb.Append("        var aspectIri = context.Aspect?.OperationAspectIri ?? ").Append(AspectNoOp).AppendLine(";");
+        sb.Append("        await using var tx = new ").Append(EntityTx).AppendLine("(_txStore);");
+        sb.AppendLine("        tx.Delete(command.Iri, aspectIri);");
+        sb.AppendLine("        await tx.CommitAsync(cancellationToken);");
         sb.Append("        return new ").Append(Cap).Append(".CapabilityResult<").Append(resType).AppendLine(">.Ok(");
         sb.Append("            new ").Append(resType).AppendLine("());");
         sb.AppendLine("    }");
@@ -281,7 +293,8 @@ internal static class CrudCapabilityEmitter
         CrudCapabilityEntityModel m,
         string operation,
         string cmdType,
-        string resType)
+        string resType,
+        bool withTxStore = false)
     {
         var handlerName = operation[0].ToString().ToUpperInvariant() + operation.Substring(1)
                           + m.TypeName + "Handler";
@@ -292,6 +305,19 @@ internal static class CrudCapabilityEmitter
         sb.Append("public sealed class ").Append(handlerName)
           .Append(" : ").Append(Cap).Append(".ICapabilityHandler<").Append(cmdType).Append(", ").Append(resType).AppendLine(">")
           .AppendLine("{");
+
+        if (withTxStore)
+        {
+            // Field
+            sb.Append("    private readonly ").Append(TxStoreType).AppendLine(" _txStore;");
+            sb.AppendLine();
+            // Constructor
+            sb.Append("    public ").Append(handlerName).Append("(").Append(TxStoreType).AppendLine(" txStore)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        _txStore = txStore;");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+        }
 
         // HandleAsync signature
         sb.Append("    public async ").Append(Vt)

@@ -1,0 +1,35 @@
+meta {
+  name: Entity aspect demo - create valid book (year >= 1800)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/create
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-create-v1
+}
+
+body:json {
+  {
+    "isbn": "aspect-test-001",
+    "title": "Modern Software Engineering",
+    "author": "David Farley",
+    "publishedYear": 2021,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("entityAspectBookIri", res.body.iri);
+}

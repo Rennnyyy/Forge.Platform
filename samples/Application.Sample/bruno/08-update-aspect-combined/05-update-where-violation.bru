@@ -1,0 +1,31 @@
+meta {
+  name: Update aspect combined - WHERE violation (checked-out book)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/update
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-update-strict-v1
+}
+
+body:json {
+  {
+    "iri": "{{checkedOutBookIri2}}",
+    "title": "Checked Out Book",
+    "author": "Test Author",
+    "publishedYear": 2022,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

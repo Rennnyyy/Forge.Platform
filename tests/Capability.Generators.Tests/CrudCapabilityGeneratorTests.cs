@@ -211,7 +211,7 @@ public sealed class CrudCapabilityGeneratorTests
 
         code.ShouldContain("Slug = command.Slug");
         code.ShouldContain("Color = command.Color");
-        code.ShouldContain("await entity.CreateAsync(cancellationToken)");
+        code.ShouldContain("tx.Create(entity, aspectIri)");
         code.ShouldContain("new CreateTagResponse(entity.Iri)");
     }
 
@@ -274,7 +274,7 @@ public sealed class CrudCapabilityGeneratorTests
 
         code.ShouldContain("ReadAsync(command.Iri");
         code.ShouldContain("entity.Name = command.Name");
-        code.ShouldContain("await entity.UpdateAsync(cancellationToken)");
+        code.ShouldContain("tx.Update(entity, aspectIri)");
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -325,7 +325,7 @@ public sealed class CrudCapabilityGeneratorTests
 
         code.ShouldContain("class DeleteWidgetHandler");
         code.ShouldContain("ReadAsync(command.Iri");
-        code.ShouldContain("await entity.DeleteAsync(cancellationToken)");
+        code.ShouldContain("tx.Delete(command.Iri, aspectIri)");
         code.ShouldContain("new DeleteWidgetResponse()");
     }
 
@@ -533,5 +533,79 @@ public sealed class CrudCapabilityGeneratorTests
         code.ShouldContain("catch (global::System.InvalidOperationException ex)");
         code.ShouldContain("ALREADY_EXISTS");
         code.ShouldContain("ex.Message");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 22. Create/Update/Delete handlers inject ITransactionalEntityStore
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Create_Update_Delete_handlers_have_ITransactionalEntityStore_constructor()
+    {
+        var result = CrudCapabilityGeneratorRunner.Run(MinimalEntity());
+        var (_, code) = CapsFile(result, "Widget");
+
+        // All three CUD handlers must declare the ITransactionalEntityStore field and ctor.
+        var txType = "global::Forge.Repository.Transaction.ITransactionalEntityStore";
+        code.ShouldContain($"private readonly {txType} _txStore;");
+        code.ShouldContain($"{txType} txStore)");
+        code.ShouldContain("_txStore = txStore;");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 23. CUD handlers resolve OperationAspectIri from context.Aspect with NoOp fallback
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void CUD_handlers_use_OperationAspectIri_with_NoOp_fallback()
+    {
+        var result = CrudCapabilityGeneratorRunner.Run(MinimalEntity());
+        var (_, code) = CapsFile(result, "Widget");
+
+        // All three CUD handlers must read context.Aspect?.OperationAspectIri and fall back to NoOpIri.
+        code.ShouldContain("context.Aspect?.OperationAspectIri ?? global::Forge.Aspects.Aspect.NoOpIri");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 24. CUD handlers open an EntityTransaction against _txStore
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void CUD_handlers_open_EntityTransaction_and_call_CommitAsync()
+    {
+        var result = CrudCapabilityGeneratorRunner.Run(MinimalEntity());
+        var (_, code) = CapsFile(result, "Widget");
+
+        var txType = "global::Forge.Repository.Transaction.EntityTransaction";
+        code.ShouldContain($"new {txType}(_txStore)");
+        code.ShouldContain("await tx.CommitAsync(cancellationToken)");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 25. Read and List handlers do NOT inject ITransactionalEntityStore
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Read_and_List_only_handlers_do_not_inject_ITransactionalEntityStore()
+    {
+        var src = """
+            using Forge.Entity;
+            using Forge.Capability;
+            namespace Demo;
+
+            [Entity(Path = "nodes")]
+            [Identity(IdentityGenerator.Random)]
+            [CrudCapabilities(CrudMethod.Read | CrudMethod.List)]
+            public partial class Node
+            {
+                [Predicate("label")] public string Label { get; set; } = "";
+            }
+            """;
+
+        var result = CrudCapabilityGeneratorRunner.Run(src);
+        var (_, code) = CapsFile(result, "Node");
+
+        code.ShouldNotContain("ITransactionalEntityStore");
+        code.ShouldNotContain("_txStore");
     }
 }

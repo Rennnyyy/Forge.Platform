@@ -1,0 +1,29 @@
+meta {
+  name: Update aspect combined - permissive (no aspect header bypasses all checks)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/update
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "iri": "{{checkedOutBookIri2}}",
+    "title": "Checked Out Book (Bypassed)",
+    "author": "Test Author",
+    "publishedYear": 1450,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}

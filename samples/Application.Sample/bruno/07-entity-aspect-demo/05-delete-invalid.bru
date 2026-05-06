@@ -1,0 +1,27 @@
+meta {
+  name: Entity aspect demo - delete checked-out book → 422
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books/delete
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Capability-AspectIri: urn:forge:aspects:capability:book-delete-v1
+}
+
+body:json {
+  {
+    "iri": "{{checkedOutBookIri}}"
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}
