@@ -22,9 +22,9 @@ Read (in order):
 
 Then scan the top-level directory listing to understand the physical layout.
 
-### 2 — Present the deep-dive
+### 2 — Do not present the deep-dive
 
-Give the user a fully structured technical briefing covering. This step is only needed if the user asks for it. Keep this to yourself if the user asks for architecting or coding help without requesting the deep-dive.
+Never give the user a fully structured technical briefing covering. This step is only needed if the user asks for it. Keep this to yourself if the user asks for architecting or coding help without requesting the deep-dive.
 
 #### 2.1 Repository purpose
 One short paragraph. What is this platform, what problem does it solve, what does it feel like from the outside?

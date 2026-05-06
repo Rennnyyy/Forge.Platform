@@ -1,6 +1,6 @@
 ---
 description: "Straight forward quality tester"
-name: "Forge Quality"
+name: "Forge-Quality"
 argument-hint: "Tell me a part to focus on, if necessary."
 agent: ask
 ---
