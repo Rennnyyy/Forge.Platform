@@ -15,7 +15,7 @@
       padding: 2rem 1rem;
     }
     main {
-      max-width: 860px;
+      max-width: 900px;
       margin: 0 auto;
     }
     h1 {
@@ -76,67 +76,74 @@
 
   <h1>Forge.Platform — Projects</h1>
   <p>
-    Forge.Platform is a .NET library platform for building richly-typed, RDF-aware domain models.
-    The projects below deliver a complete stack: compile-time code generation via Roslyn source
-    generators, IRI-based entity identity and an abstract RDF persistence contract, a LINQ-to-SPARQL
-    query translation layer, concrete store backends (in-memory and Ontotext GraphDB), and an ambient
-    active-record operations bridge — all without runtime reflection.
+    Forge.Platform is a .NET 10 library platform for building richly-typed, RDF-aware domain
+    models. It delivers a full vertical stack: compile-time code generation via Roslyn source
+    generators, IRI-based entity identity, an abstract RDF persistence contract with in-memory
+    and Ontotext GraphDB backends, a LINQ-to-SPARQL query translation layer, ambient active-record
+    operations, SHACL-based aspect validation, an authorization guard abstraction, a structured
+    command/response capability dispatch pipeline, and cross-cutting execution correlation — all
+    wired for ASP.NET Core through companion HTTP integration packages.
   </p>
 
   <h2>Dependency diagram</h2>
   <div class="diagram-wrap">
     <div class="mermaid">
 graph TD
-    Entity["Forge.Entity"]
     EntityGenerators["Forge.Entity.Generators"]
-    EntityRepository["Forge.Entity.Repository"]
-    EntitySparql["Forge.Entity.Sparql"]
-    EntityOperations["Forge.Entity.Operations"]
-    EntityOperationsGenerators["Forge.Entity.Operations.Generators"]
-    EntityRepositoryInMemory["Forge.Entity.Repository.InMemory"]
-    EntityRepositoryGraphDb["Forge.Entity.Repository.GraphDb"]
+    Entity["Forge.Entity"]
+    AspectsAbstractions["Forge.Aspects.Abstractions"]
+    Execution["Forge.Execution"]
+    Repository["Forge.Repository"]
+    Sparql["Forge.Sparql"]
+    RepositoryInMemory["Forge.Repository.InMemory"]
+    RepositoryGraphDb["Forge.Repository.GraphDb"]
+    Aspects["Forge.Aspects"]
+    Authorization["Forge.Authorization"]
+    ExecutionHttp["Forge.Execution.Http"]
+    Operations["Forge.Operations"]
+    OperationsGenerators["Forge.Operations.Generators"]
+    AuthorizationHttp["Forge.Authorization.Http"]
+    Capability["Forge.Capability"]
+    CapabilityHttp["Forge.Capability.Http"]
+    OperationsHttp["Forge.Operations.Http"]
 
-    EntityGenerators -.-> Entity
-    EntityRepository --> Entity
-    EntitySparql --> Entity
-    EntitySparql --> EntityRepository
-    EntityOperations --> Entity
-    EntityOperations --> EntityRepository
-    EntityOperations --> EntitySparql
-    EntityRepositoryInMemory --> Entity
-    EntityRepositoryInMemory --> EntityRepository
-    EntityRepositoryGraphDb --> Entity
-    EntityRepositoryGraphDb --> EntityRepository
+    Entity -.-&gt; EntityGenerators
+    Repository --&gt; Entity
+    Repository --&gt; AspectsAbstractions
+    Sparql --&gt; Entity
+    Sparql --&gt; Repository
+    RepositoryInMemory --&gt; Entity
+    RepositoryInMemory --&gt; Repository
+    RepositoryGraphDb --&gt; Entity
+    RepositoryGraphDb --&gt; Repository
+    Aspects --&gt; AspectsAbstractions
+    Aspects --&gt; Entity
+    Aspects --&gt; Repository
+    Authorization --&gt; Repository
+    ExecutionHttp --&gt; Aspects
+    ExecutionHttp --&gt; Execution
+    Operations --&gt; Entity
+    Operations --&gt; Repository
+    Operations --&gt; Sparql
+    AuthorizationHttp --&gt; Authorization
+    Capability --&gt; Aspects
+    Capability --&gt; Authorization
+    CapabilityHttp --&gt; Capability
+    OperationsHttp --&gt; Operations
+    OperationsHttp --&gt; ExecutionHttp
 
     classDef generator fill:#e8d5fb,stroke:#7c3aed,stroke-width:1.5px
-    class EntityGenerators,EntityOperationsGenerators generator
+    class EntityGenerators,OperationsGenerators generator
     </div>
     <p class="legend">
-      Solid arrows (&#x2192;) = runtime project reference &nbsp;|&nbsp;
-      Dashed arrows (&#x21E2;) = build-time analyzer reference (<code>OutputItemType="Analyzer" ReferenceOutputAssembly="false"</code>) &nbsp;|&nbsp;
-      Violet = Roslyn source generator (<code>netstandard2.0</code>)
+      Solid arrows (&#x2192;) = runtime <code>ProjectReference</code> &nbsp;|&nbsp;
+      Dashed arrows (&#x21E2;) = build-time analyzer reference
+      (<code>OutputItemType="Analyzer" ReferenceOutputAssembly="false"</code>) &nbsp;|&nbsp;
+      Violet nodes = Roslyn source generator (<code>netstandard2.0</code>)
     </p>
   </div>
 
-  <section id="forge-entity">
-    <h2><code>Forge.Entity</code></h2>
-    <dl>
-      <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity</code></dd>
-    </dl>
-    <p>
-      The core runtime library. Defines the entity model (<code>EntityBase</code>,
-      <code>IEntity</code>), the full annotation surface (<code>[Entity]</code>,
-      <code>[Identity]</code>, <code>[IdentityPart]</code>, <code>[Owning]</code>,
-      <code>[Inverse]</code>, <code>[Required]</code>, <code>[Enumeration]</code>),
-      identity strategies and IRI materialization, and the lazy-loading wiring types
-      (<code>EntityRef&lt;T&gt;</code>, <code>EntityRefCollection&lt;T&gt;</code>,
-      <code>EntitySession</code>). <code>Forge.Entity.Generators</code> is wired in as a
-      build-time analyzer so all boilerplate is emitted at compile time with no runtime
-      reflection.
-    </p>
-  </section>
-
+  <!-- ═══════════════════════════════════════════════════ Forge.Entity.Generators -->
   <section id="forge-entity-generators">
     <h2><code>Forge.Entity.Generators</code></h2>
     <dl>
@@ -144,107 +151,277 @@ graph TD
       <dt>Namespace</dt><dd><code>Forge.Entity.Generators</code></dd>
     </dl>
     <p>
-      Roslyn incremental source generator that processes every
-      <code>[Entity]</code>-annotated <code>partial class</code> and emits the second
-      partial half: IRI materialization, equality-by-IRI, property-change guards, and
-      lazy-loading stubs. Runs entirely inside the compiler — zero runtime overhead — and
-      is consumed by <code>Forge.Entity</code> (and by end-user projects) as an analyzer
-      reference.
+      Roslyn incremental source generator (<code>IsRoslynComponent=true</code>) that processes
+      every <code>[Entity]</code>-annotated <code>partial class</code> at compile time and emits
+      the second partial half: <code>IEntity</code> implementation, IRI materialization, identity
+      sealing, and lazy-loading stubs. Consumed by <code>Forge.Entity</code> (and by end-user
+      projects) as a build-time analyzer reference — zero runtime overhead.
     </p>
   </section>
 
-  <section id="forge-entity-repository">
-    <h2><code>Forge.Entity.Repository</code></h2>
+  <!-- ═════════════════════════════════════════════════════════════ Forge.Entity -->
+  <section id="forge-entity">
+    <h2><code>Forge.Entity</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Repository</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Entity</code></dd>
     </dl>
     <p>
-      Abstract persistence layer. Defines the store contract
-      (<code>IEntityStore</code>, <code>IEntityLoader</code>,
-      <code>IRdfTripleSink</code>), the typed application facade
-      (<code>IEntityRepository&lt;T&gt;</code> / <code>EntityRepository&lt;T&gt;</code>),
-      and the RDF mapping infrastructure (<code>IRdfMapper</code>,
-      <code>IRdfMapperRegistry</code>, <code>ReflectionRdfMapper</code>,
-      <code>LiteralCodec</code>, <code>PredicateResolver</code>). Acts as the shared
-      boundary between backend implementations and the rest of the stack.
+      Core runtime library for the entity model. Provides <code>IEntity</code>,
+      <code>EntityBase</code>, the full annotation surface (<code>[Entity]</code>,
+      <code>[Identity]</code>, <code>[IdentityPart]</code>, <code>[Predicate]</code>,
+      <code>[Owning]</code>, <code>[Inverse]</code>), IRI materialization, lazy-loading types
+      (<code>EntityRef&lt;T&gt;</code>, <code>EntityRefCollection&lt;T&gt;</code>), and
+      <code>EntitySession</code>. <code>Forge.Entity.Generators</code> is wired in as a
+      build-time analyzer so all boilerplate is emitted at compile time with no runtime reflection.
     </p>
   </section>
 
-  <section id="forge-entity-sparql">
-    <h2><code>Forge.Entity.Sparql</code></h2>
+  <!-- ══════════════════════════════════════════ Forge.Aspects.Abstractions -->
+  <section id="forge-aspects-abstractions">
+    <h2><code>Forge.Aspects.Abstractions</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Sparql</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Aspects</code></dd>
     </dl>
     <p>
-      LINQ-to-SPARQL provider. Exposes <code>store.Query&lt;T&gt;()</code> returning an
-      <code>IOrderedQueryable&lt;T&gt;</code> / <code>IAsyncEnumerable&lt;T&gt;</code>
-      that translates expression trees into SPARQL SELECT queries via
-      <code>LinqToSparqlVisitor</code> and <code>SparqlEmitter</code>, then executes them
-      against any <code>ISparqlQueryStore</code> backend.
+      Minimal contract package for the Aspects validation system. Declares
+      <code>IAspect</code>, <code>IAspectStore</code>, <code>IOperationAspect</code>,
+      <code>IQueryAspect</code>, <code>IMessageAspect</code>, and
+      <code>CapabilityAspect</code> without any implementation. Consumed by
+      <code>Forge.Repository</code> and <code>Forge.Aspects</code> to keep the persistence
+      boundary free of heavy validation dependencies.
     </p>
   </section>
 
-  <section id="forge-entity-repository-inmemory">
-    <h2><code>Forge.Entity.Repository.InMemory</code></h2>
+  <!-- ══════════════════════════════════════════════════════ Forge.Execution -->
+  <section id="forge-execution">
+    <h2><code>Forge.Execution</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Repository.InMemory</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Execution</code></dd>
+    </dl>
+    <p>
+      Cross-cutting execution context primitives. Provides <code>ExecutionCorrelation</code>
+      (holding a per-request <code>ExecutionId</code> and an optional caller-supplied
+      <code>CallerCorrelationId</code>), <code>ExecutionScope</code> for async-local ambient
+      access, and <code>ExecutionResult</code> / <code>ExecutionError</code> envelope types.
+      Has no project dependencies — safe to reference from any layer.
+    </p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ Forge.Repository -->
+  <section id="forge-repository">
+    <h2><code>Forge.Repository</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Repository</code></dd>
+    </dl>
+    <p>
+      Abstract persistence layer and backend-agnostic contract. Defines
+      <code>IEntityStore</code>, <code>IEntityRepository&lt;T&gt;</code>,
+      <code>ISparqlQueryStore</code>, RDF primitives (<code>RdfGraph</code>,
+      <code>RdfTriple</code>, <code>RdfTerm</code>), and the full RDF mapping
+      infrastructure (<code>IRdfMapper</code>, <code>IRdfMapperRegistry</code>,
+      <code>ReflectionRdfMapper</code>, <code>LiteralCodec</code>,
+      <code>PredicateResolver</code>). Acts as the shared boundary between the two backend
+      implementations and all higher-level consumers.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ Forge.Sparql -->
+  <section id="forge-sparql">
+    <h2><code>Forge.Sparql</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Sparql</code></dd>
+    </dl>
+    <p>
+      LINQ-to-SPARQL query translation layer. Exposes <code>SparqlQueryable&lt;T&gt;</code>
+      (implementing <code>IOrderedQueryable&lt;T&gt;</code> and
+      <code>IAsyncEnumerable&lt;T&gt;</code>), which translates C# expression trees through
+      <code>LinqToSparqlVisitor</code> and <code>SparqlEmitter</code> into SPARQL SELECT queries
+      and executes them against any <code>ISparqlQueryStore</code> backend.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════ Forge.Repository.InMemory -->
+  <section id="forge-repository-inmemory">
+    <h2><code>Forge.Repository.InMemory</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Repository.InMemory</code></dd>
     </dl>
     <p>
       In-memory <code>IEntityStore</code> and <code>ISparqlQueryStore</code> backed by a
-      dotNetRDF <code>Graph</code>. Uses direct graph traversal for load/save/delete and
-      dotNetRDF's in-process SPARQL engine for query execution; intended for unit tests and
-      embedded scenarios, and shares a behavioral test suite with the GraphDB backend to
-      guarantee interchangeability.
+      dotNetRDF <code>Graph</code>. Uses direct graph traversal for load/save/delete operations
+      and dotNetRDF's in-process SPARQL engine for queries; designed for unit tests and embedded
+      scenarios, and shares a behavioral test suite with the GraphDB backend to guarantee
+      interchangeability.
     </p>
   </section>
 
-  <section id="forge-entity-repository-graphdb">
-    <h2><code>Forge.Entity.Repository.GraphDb</code></h2>
+  <!-- ════════════════════════════════════════ Forge.Repository.GraphDb -->
+  <section id="forge-repository-graphdb">
+    <h2><code>Forge.Repository.GraphDb</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Repository.GraphDb</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Repository.GraphDb</code></dd>
     </dl>
     <p>
-      HTTP-based <code>IEntityStore</code> and <code>ISparqlQueryStore</code> targeting
-      the Ontotext GraphDB SPARQL endpoint. Reads via SPARQL <code>CONSTRUCT</code>,
-      writes via SPARQL <code>UPDATE</code> (INSERT DATA / DELETE WHERE), and uses
-      <code>IHttpClientFactory</code> with optional HTTP Basic authentication configured
-      through <code>GraphDbOptions</code>.
+      HTTP-based <code>IEntityStore</code> and <code>ISparqlQueryStore</code> targeting the
+      Ontotext GraphDB SPARQL endpoint. Reads via SPARQL <code>CONSTRUCT</code>, writes via
+      SPARQL <code>UPDATE</code> (INSERT DATA / DELETE WHERE), and uses
+      <code>IHttpClientFactory</code> with optional Basic authentication configured through
+      <code>GraphDbOptions</code>.
     </p>
   </section>
 
-  <section id="forge-entity-operations">
-    <h2><code>Forge.Entity.Operations</code></h2>
+  <!-- ══════════════════════════════════════════════════════ Forge.Aspects -->
+  <section id="forge-aspects">
+    <h2><code>Forge.Aspects</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>net10.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Operations</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Aspects</code></dd>
     </dl>
     <p>
-      Ambient active-record bridge. <code>EntityOperations.Use(store)</code> binds an
-      <code>IEntityStore</code> to the current async control flow so that
-      generator-emitted instance methods (<code>CreateAsync</code>,
-      <code>ReadAsync</code>, <code>UpdateAsync</code>, <code>DeleteAsync</code>) resolve
-      the store without explicit injection. Orchestrates
-      <code>Forge.Entity.Repository</code> and <code>Forge.Entity.Sparql</code>.
+      Full SHACL-based validation system for the platform. Implements <code>AspectStore</code>
+      (thread-safe registration and resolution of operation, query, message, and capability
+      aspects), SHACL shape parsing from Turtle TTL graphs (<code>ShaclShapeGraph</code>),
+      TTL-based aspect loading, and enforcement wrappers
+      (<code>AspectEnforcingEntityStore</code>, <code>AspectEnforcingTransactionalStore</code>)
+      that validate entities and messages against registered SHACL shapes.
     </p>
   </section>
 
-  <section id="forge-entity-operations-generators">
-    <h2><code>Forge.Entity.Operations.Generators</code></h2>
+  <!-- ══════════════════════════════════════════════ Forge.Authorization -->
+  <section id="forge-authorization">
+    <h2><code>Forge.Authorization</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Authorization</code></dd>
+    </dl>
+    <p>
+      Authorization primitive layer. Defines <code>IAspectGuard</code> — a single-method
+      contract that decides whether a given agent token may act under a given aspect policy —
+      and ships <code>AllowAllAspectGuard</code> as the default allow-everything stub.
+      <code>GuardedTransactionalStore</code> wraps an <code>IEntityStore</code> to enforce
+      the guard before every mutating operation.
+    </p>
+  </section>
+
+  <!-- ════════════════════════════════════════ Forge.Execution.Http -->
+  <section id="forge-execution-http">
+    <h2><code>Forge.Execution.Http</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Execution.Http</code></dd>
+    </dl>
+    <p>
+      ASP.NET Core integration for the Execution context. <code>ExecutionCorrelationMiddleware</code>
+      reads the <code>X-Forge-Correlation-ID</code> request header, establishes an ambient
+      <code>ExecutionScope</code> for the request lifetime, and writes the
+      <code>X-Forge-Execution-ID</code> response header. Also provides
+      <code>HeaderExecutionAspectIriProvider</code> and <code>ExecutionEndpointHelper</code>
+      for wiring aspect IRIs from HTTP headers into the execution pipeline.
+    </p>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════ Forge.Operations -->
+  <section id="forge-operations">
+    <h2><code>Forge.Operations</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Operations</code></dd>
+    </dl>
+    <p>
+      Ambient active-record operations bridge. <code>EntityOperations.Use(store)</code> binds
+      an <code>IEntityStore</code> to the current async control flow so that generator-emitted
+      entity methods resolve the store without explicit injection. Orchestrates
+      <code>Forge.Repository</code> and <code>Forge.Sparql</code>.
+      <code>[OperationEndpoints]</code> marks entity types for automatic REST endpoint
+      registration.
+    </p>
+  </section>
+
+  <!-- ════════════════════════════════════ Forge.Operations.Generators -->
+  <section id="forge-operations-generators">
+    <h2><code>Forge.Operations.Generators</code></h2>
     <dl>
       <dt>Target framework</dt><dd><code>netstandard2.0</code></dd>
-      <dt>Namespace</dt><dd><code>Forge.Entity.Operations.Generators</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Operations.Generators</code></dd>
     </dl>
     <p>
-      Roslyn incremental source generator that emits active-record CRUD methods
-      (<code>CreateAsync</code>, <code>ReadAsync</code>, <code>UpdateAsync</code>,
-      <code>DeleteAsync</code>) onto every <code>[Entity]</code>-annotated
-      <code>partial class</code> in the consuming project. Generated file hints use the
-      pattern <code>{Namespace}.{TypeName}.g.ops.cs</code>; consumed by end-user projects
-      as an analyzer reference alongside <code>Forge.Entity.Operations</code>.
+      Roslyn incremental source generator (<code>IsRoslynComponent=true</code>) that emits
+      active-record CRUD methods (<code>CreateAsync</code>, <code>ReadAsync</code>,
+      <code>UpdateAsync</code>, <code>DeleteAsync</code>, plus async enumeration) onto every
+      <code>[Entity]</code>-annotated <code>partial class</code> in the consuming project.
+      Types decorated with <code>[NoOperations]</code> are silently skipped. Consumed by
+      end-user projects as an analyzer reference alongside <code>Forge.Operations</code>.
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════ Forge.Authorization.Http -->
+  <section id="forge-authorization-http">
+    <h2><code>Forge.Authorization.Http</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Authorization.Http</code></dd>
+    </dl>
+    <p>
+      ASP.NET Core integration for the Authorization layer. <code>AgentTokenMiddleware</code>
+      extracts the caller's agent identity token from the HTTP request and populates the ambient
+      <code>AuthorizationContext</code>, making it available to <code>IAspectGuard</code>
+      implementations and the guarded store throughout the request lifetime.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ Forge.Capability -->
+  <section id="forge-capability">
+    <h2><code>Forge.Capability</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Capability</code></dd>
+    </dl>
+    <p>
+      Command/response capability dispatch pipeline. <code>ICapabilityDispatcher&lt;TCommand,TResponse&gt;</code>
+      orchestrates a four-stage pipeline: resolve the <code>CapabilityAspect</code> from the
+      store, validate the inbound command via SHACL, invoke the user-supplied
+      <code>ICapabilityHandler&lt;TCommand,TResponse&gt;</code>, then validate the response and
+      any emitted events. Integrates with both <code>Forge.Aspects</code> and
+      <code>Forge.Authorization</code>.
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════════ Forge.Capability.Http -->
+  <section id="forge-capability-http">
+    <h2><code>Forge.Capability.Http</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Capability.Http</code></dd>
+    </dl>
+    <p>
+      ASP.NET Core integration for the Capability pipeline. Provides
+      <code>[CapabilityEndpoint]</code> attribute, <code>CapabilityHandlerDescriptor</code>
+      for endpoint registration, <code>EndpointRouteBuilderExtensions</code> to map capability
+      endpoints, and <code>HeaderCapabilityAspectIriProvider</code> that resolves the active
+      capability aspect IRI from an HTTP request header.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════ Forge.Operations.Http -->
+  <section id="forge-operations-http">
+    <h2><code>Forge.Operations.Http</code></h2>
+    <dl>
+      <dt>Target framework</dt><dd><code>net10.0</code></dd>
+      <dt>Namespace</dt><dd><code>Forge.Operations.Http</code></dd>
+    </dl>
+    <p>
+      ASP.NET Core integration for entity operations. <code>MapOperations()</code> discovers all
+      <code>[OperationEndpoints]</code>-annotated entities and registers a five-verb REST endpoint
+      set (POST create, GET list/read, PUT update, DELETE delete) per entity. Integrates the
+      execution correlation scope from <code>Forge.Execution.Http</code> into every request and
+      handles JSON serialization of entity and relation types.
     </p>
   </section>
 
