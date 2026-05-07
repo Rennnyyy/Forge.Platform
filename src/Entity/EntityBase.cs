@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Forge.Entity;
 
 /// <summary>
@@ -34,6 +36,8 @@ public abstract class EntityBase : IEntity, IEquatable<EntityBase>
     /// </summary>
     protected virtual void EnsureIdentity() { }
 
+    /// <summary>True once <see cref="Iri"/> has been computed/assigned. Not included in JSON serialization (ADR-0016).</summary>
+    [JsonIgnore]
     public bool IsIdentitySealed => _iri is not null;
 
     /// <summary>

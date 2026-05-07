@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
@@ -12,9 +13,16 @@ namespace Forge.Operations.Http;
 /// entity instance.
 /// </summary>
 /// <remarks>
-/// Only scalar <c>[Predicate]</c>-annotated properties are populated. Navigation
-/// properties (<c>[Owning]</c>, <c>[Inverse]</c>) are silently skipped. JSON keys
-/// are matched to C# property names case-insensitively.
+/// Scalar <c>[Predicate]</c>-annotated properties and owned-relation properties
+/// (<c>[Owning]</c>) are both populated. <c>[Inverse]</c> navigation properties are
+/// skipped (the owning side is the single source of truth).
+/// JSON keys are matched to C# property names case-insensitively.
+/// <para>
+/// Owned single refs (<c>EntityRef&lt;T&gt;?</c>) are bound from a JSON string IRI.
+/// Owned collections (<c>EntityRefCollection&lt;T&gt;</c>) are bound from a JSON array
+/// of IRI strings; IRI-only stubs are added to the collection (entities are not loaded
+/// from the store — existence is not validated at bind time).
+/// </para>
 /// <para>
 /// For <see cref="IdentityGenerator.Random"/> entities a <c>Create</c> call invokes the
 /// public parameterless constructor (which seals a new UUID-based IRI). An <c>Update</c>
@@ -88,7 +96,60 @@ internal static class OperationEntityBinder
             })
             .ToList();
 
-        return new EntityBindingPlan(identityAttr.Generator, guidCtor, bindableProps);
+        var owningSingles = new List<OwningRefProp>();
+        var owningCollections = new List<OwningCollProp>();
+
+        foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetCustomAttribute<OwningAttribute>() is null) continue;
+            if (prop.GetCustomAttribute<InverseAttribute>() is not null) continue;
+
+            var (kind, target) = ClassifyRef(prop.PropertyType);
+            if (target is null) continue;
+
+            if (kind == RefKindLite.Single)
+                owningSingles.Add(new OwningRefProp(prop, target));
+            else
+                owningCollections.Add(new OwningCollProp(prop, target));
+        }
+
+        return new EntityBindingPlan(identityAttr.Generator, guidCtor, bindableProps, owningSingles, owningCollections);
+    }
+
+    private enum RefKindLite { Single, Collection }
+
+    private static (RefKindLite Kind, Type? Target) ClassifyRef(Type propType)
+    {
+        var t = Nullable.GetUnderlyingType(propType) ?? propType;
+        if (!t.IsGenericType) return (RefKindLite.Single, null);
+        var def = t.GetGenericTypeDefinition();
+        if (def == typeof(EntityRef<>))
+            return (RefKindLite.Single, t.GetGenericArguments()[0]);
+        if (def == typeof(EntityRefCollection<>))
+            return (RefKindLite.Collection, t.GetGenericArguments()[0]);
+        return (RefKindLite.Single, null);
+    }
+
+    /// <summary>Build <c>EntityRef&lt;TTarget&gt;.ForIri(iri)</c> via reflection.</summary>
+    internal static object MakeEntityRefForIri(Type targetType, string iri)
+    {
+        var refType = typeof(EntityRef<>).MakeGenericType(targetType);
+        var forIri = refType.GetMethod("ForIri", BindingFlags.Public | BindingFlags.Static)!;
+        return forIri.Invoke(null, [iri])!;
+    }
+
+    /// <summary>
+    /// Add an IRI-only stub to an <c>EntityRefCollectionImpl&lt;T&gt;</c> or
+    /// <c>DeferredEntityRefCollectionImpl&lt;T&gt;</c> by reaching into the private
+    /// <c>_byIri</c> dictionary — the same approach used by
+    /// <c>ReflectionRdfMapper.AddStubToCollection</c>.
+    /// </summary>
+    internal static void AddStubToCollection(object collection, string memberIri)
+    {
+        var byIriField = collection.GetType().GetField("_byIri",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        if (byIriField?.GetValue(collection) is IDictionary dict)
+            dict[memberIri] = null;
     }
 
     // ──────────────────────────────────────────────────────────── Create
@@ -197,6 +258,50 @@ internal static class OperationEntityBinder
             else if (prop.Property.SetMethod is { IsPublic: true })
                 prop.Property.SetValue(entity, value);
         }
+
+        // ── Owning single refs: bind from JSON string IRI ──────────────────────
+        foreach (var ownSingle in plan.OwningSingles)
+        {
+            if (!body.TryGetPropertyValue(ownSingle.Property.Name, out var node))
+            {
+                var camelCase = char.ToLowerInvariant(ownSingle.Property.Name[0])
+                    + ownSingle.Property.Name[1..];
+                if (!body.TryGetPropertyValue(camelCase, out node))
+                    continue;
+            }
+
+            if (node is null || node.GetValueKind() != JsonValueKind.String) continue;
+            var iri = node.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(iri)) continue;
+
+            var refValue = MakeEntityRefForIri(ownSingle.TargetType, iri);
+            if (ownSingle.Property.SetMethod is { IsPublic: true })
+                ownSingle.Property.SetValue(entity, refValue);
+        }
+
+        // ── Owning collections: bind from JSON array of IRI strings ────────────
+        foreach (var ownColl in plan.OwningCollections)
+        {
+            if (!body.TryGetPropertyValue(ownColl.Property.Name, out var node))
+            {
+                var camelCase = char.ToLowerInvariant(ownColl.Property.Name[0])
+                    + ownColl.Property.Name[1..];
+                if (!body.TryGetPropertyValue(camelCase, out node))
+                    continue;
+            }
+
+            if (node is not JsonArray arr) continue;
+            var collection = ownColl.Property.GetValue(entity);
+            if (collection is null) continue;
+
+            foreach (var element in arr)
+            {
+                if (element?.GetValueKind() != JsonValueKind.String) continue;
+                var memberIri = element.GetValue<string>();
+                if (!string.IsNullOrWhiteSpace(memberIri))
+                    AddStubToCollection(collection, memberIri);
+            }
+        }
     }
 
     private static string ExtractIriSuffix(string iri)
@@ -212,10 +317,18 @@ internal static class OperationEntityBinder
 internal sealed record EntityBindingPlan(
     IdentityGenerator Generator,
     ConstructorInfo? GuidCtor,
-    IReadOnlyList<BindableProp> Properties);
+    IReadOnlyList<BindableProp> Properties,
+    IReadOnlyList<OwningRefProp> OwningSingles,
+    IReadOnlyList<OwningCollProp> OwningCollections);
 
 /// <summary>A single bindable scalar property on an entity type.</summary>
 internal sealed record BindableProp(
     PropertyInfo Property,
     bool IsIdentityPart,
     FieldInfo? BackingField);
+
+/// <summary>An owning single-ref property (<c>EntityRef&lt;T&gt;?</c>) bindable from a JSON IRI string.</summary>
+internal sealed record OwningRefProp(PropertyInfo Property, Type TargetType);
+
+/// <summary>An owning collection property (<c>EntityRefCollection&lt;T&gt;</c>) bindable from a JSON array of IRI strings.</summary>
+internal sealed record OwningCollProp(PropertyInfo Property, Type TargetType);

@@ -1,0 +1,30 @@
+meta {
+  name: Studios - read (GET ?iri=) including owned-relation IRIs
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/entities/studios?iri={{studioIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.name: eq Sonic Forge Studios
+  res.body.active: eq true
+  res.body.foundedYear: eq 2001
+  res.body.sessionCount: eq 4200
+  res.body.budget: eq 2500000
+  res.body.openedOn: eq 2001-03-15
+  res.body.externalId: isDefined
+  res.body.website: isDefined
+  res.body.bio: isDefined
+  res.body.verified: eq true
+  res.body.managedBy: eq {{artistIri}}
+  res.body.recordings[0]: eq {{recordingIri}}
+  res.body.genres[0]: isDefined
+  res.body.genres[1]: isDefined
+}

@@ -1,0 +1,34 @@
+meta {
+  name: Studios - setup recording (POST)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/entities/recordings
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Sonic Forge Session Take 1",
+    "durationSeconds": 312,
+    "recordedOn": "2026-03-01",
+    "isLive": false,
+    "trackNumber": 1
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("recordingIri", res.body.iri);
+}

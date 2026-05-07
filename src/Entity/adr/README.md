@@ -21,3 +21,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0013 — `IEntityRepository<T>`, `IRdfMapper<T>`, and reflection-based v1](0013-entity-repository-and-rdf-mapper.md)
 - [0014 — Podman as the preferred container runtime for integration tests](0014-podman-container-runtime.md)
 - [0015 — ACID multi-operation transactions via `ITransactionalEntityStore`](0015-entity-transaction.md)
+- [0016 — `IsIdentitySealed` is excluded from JSON serialization](0016-jsonignore-isidentitysealed.md)

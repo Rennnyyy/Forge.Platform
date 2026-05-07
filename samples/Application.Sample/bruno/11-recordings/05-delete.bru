@@ -1,0 +1,15 @@
+meta {
+  name: Recordings - delete (DELETE ?iri=)
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/recordings?iri={{recordingIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

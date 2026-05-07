@@ -165,7 +165,7 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
 
         var repoRoot = FindRepoRoot();
         var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
-        var chapterDir = Path.Combine(collectionRoot, "06-aspect-demo");
+        var chapterDir = Path.Combine(collectionRoot, "06-capability-aspect-demo");
 
         Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
         Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
@@ -223,6 +223,124 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
         var repoRoot = FindRepoRoot();
         var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
         var chapterDir = Path.Combine(collectionRoot, "08-update-aspect-combined");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 9 — Artists: verifies the generated CRUD handlers for the <c>Artist</c>
+    /// entity, which uses <see cref="IdentityGenerator.Random"/> (UUID-based IRI).
+    /// See ADR-0013, sample ADR-0005.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_09_artists_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "09-artists");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 10 — Genres: verifies the read-only <c>GET api/entities/genres</c> endpoints
+    /// for the <c>[Enumeration]</c> <c>Genre</c> type. Because <c>[Enumeration]</c> entities
+    /// carry pre-sealed static named individuals, <c>MapOperations()</c> registers only List
+    /// and Read (no Create, Update, or Delete). See sample ADR-0006.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_10_genres_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "10-genres");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 11 — Recordings: verifies scalar CRUD for the <c>Recording</c> child entity,
+    /// which is the 1:N target of <c>Studio.Recordings</c>. See sample ADR-0005.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_11_recordings_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "11-recordings");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 12 — Studios: verifies scalar CRUD for the complex <c>Studio</c> aggregate,
+    /// which carries all 22 supported scalar CLR types (11 non-nullable + 11 nullable) and
+    /// all three owned-relation flavours (N:1, 1:N, M:N) at the entity model level.
+    /// The HTTP layer surfaces scalars only; see sample ADR-0005 and Operations.Http ADR-0001.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_12_studios_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "12-studios");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 13 — Studio relations: demonstrates wiring all three owned-relation
+    /// flavours (N:1 EntityRef, 1:N EntityRefCollection, M:N EntityRefCollection) via the
+    /// <c>demo.studio.create-linked</c> capability handler. Includes three error-path
+    /// requests that intentionally pass non-existent IRIs and assert
+    /// <c>422 RELATION_NOT_FOUND</c>. See sample ADR-0006 and ADR-0007.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_13_studio_relations_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "13-studio-relations");
 
         Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
         Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");

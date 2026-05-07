@@ -29,6 +29,13 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             $"Could not reflect {nameof(RegisterEndpointsFor)} from " +
             nameof(OperationEndpointsEndpointRouteBuilderExtensions));
 
+    private static readonly MethodInfo RegisterEnumerationEndpointsForMethod =
+        typeof(OperationEndpointsEndpointRouteBuilderExtensions)
+            .GetMethod(nameof(RegisterEnumerationEndpointsFor), BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new InvalidOperationException(
+            $"Could not reflect {nameof(RegisterEnumerationEndpointsFor)} from " +
+            nameof(OperationEndpointsEndpointRouteBuilderExtensions));
+
     /// <summary>
     /// Discovers all <see cref="OperationEndpointDescriptor"/> registrations and maps a
     /// five-verb REST endpoint set per entity:
@@ -56,9 +63,17 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
 
         foreach (var desc in descriptors)
         {
-            RegisterEndpointsForMethod
-                .MakeGenericMethod(desc.EntityType)
-                .Invoke(null, [app, desc, opProvider]);
+            var isEnumeration = desc.EntityType
+                .GetCustomAttribute<EnumerationAttribute>() is not null;
+
+            if (isEnumeration)
+                RegisterEnumerationEndpointsForMethod
+                    .MakeGenericMethod(desc.EntityType)
+                    .Invoke(null, [app, desc]);
+            else
+                RegisterEndpointsForMethod
+                    .MakeGenericMethod(desc.EntityType)
+                    .Invoke(null, [app, desc, opProvider]);
         }
 
         return app;
@@ -158,6 +173,46 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
 
                 return Results.Ok(new OperationDeletedResponse());
             });
+        });
+    }
+
+    /// <summary>
+    /// Registers read-only GET (List + Read) endpoints for <c>[Enumeration]</c> entity types.
+    /// Instances are served from the static <c>IReadOnlyList&lt;T&gt; All</c> property
+    /// compiled into the assembly — no store access required.
+    /// </summary>
+    private static void RegisterEnumerationEndpointsFor<T>(
+        IEndpointRouteBuilder app,
+        OperationEndpointDescriptor desc)
+        where T : class, IEntity
+    {
+        // Reflect the static `All` property once at registration time.
+        var allProperty = typeof(T).GetProperty(
+            "All",
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+        IReadOnlyList<T> GetAll() =>
+            allProperty?.GetValue(null) as IReadOnlyList<T> ?? [];
+
+        var path = $"api/entities/{desc.Path}";
+
+        // ── GET api/entities/{path}          — List  ─────────────────────────
+        // ── GET api/entities/{path}?iri=…    — Read  ─────────────────────────
+        app.MapGet(path, (string? iri) =>
+        {
+            var all = GetAll();
+
+            if (!string.IsNullOrEmpty(iri))
+            {
+                var match = all.FirstOrDefault(e => e.Iri == iri);
+                if (match is null)
+                    return Results.NotFound(new ExecutionError("NOT_FOUND",
+                        $"No {typeof(T).Name} with IRI '{iri}' exists. " +
+                        $"Use GET api/entities/{desc.Path} to list valid IRIs."));
+                return Results.Ok(match);
+            }
+
+            return Results.Ok(new OperationListResponse<T>([.. all]));
         });
     }
 }

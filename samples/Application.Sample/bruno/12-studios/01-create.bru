@@ -1,0 +1,57 @@
+meta {
+  name: Studios - create (POST, all scalar CLR types + owned relations)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/entities/studios
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Sonic Forge Studios",
+    "active": true,
+    "foundedYear": 2001,
+    "sessionCount": 4200,
+    "acousticRating": 9.2,
+    "reputationScore": 8.75,
+    "budget": 2500000.00,
+    "openedOn": "2001-03-15",
+    "lastBookedAt": "2026-04-30T09:00:00+00:00",
+    "externalId": "550e8400-e29b-41d4-a716-446655440000",
+    "website": "https://forge-it.net/demos/sonic-forge",
+    "bio": "Premier digital recording facility in the heart of the city.",
+    "verified": true,
+    "capacity": 12,
+    "catalogueSize": 3200,
+    "isolationFactor": 9.5,
+    "profitMargin": 0.23,
+    "annualRevenue": 850000.00,
+    "closedOn": null,
+    "deactivatedAt": null,
+    "legacyId": null,
+    "socialLink": "https://forge-it.net/demos/sonic-forge/social",
+    "managedBy": "{{artistIri}}",
+    "recordings": ["{{recordingIri}}"],
+    "genres": [
+      "https://forge-it.net/genres/jazz",
+      "https://forge-it.net/genres/electronic"
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("studioIri", res.body.iri);
+}

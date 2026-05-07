@@ -283,4 +283,44 @@ public sealed class MapOperationsTests
 
         host.Dispose();
     }
+
+    // ── ADR-0016: IsIdentitySealed must not appear in HTTP responses ──────────
+
+    [Fact]
+    public async Task Get_Read_DoesNotInclude_IsIdentitySealed()
+    {
+        using var host = BuildHost();
+        await host.StartAsync();
+        var client = host.GetTestClient();
+
+        var createResp = await client.PostAsJsonAsync(
+            "api/entities/test-widgets", new { label = "SealCheck", value = 1 });
+        var iri = ExtractIri(await createResp.Content.ReadAsStringAsync())!;
+
+        var response = await client.GetAsync(
+            $"api/entities/test-widgets?iri={Uri.EscapeDataString(iri)}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        doc.RootElement.TryGetProperty("isIdentitySealed", out _).ShouldBeFalse(
+            "isIdentitySealed is an internal state flag and must not be serialized in HTTP responses (Entity ADR-0016).");
+    }
+
+    [Fact]
+    public async Task Get_List_DoesNotInclude_IsIdentitySealed()
+    {
+        using var host = BuildHost();
+        await host.StartAsync();
+        var client = host.GetTestClient();
+
+        await client.PostAsJsonAsync("api/entities/test-widgets", new { label = "X", value = 1 });
+
+        var response = await client.GetAsync("api/entities/test-widgets");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var firstItem = doc.RootElement.GetProperty("items").EnumerateArray().First();
+        firstItem.TryGetProperty("isIdentitySealed", out _).ShouldBeFalse(
+            "isIdentitySealed is an internal state flag and must not be serialized in HTTP responses (Entity ADR-0016).");
+    }
 }

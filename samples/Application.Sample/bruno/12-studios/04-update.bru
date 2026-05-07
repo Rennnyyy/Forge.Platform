@@ -1,0 +1,54 @@
+meta {
+  name: Studios - update (PUT ?iri=) re-wiring owned relations
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/entities/studios?iri={{studioIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Sonic Forge Studios",
+    "active": true,
+    "foundedYear": 2001,
+    "sessionCount": 4350,
+    "acousticRating": 9.4,
+    "reputationScore": 9.1,
+    "budget": 2750000.00,
+    "openedOn": "2001-03-15",
+    "lastBookedAt": "2026-05-01T14:30:00+00:00",
+    "externalId": "550e8400-e29b-41d4-a716-446655440000",
+    "website": "https://forge-it.net/demos/sonic-forge",
+    "bio": "Premier digital recording facility — expanded after renovation.",
+    "verified": true,
+    "capacity": 18,
+    "catalogueSize": 3400,
+    "isolationFactor": 9.7,
+    "profitMargin": 0.27,
+    "annualRevenue": 920000.00,
+    "closedOn": null,
+    "deactivatedAt": null,
+    "legacyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "socialLink": "https://forge-it.net/demos/sonic-forge/social",
+    "managedBy": "{{artistIri}}",
+    "recordings": ["{{recordingIri}}"],
+    "genres": [
+      "https://forge-it.net/genres/jazz",
+      "https://forge-it.net/genres/electronic",
+      "https://forge-it.net/genres/ambient"
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

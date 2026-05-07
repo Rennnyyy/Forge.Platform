@@ -1,0 +1,30 @@
+meta {
+  name: Recordings - update (PUT ?iri=)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/entities/recordings?iri={{recordingIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Midnight Session Take 1 (final mix)",
+    "durationSeconds": 247,
+    "recordedOn": "2026-03-14",
+    "isLive": false,
+    "trackNumber": 1
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

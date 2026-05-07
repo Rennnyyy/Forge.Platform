@@ -1,0 +1,28 @@
+meta {
+  name: Studio relations - bad EntityRefCollection IRI (1:N recordings → 422)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/demo/studio/create-linked
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Relations Demo Studio (bad recording)",
+    "foundedYear": 2010,
+    "recordingIris": ["https://forge-it.net/recordings/00000000-0000-0000-0000-000000000000"]
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq RELATION_NOT_FOUND
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Recordings - read (GET ?iri=)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/entities/recordings?iri={{recordingIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.title: eq Midnight Session Take 1
+  res.body.durationSeconds: eq 243
+  res.body.isLive: eq false
+}

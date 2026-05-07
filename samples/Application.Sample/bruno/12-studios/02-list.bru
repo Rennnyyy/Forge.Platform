@@ -1,0 +1,16 @@
+meta {
+  name: Studios - list (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/entities/studios
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}

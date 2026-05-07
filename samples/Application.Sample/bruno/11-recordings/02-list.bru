@@ -1,0 +1,16 @@
+meta {
+  name: Recordings - list (GET)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/entities/recordings
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}

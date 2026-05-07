@@ -1,0 +1,34 @@
+meta {
+  name: Studio relations - setup artist (POST)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/artists
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Linked Demo Artist",
+    "country": "US",
+    "bio": "Artist used by chapter 13 studio-relations demo.",
+    "active": true,
+    "debutYear": 2005
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("linkedArtistIri", res.body.iri);
+}

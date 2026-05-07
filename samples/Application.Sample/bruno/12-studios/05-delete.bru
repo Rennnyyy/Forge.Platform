@@ -1,0 +1,15 @@
+meta {
+  name: Studios - delete (DELETE ?iri=)
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/studios?iri={{studioIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

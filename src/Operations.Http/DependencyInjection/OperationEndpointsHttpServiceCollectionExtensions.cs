@@ -1,5 +1,7 @@
 using System.Reflection;
 using Forge.Entity;
+using Forge.Operations.Http;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Forge.Operations.Http.DependencyInjection;
@@ -30,6 +32,14 @@ public static class OperationEndpointsHttpServiceCollectionExtensions
         params Assembly[] assemblies)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Register JSON converters for EntityRef<T> and EntityRefCollection<T> so that
+        // GET/LIST endpoints serialize owned-relation IRIs correctly. See ADR-0001.
+        services.Configure<JsonOptions>(o =>
+        {
+            o.SerializerOptions.Converters.Add(new EntityRefJsonConverterFactory());
+            o.SerializerOptions.Converters.Add(new EntityRefCollectionJsonConverterFactory());
+        });
 
         foreach (var assembly in assemblies)
         {
