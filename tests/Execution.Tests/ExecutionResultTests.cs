@@ -43,21 +43,21 @@ public sealed class ExecutionResultTests
     [Fact]
     public void Pattern_match_distinguishes_ok_from_fail()
     {
-        ExecutionResult<MyResponse> ok   = new ExecutionResult<MyResponse>.Ok(new MyResponse("v"));
+        ExecutionResult<MyResponse> ok = new ExecutionResult<MyResponse>.Ok(new MyResponse("v"));
         ExecutionResult<MyResponse> fail = new ExecutionResult<MyResponse>.Fail(
             new ExecutionError("ERR", "bad"));
 
         var okBranch = ok switch
         {
-            ExecutionResult<MyResponse>.Ok o   => o.Response.Value,
+            ExecutionResult<MyResponse>.Ok o => o.Response.Value,
             ExecutionResult<MyResponse>.Fail f => f.Error.Code,
-            _                                  => "unexpected",
+            _ => "unexpected",
         };
         var failBranch = fail switch
         {
-            ExecutionResult<MyResponse>.Ok o   => o.Response.Value,
+            ExecutionResult<MyResponse>.Ok o => o.Response.Value,
             ExecutionResult<MyResponse>.Fail f => f.Error.Code,
-            _                                  => "unexpected",
+            _ => "unexpected",
         };
 
         okBranch.ShouldBe("v");

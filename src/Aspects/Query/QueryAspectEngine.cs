@@ -1,4 +1,5 @@
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using Forge.Aspects.Operation;
 using Forge.Repository;
@@ -39,9 +40,11 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
         if (aspect.FilterWhere is not { } filter) return;
 
         // Pre-load gate: returns rows only when access is granted.
+        // EscapeIri ensures a caller-supplied IRI cannot break out of the angle-bracket
+        // delimiter and inject arbitrary SPARQL (e.g. a crafted ">" in the IRI value).
         var gateQuery =
             $"SELECT ?granted WHERE {{ " +
-            $"VALUES ?entityIri {{ <{entityIri}> }} " +
+            $"VALUES ?entityIri {{ <{EscapeIri(entityIri)}> }} " +
             $"BIND(true AS ?granted) " +
             $"{filter} }}";
 
@@ -95,6 +98,16 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
 
         return sparqlQuery.Replace(FilterPlaceholder, filter, StringComparison.Ordinal);
     }
+
+    // ------------------------------------------------------------------ Helpers
+
+    /// <summary>
+    /// Escapes a caller-supplied IRI before interpolation into a SPARQL angle-bracket IRI literal.
+    /// The only character that can break out of <c>&lt;…&gt;</c> is <c>&gt;</c>; encoding it as
+    /// <c>%3E</c> is safe per RFC 3987 §3.1 and is consistent with
+    /// <c>GraphDbEntityStore.Escape</c>.
+    /// </summary>
+    private static string EscapeIri(string iri) => iri.Replace(">", "%3E", StringComparison.Ordinal);
 
     // ------------------------------------------------------------------ Result-shape validation
 

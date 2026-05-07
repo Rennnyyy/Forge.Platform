@@ -18,7 +18,7 @@ public sealed class OperationEntityBinderTests
         var body = new JsonObject
         {
             ["label"] = "Sprocket",
-            ["value"]  = 42,
+            ["value"] = 42,
         };
 
         var widget = OperationEntityBinder.CreateFromJson<TestWidget>(body);
@@ -53,7 +53,7 @@ public sealed class OperationEntityBinderTests
     {
         var body = new JsonObject
         {
-            ["label"]   = "Known",
+            ["label"] = "Known",
             ["unknown"] = "ignored",
         };
 
@@ -68,7 +68,7 @@ public sealed class OperationEntityBinderTests
     public void UpdateFromJson_RandomEntity_UsesProvidedIri()
     {
         var uuid = Guid.NewGuid();
-        var iri  = $"https://forge-it.net/test-widgets/{uuid}";
+        var iri = $"https://forge-it.net/test-widgets/{uuid}";
         var body = new JsonObject { ["label"] = "Updated", ["value"] = 99 };
 
         var (entity, error) = OperationEntityBinder.UpdateFromJson<TestWidget>(iri, body);
@@ -100,8 +100,8 @@ public sealed class OperationEntityBinderTests
     {
         var body = new JsonObject
         {
-            ["namespace"]   = "forge",
-            ["name"]        = "core",
+            ["namespace"] = "forge",
+            ["name"] = "core",
             ["description"] = "Core tag",
         };
 
@@ -133,15 +133,15 @@ public sealed class OperationEntityBinderTests
         var body = new JsonObject
         {
             ["namespace"] = "forge",
-            ["name"]      = "v2",
+            ["name"] = "v2",
         };
         var created = OperationEntityBinder.CreateFromJson<TestTag>(body);
 
         // Update with the same identity parts and matching IRI → should succeed.
         var updateBody = new JsonObject
         {
-            ["namespace"]   = "forge",
-            ["name"]        = "v2",
+            ["namespace"] = "forge",
+            ["name"] = "v2",
             ["description"] = "Updated description",
         };
 
@@ -158,7 +158,7 @@ public sealed class OperationEntityBinderTests
     {
         // Build the IRI for ns="a", name="1"
         var body1 = new JsonObject { ["namespace"] = "a", ["name"] = "1" };
-        var tag1  = OperationEntityBinder.CreateFromJson<TestTag>(body1);
+        var tag1 = OperationEntityBinder.CreateFromJson<TestTag>(body1);
 
         // Now try to update with body for ns="b", name="2" but IRI for ns="a", name="1"
         var wrongBody = new JsonObject { ["namespace"] = "b", ["name"] = "2" };

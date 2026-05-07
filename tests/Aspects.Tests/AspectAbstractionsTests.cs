@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Shouldly;
 
 namespace Forge.Aspects.Tests;

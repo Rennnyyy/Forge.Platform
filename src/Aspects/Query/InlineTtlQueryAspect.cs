@@ -1,3 +1,4 @@
+using Forge.Aspects.Abstractions;
 namespace Forge.Aspects.Query;
 
 /// <summary>

@@ -1,4 +1,4 @@
-using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
@@ -89,17 +89,39 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
             yield return item;
     }
 
-    // ------------------------------------------------------------------ IEntityStore — writes (delegated)
+    // ------------------------------------------------------------------ IEntityStore — writes (guarded)
 
     /// <inheritdoc/>
-    public ValueTask SaveAsync<T>(T entity, WriteMode mode = WriteMode.Replace,
+    /// <remarks>
+    /// Calls <see cref="IAspectGuard.AuthorizeAsync"/> with <c>aspectToken = "noop"</c>
+    /// before delegating, so that a strict guard also covers direct-write callers that
+    /// bypass <see cref="ITransactionalEntityStore.ExecuteTransactionAsync"/> (e.g.
+    /// <see cref="IEntityRepository{T}"/>).
+    /// </remarks>
+    public async ValueTask SaveAsync<T>(T entity, WriteMode mode = WriteMode.Replace,
         CancellationToken cancellationToken = default)
         where T : class, IEntity
-        => _inner.SaveAsync(entity, mode, cancellationToken);
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOpIri, cancellationToken)
+            .ConfigureAwait(false);
+        await _inner.SaveAsync(entity, mode, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc/>
-    public ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
-        => _inner.DeleteAsync(iri, cancellationToken);
+    /// <remarks>
+    /// Calls <see cref="IAspectGuard.AuthorizeAsync"/> with <c>aspectToken = "noop"</c>
+    /// before delegating.
+    /// </remarks>
+    public async ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOpIri, cancellationToken)
+            .ConfigureAwait(false);
+        await _inner.DeleteAsync(iri, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc/>
     public string? NamedGraph => _inner.NamedGraph;

@@ -1,4 +1,5 @@
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
@@ -548,35 +549,35 @@ public sealed class GuardedTransactionalStoreDelegationTests : IClassFixture<Ent
             yield return item;
     }
 
-    // ── Test 6.1 — SaveAsync delegates; guard not called ─────────────────────
+    // ── Test 6.1 — SaveAsync calls guard then delegates ────────────────────────
 
     [Fact]
-    public async Task SaveAsync_delegates_to_inner_without_calling_guard()
+    public async Task SaveAsync_calls_guard_then_delegates_to_inner()
     {
         var (mockInner, mockGuard, guarded) = BuildMocks();
-        var artist = new Artist { Name = "Delegated Save", Country = "us" };
+        var artist = new Artist { Name = "Guarded Save", Country = "us" };
 
         await guarded.SaveAsync(artist);
 
+        await mockGuard.Received(1).AuthorizeAsync(
+            Arg.Any<string>(), Aspect.NoOpIri, Arg.Any<CancellationToken>());
         await mockInner.Received(1).SaveAsync(
             Arg.Any<Artist>(), Arg.Any<WriteMode>(), Arg.Any<CancellationToken>());
-        await mockGuard.DidNotReceive().AuthorizeAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // ── Test 6.2 — DeleteAsync delegates; guard not called ───────────────────
+    // ── Test 6.2 — DeleteAsync calls guard then delegates ───────────────────
 
     [Fact]
-    public async Task DeleteAsync_delegates_to_inner_without_calling_guard()
+    public async Task DeleteAsync_calls_guard_then_delegates_to_inner()
     {
         var (mockInner, mockGuard, guarded) = BuildMocks();
         const string iri = "https://forge-it.net/artists/to-delete";
 
         await guarded.DeleteAsync(iri);
 
+        await mockGuard.Received(1).AuthorizeAsync(
+            Arg.Any<string>(), Aspect.NoOpIri, Arg.Any<CancellationToken>());
         await mockInner.Received(1).DeleteAsync(iri, Arg.Any<CancellationToken>());
-        await mockGuard.DidNotReceive().AuthorizeAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // ── Test 6.3 — NamedGraph reads from inner ───────────────────────────────

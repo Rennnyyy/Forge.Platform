@@ -1,3 +1,4 @@
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using VDS.RDF;
 using Forge.Aspects.Query;

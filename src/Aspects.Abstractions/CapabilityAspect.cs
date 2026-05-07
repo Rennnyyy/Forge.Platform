@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Forge.Aspects;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>
 /// An <see cref="IAspect"/> that bundles message-validation aspect IRIs for a single

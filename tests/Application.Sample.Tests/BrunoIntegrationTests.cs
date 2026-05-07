@@ -351,6 +351,32 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 14 — Featured Artists: verifies the generated CRUD handlers for the
+    /// <c>FeaturedArtist : Artist</c> child entity, which demonstrates entity type
+    /// inheritance. Includes a polymorphic-listing step that GETs
+    /// <c>api/entities/artists</c> and asserts the featured-artist IRI appears in the
+    /// results, proving that <c>QueryByTypeAsync&lt;Artist&gt;</c> returns subtypes.
+    /// See sample ADR-0008 and root Entity ADR-0016.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_14_featured_artists_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "14-featured-artists");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

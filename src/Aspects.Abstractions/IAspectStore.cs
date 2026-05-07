@@ -1,4 +1,4 @@
-namespace Forge.Aspects;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>
 /// Unified in-process registry for all aspect families (operation, query, message,

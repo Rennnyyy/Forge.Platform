@@ -1,3 +1,4 @@
+using Forge.Aspects.Abstractions;
 using System.Reflection;
 using Forge.Aspects.Operation;
 using VDS.RDF;

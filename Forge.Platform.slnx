@@ -42,6 +42,15 @@
   <Folder Name="/src/Capability.Http/">
     <Project Path="src/Capability.Http/Forge.Capability.Http.csproj" />
   </Folder>
+  <Folder Name="/src/Execution/">
+    <Project Path="src/Execution/Forge.Execution.csproj" />
+  </Folder>
+  <Folder Name="/src/Execution.Http/">
+    <Project Path="src/Execution.Http/Forge.Execution.Http.csproj" />
+  </Folder>
+  <Folder Name="/src/Operations.Http/">
+    <Project Path="src/Operations.Http/Forge.Operations.Http.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Application.Sample/Forge.Application.Sample.csproj" />
   </Folder>
@@ -59,5 +68,8 @@
     <Project Path="tests/Authorization.Http.Tests/Forge.Authorization.Http.Tests.csproj" />
     <Project Path="tests/Capability.Http.Tests/Forge.Capability.Http.Tests.csproj" />
     <Project Path="tests/Application.Sample.Tests/Forge.Application.Sample.Tests.csproj" />
+    <Project Path="tests/Execution.Tests/Forge.Execution.Tests.csproj" />
+    <Project Path="tests/Execution.Http.Tests/Forge.Execution.Http.Tests.csproj" />
+    <Project Path="tests/Operations.Http.Tests/Forge.Operations.Http.Tests.csproj" />
   </Folder>
 </Solution>

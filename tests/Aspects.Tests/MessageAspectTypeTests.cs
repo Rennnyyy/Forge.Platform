@@ -1,4 +1,5 @@
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
 using Shouldly;
 
@@ -68,7 +69,7 @@ public sealed class MessageAspectTypeTests
     public void InlineTtlMessageAspect_implements_IAspect()
     {
         var aspect = new InlineTtlMessageAspect("test", shapeTtl: null);
-        aspect.ShouldBeAssignableTo<Forge.Aspects.IAspect>();
+        aspect.ShouldBeAssignableTo<Forge.Aspects.Abstractions.IAspect>();
     }
 
     // ─────────────────────────────────────────────────────────────────────────

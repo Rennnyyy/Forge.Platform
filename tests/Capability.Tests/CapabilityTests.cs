@@ -1,4 +1,5 @@
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
 using Forge.Capability;
 using Forge.Authorization;
@@ -154,7 +155,7 @@ public sealed class CapabilityHandlerTests
     {
         // Arrange: host code establishes the ambient scope before calling DispatchAsync.
         var engine = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
-        var store = NSubstitute.Substitute.For<Forge.Aspects.IAspectStore>();
+        var store = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IAspectStore>();
         var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
 
         CapabilityResult<PingResponse> result;

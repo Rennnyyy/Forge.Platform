@@ -1,4 +1,4 @@
-namespace Forge.Aspects;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>Well-known aspect constants and the no-operation sentinel.</summary>
 public static class Aspect

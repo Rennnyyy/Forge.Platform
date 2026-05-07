@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using Forge.Execution;
 using Forge.Execution.Http;
@@ -93,7 +94,7 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             JsonObject body,
             ITransactionalEntityStore store) =>
         {
-            using var _ = EntityOperations.Use(store);
+            using var _ops = EntityOperations.Use(store);
             var aspectIri = await opProvider.GetAspectIriAsync(ctx) ?? Aspect.NoOpIri;
 
             return await ExecutionEndpointHelper.InvokeAsync(async () =>
@@ -115,10 +116,14 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             string? iri,
             IEntityStore store) =>
         {
-            using var _ = EntityOperations.Use(store);
+            using var _ops = EntityOperations.Use(store);
 
             if (!string.IsNullOrEmpty(iri))
             {
+                if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                    return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                        $"The value '{iri}' is not a valid absolute IRI."));
+
                 var entity = await EntityOperations.ReadAsync<T>(iri);
                 if (entity is null)
                     return Results.NotFound(new ExecutionError("NOT_FOUND",
@@ -139,11 +144,15 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             JsonObject body,
             ITransactionalEntityStore store) =>
         {
-            using var _ = EntityOperations.Use(store);
+            using var _ops = EntityOperations.Use(store);
             var aspectIri = await opProvider.GetAspectIriAsync(ctx) ?? Aspect.NoOpIri;
 
             return await ExecutionEndpointHelper.InvokeAsync(async () =>
             {
+                if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                    return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                        $"The value '{iri}' is not a valid absolute IRI."));
+
                 var (entity, error) = OperationEntityBinder.UpdateFromJson<T>(iri, body);
                 if (error is not null)
                     return Results.BadRequest(error);
@@ -162,11 +171,15 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             string iri,
             ITransactionalEntityStore store) =>
         {
-            using var _ = EntityOperations.Use(store);
+            using var _ops = EntityOperations.Use(store);
             var aspectIri = await opProvider.GetAspectIriAsync(ctx) ?? Aspect.NoOpIri;
 
             return await ExecutionEndpointHelper.InvokeAsync(async () =>
             {
+                if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                    return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                        $"The value '{iri}' is not a valid absolute IRI."));
+
                 await using var tx = EntityOperations.BeginTransaction();
                 tx.Delete(iri, aspectIri);
                 await tx.CommitAsync();

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 
 namespace Forge.Capability;
 

@@ -10,7 +10,7 @@ public sealed class HeaderExecutionAspectIriProviderTests
     public async Task Returns_header_value_when_present()
     {
         var provider = new HeaderExecutionAspectIriProvider("X-Forge-Test-AspectIri");
-        var context  = new DefaultHttpContext();
+        var context = new DefaultHttpContext();
         context.Request.Headers["X-Forge-Test-AspectIri"] = "urn:test-aspect";
 
         var result = await provider.GetAspectIriAsync(context);
@@ -22,7 +22,7 @@ public sealed class HeaderExecutionAspectIriProviderTests
     public async Task Returns_null_when_header_absent()
     {
         var provider = new HeaderExecutionAspectIriProvider("X-Forge-Test-AspectIri");
-        var context  = new DefaultHttpContext();
+        var context = new DefaultHttpContext();
 
         var result = await provider.GetAspectIriAsync(context);
 
@@ -33,7 +33,7 @@ public sealed class HeaderExecutionAspectIriProviderTests
     public async Task Returns_null_for_whitespace_header()
     {
         var provider = new HeaderExecutionAspectIriProvider("X-Forge-Test-AspectIri");
-        var context  = new DefaultHttpContext();
+        var context = new DefaultHttpContext();
         context.Request.Headers["X-Forge-Test-AspectIri"] = "   ";
 
         var result = await provider.GetAspectIriAsync(context);
@@ -45,7 +45,7 @@ public sealed class HeaderExecutionAspectIriProviderTests
     public async Task Trims_whitespace_from_header_value()
     {
         var provider = new HeaderExecutionAspectIriProvider("X-Forge-Test-AspectIri");
-        var context  = new DefaultHttpContext();
+        var context = new DefaultHttpContext();
         context.Request.Headers["X-Forge-Test-AspectIri"] = "  urn:trimmed  ";
 
         var result = await provider.GetAspectIriAsync(context);

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Forge.Aspects</RootNamespace>
+    <RootNamespace>Forge.Aspects.Abstractions</RootNamespace>
   </PropertyGroup>
 
 </Project>

@@ -37,8 +37,8 @@ public sealed class MapOperationsTests
                 web.ConfigureServices(services =>
                 {
                     var registry = new RdfMapperRegistry();
-                    var opts     = Options.Create(new EntityRepositoryOptions());
-                    var store    = new InMemoryEntityStore(registry, opts);
+                    var opts = Options.Create(new EntityRepositoryOptions());
+                    var store = new InMemoryEntityStore(registry, opts);
 
                     services.AddRouting();
                     services.AddSingleton<IEntityStore>(store);
@@ -80,7 +80,7 @@ public sealed class MapOperationsTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();
-        var iri  = ExtractIri(json);
+        var iri = ExtractIri(json);
         iri.ShouldNotBeNullOrWhiteSpace();
     }
 
@@ -243,8 +243,8 @@ public sealed class MapOperationsTests
                 web.ConfigureServices(services =>
                 {
                     var registry = new RdfMapperRegistry();
-                    var opts     = Options.Create(new EntityRepositoryOptions());
-                    var store    = new InMemoryEntityStore(registry, opts);
+                    var opts = Options.Create(new EntityRepositoryOptions());
+                    var store = new InMemoryEntityStore(registry, opts);
 
                     services.AddRouting();
                     services.AddSingleton<IEntityStore>(store);

@@ -1,4 +1,4 @@
-namespace Forge.Aspects;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>
 /// Thrown when an aspect IRI cannot be resolved from <see cref="IAspectStore"/>.

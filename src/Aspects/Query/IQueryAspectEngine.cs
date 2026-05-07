@@ -1,4 +1,4 @@
-using Forge.Aspects;
+using Forge.Aspects.Abstractions;
 using Forge.Entity;
 using Forge.Repository;
 

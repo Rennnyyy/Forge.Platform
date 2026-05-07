@@ -1,4 +1,4 @@
-namespace Forge.Aspects;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>Categorises the role of a capability message.</summary>
 [Flags]
