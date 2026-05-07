@@ -1,0 +1,48 @@
+meta {
+  name: Featured Artists - PUT child entity via parent endpoint
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/entities/artists?iri={{featuredArtistIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Lumina Sol",
+    "country": "Brazil",
+    "bio": "Written back through the base-type endpoint — child fields are lost.",
+    "active": true,
+    "debutYear": 2019
+  }
+}
+
+docs {
+  ## Child entity PUT via parent endpoint (type downgrade)
+
+  The entity at `{{featuredArtistIri}}` was created through `POST api/entities/featured-artists`
+  and carries two `rdf:type` triples along with `featuredSince` and `sponsorName` predicates.
+
+  When this PUT is sent to the **artists** endpoint the server binds the request body to an
+  `Artist` instance (reusing the same UUID) — only the five base-type properties are bound.
+  The write goes through `EntityStore.ReplaceAsync<Artist>` which projects only:
+
+  - `<iri> rdf:type <…/artists>` — the base type only (the concrete subtype triple is gone)
+  - The five `Artist` predicates (`name`, `country`, `bio`, `active`, `debutYear`)
+
+  The `featuredSince` and `sponsorName` predicates and the `<…/artists/FeaturedArtist>`
+  type triple are **not** written — the entity is effectively **downgraded** to a plain
+  `Artist`.  A subsequent `GET api/entities/featured-artists` will no longer return it.
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

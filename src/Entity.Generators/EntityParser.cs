@@ -34,23 +34,75 @@ internal static class EntityParser
             return null;
         }
 
-        // FORGE0002: exactly one [Identity].
-        var identityAttr = type.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == IdentityAttr);
-        if (identityAttr is null)
+        // Detect entity subtype: walk base chain for the first [Entity]-annotated ancestor.
+        string? baseEntityTypeFqn = null;
+        string? baseEntityTypeDisplayName = null;
+        var baseWalk = type.BaseType;
+        while (baseWalk is not null && baseWalk.SpecialType != SpecialType.System_Object)
         {
-            ctx.ReportDiagnostic(Diagnostic.Create(
-                EntityDiagnostics.MissingIdentity, location, type.Name));
-            return null;
+            if (baseWalk.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == EntityAttr))
+            {
+                baseEntityTypeFqn = baseWalk.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                baseEntityTypeDisplayName = baseWalk.ToDisplayString();
+                break;
+            }
+            baseWalk = baseWalk.BaseType;
+        }
+        bool isEntitySubtype = baseEntityTypeFqn is not null;
+
+        // Resolve [Identity] — required on root entities, forbidden on subtypes.
+        AttributeData? identityAttr;
+        if (!isEntitySubtype)
+        {
+            // FORGE0002: root entity must declare exactly one [Identity].
+            identityAttr = type.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == IdentityAttr);
+            if (identityAttr is null)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    EntityDiagnostics.MissingIdentity, location, type.Name));
+                return null;
+            }
+        }
+        else
+        {
+            // FORGE0006: [Identity] must not appear on a subtype.
+            var illegalIdentity = type.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == IdentityAttr);
+            if (illegalIdentity is not null)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    EntityDiagnostics.IdentityOnSubtype, location, type.Name));
+            }
+
+            // Resolve identity from the base chain (walk upward until [Identity] is found).
+            identityAttr = null;
+            var idSearch = type.BaseType;
+            while (idSearch is not null && idSearch.SpecialType != SpecialType.System_Object)
+            {
+                identityAttr = idSearch.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == IdentityAttr);
+                if (identityAttr is not null) break;
+                idSearch = idSearch.BaseType;
+            }
         }
 
         var Path = entityAttr.NamedArguments.FirstOrDefault(kv => kv.Key == "Path").Value.Value as string;
+
+        // FORGE0007: Path must not be set on a subtype's [Entity].
+        if (isEntitySubtype && !string.IsNullOrEmpty(Path))
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(
+                EntityDiagnostics.PathOnSubtype, location, type.Name));
+            Path = null; // treat as unset to prevent IRI corruption
+        }
+
         var explicitPredicatePath = entityAttr.NamedArguments.FirstOrDefault(kv => kv.Key == "PredicatePath").Value.Value as string;
-        // Default PredicatePath to Path when not set explicitly.
+        // Default PredicatePath to Path when not set explicitly (for root entities only).
         var predicatePath = string.IsNullOrEmpty(explicitPredicatePath) ? Path : explicitPredicatePath;
 
-        var strategy = (IdentityStrategy)System.Convert.ToInt32(
-            identityAttr.ConstructorArguments.Length > 0 ? identityAttr.ConstructorArguments[0].Value : 0);
-        var identityNamespace = identityAttr.NamedArguments.FirstOrDefault(kv => kv.Key == "Namespace").Value.Value as string;
+        var strategy = identityAttr is not null
+            ? (IdentityStrategy)System.Convert.ToInt32(
+                identityAttr.ConstructorArguments.Length > 0 ? identityAttr.ConstructorArguments[0].Value : 0)
+            : IdentityStrategy.Inherited;
+        var identityNamespace = identityAttr?.NamedArguments.FirstOrDefault(kv => kv.Key == "Namespace").Value.Value as string;
 
         var isEnumeration = type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == EnumerationAttr);
 
@@ -161,7 +213,9 @@ internal static class EntityParser
             IdentityParts: identityParts.OrderBy(p => p.Order).ToImmutableArray(),
             References: references.ToImmutable(),
             DeclarationLocation: location,
-            IsPartial: true);
+            IsPartial: true,
+            BaseEntityTypeFqn: baseEntityTypeFqn,
+            BaseEntityTypeDisplayName: baseEntityTypeDisplayName);
     }
 
     /// <summary>Classify the property type as owning-single / owning-collection / inverse-single by shape.</summary>

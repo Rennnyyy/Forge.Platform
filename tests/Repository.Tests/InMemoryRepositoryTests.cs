@@ -431,4 +431,141 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         loaded.Country.ShouldBe("us");
         loaded.DebutYear.ShouldBe(2010);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 15. ADR-0016 Entity type inheritance
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task FeaturedArtist_inherits_identity_from_Artist()
+    {
+        // A FeaturedArtist is created with the same identity parts as Artist;
+        // identity is resolved by the inherited UuidV5 strategy.
+        var featured = new FeaturedArtist { Name = "Nova Star", Country = "de" };
+        featured.FeaturedSince = 2022;
+
+        // IRI is deterministic — same as an Artist with identical identity parts.
+        var equivalentArtist = new Artist { Name = "Nova Star", Country = "de" };
+        featured.Iri.ShouldBe(equivalentArtist.Iri);
+        featured.IsIdentitySealed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task FeaturedArtist_saves_and_loads_all_predicates()
+    {
+        var s = Build();
+        var repo = new EntityRepository<FeaturedArtist>(s.Store);
+
+        var featured = new FeaturedArtist { Name = "Galaxy X", Country = "jp" };
+        featured.Active = true;
+        featured.DebutYear = 2019;
+        featured.StreamCount = 1_000_000L;
+        featured.AvgBpm = 140.0f;
+        featured.Popularity = 9.1;
+        featured.TotalEarnings = 50_000.00m;
+        featured.BornOn = new DateOnly(1995, 4, 10);
+        featured.RegisteredAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        featured.ExternalId = Guid.NewGuid();
+        featured.FeaturedSince = 2021;
+        featured.SponsorName = "NovaCorp";
+
+        await repo.SaveAsync(featured);
+
+        var loaded = await repo.LoadAsync(featured.Iri);
+        loaded.ShouldNotBeNull();
+
+        // Inherited Artist predicates round-trip correctly.
+        loaded.Name.ShouldBe("Galaxy X");
+        loaded.Country.ShouldBe("jp");
+        loaded.Active.ShouldBeTrue();
+        loaded.DebutYear.ShouldBe(2019);
+        loaded.StreamCount.ShouldBe(1_000_000L);
+        loaded.AvgBpm.ShouldBe(140.0f);
+        loaded.Popularity.ShouldBe(9.1);
+        loaded.TotalEarnings.ShouldBe(50_000.00m);
+        loaded.BornOn.ShouldBe(new DateOnly(1995, 4, 10));
+        loaded.RegisteredAt.ShouldBe(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        loaded.FeaturedSince.ShouldBe(2021);
+        loaded.SponsorName.ShouldBe("NovaCorp");
+    }
+
+    [Fact]
+    public async Task FeaturedArtist_projects_both_concrete_and_ancestor_rdf_type_triples()
+    {
+        var s = Build();
+        var repo = new EntityRepository<FeaturedArtist>(s.Store);
+
+        var featured = new FeaturedArtist { Name = "Ray Bright", Country = "fr" };
+        featured.FeaturedSince = 2023;
+        await repo.SaveAsync(featured);
+
+        var opts = new EntityRepositoryOptions();
+        var featuredMapper = new Forge.Repository.Mapping.ReflectionRdfMapper<FeaturedArtist>();
+        var artistMapper = new Forge.Repository.Mapping.ReflectionRdfMapper<Artist>();
+
+        var concreteTypeIri = featuredMapper.ResolveTypeIri(opts);
+        var ancestorTypeIri = artistMapper.ResolveTypeIri(opts);
+
+        // Concrete type IRI must be scoped under the ancestor's path.
+        concreteTypeIri.ShouldEndWith("/artists/FeaturedArtist");
+        ancestorTypeIri.ShouldEndWith("/artists");
+
+        // Both rdf:type triples must appear in the underlying dotNetRDF graph.
+        var rdfTypeNode = s.Store.Graph.CreateUriNode(
+            VDS.RDF.UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
+        var concreteNode = s.Store.Graph.CreateUriNode(VDS.RDF.UriFactory.Create(concreteTypeIri));
+        var ancestorNode = s.Store.Graph.CreateUriNode(VDS.RDF.UriFactory.Create(ancestorTypeIri));
+
+        s.Store.Graph.GetTriplesWithPredicateObject(rdfTypeNode, concreteNode)
+            .ShouldNotBeEmpty("concrete rdf:type triple missing");
+        s.Store.Graph.GetTriplesWithPredicateObject(rdfTypeNode, ancestorNode)
+            .ShouldNotBeEmpty("ancestor rdf:type triple missing");
+    }
+
+    [Fact]
+    public async Task QueryByTypeAsync_returns_FeaturedArtist_when_queried_by_concrete_type()
+    {
+        var s = Build();
+        var featuredRepo = new EntityRepository<FeaturedArtist>(s.Store);
+
+        var fa = new FeaturedArtist { Name = "Echo Lux", Country = "us" };
+        fa.FeaturedSince = 2020;
+        await featuredRepo.SaveAsync(fa);
+
+        // A plain Artist must also be in the store to verify that QueryByTypeAsync is selective.
+        var plain = new Artist { Name = "Plain Jane", Country = "uk" };
+        await s.Artists.SaveAsync(plain);
+
+        var featuredResults = new List<FeaturedArtist>();
+        await foreach (var item in s.Store.QueryByTypeAsync<FeaturedArtist>())
+            featuredResults.Add(item);
+
+        featuredResults.ShouldHaveSingleItem();
+        featuredResults[0].Name.ShouldBe("Echo Lux");
+        featuredResults[0].FeaturedSince.ShouldBe(2020);
+    }
+
+    [Fact]
+    public async Task QueryByTypeAsync_for_parent_type_returns_all_subtypes()
+    {
+        var s = Build();
+        var featuredRepo = new EntityRepository<FeaturedArtist>(s.Store);
+
+        var fa = new FeaturedArtist { Name = "Sub Star", Country = "us" };
+        fa.FeaturedSince = 2024;
+        await featuredRepo.SaveAsync(fa);
+
+        var plain = new Artist { Name = "Plain John", Country = "us" };
+        await s.Artists.SaveAsync(plain);
+
+        // Both plain Artists and FeaturedArtists carry rdf:type <artists>,
+        // so querying by Artist should return both IRIs.
+        var artistResults = new List<Artist>();
+        await foreach (var item in s.Store.QueryByTypeAsync<Artist>())
+            artistResults.Add(item);
+
+        artistResults.Count.ShouldBe(2);
+        artistResults.ShouldContain(a => a.Name == "Plain John");
+        artistResults.ShouldContain(a => a.Name == "Sub Star");
+    }
 }

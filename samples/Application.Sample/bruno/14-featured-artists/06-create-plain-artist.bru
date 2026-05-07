@@ -1,0 +1,34 @@
+meta {
+  name: Featured Artists - create plain Artist (setup)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/entities/artists
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Plain Jane Artist",
+    "country": "Germany",
+    "bio": "A regular artist — not yet featured.",
+    "active": true,
+    "debutYear": 2010
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("plainArtistIri", res.body.iri);
+}

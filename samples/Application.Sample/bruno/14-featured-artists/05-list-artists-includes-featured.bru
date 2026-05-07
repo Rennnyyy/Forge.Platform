@@ -1,0 +1,36 @@
+meta {
+  name: Featured Artists - list artists includes featured (GET artists)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/entities/artists
+  body: none
+  auth: none
+}
+
+docs {
+  ## Polymorphic listing proof
+  
+  A `FeaturedArtist` projects two `rdf:type` triples at the RDF level (ADR-0016):
+  
+  - `<iri> rdf:type <…/artists/FeaturedArtist>` — the concrete type
+  - `<iri> rdf:type <…/artists>`               — the base type
+  
+  `QueryByTypeAsync<Artist>()` filters on the base-type IRI, so it returns both plain
+  `Artist` instances and `FeaturedArtist` instances.  This response must therefore
+  contain the featured artist created in step 01 of this chapter.
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}
+
+script:post-response {
+  const items = res.body.items || [];
+  const iri = bru.getVar("featuredArtistIri");
+  const found = items.some(item => item.iri === iri);
+  expect(found).to.be.true;
+}

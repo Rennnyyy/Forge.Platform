@@ -363,4 +363,200 @@ public class EntityGeneratorTests
         var errors = result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
         errors.ShouldBeEmpty(string.Join("\n", errors.Select(e => e.ToString())));
     }
+
+    // ================================================================
+    // ADR-0016 Entity type inheritance
+    // ================================================================
+
+    [Fact]
+    public void Entity_subtype_emits_parent_as_base_class()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "animals", PredicatePath = "animal")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Animal { }
+
+            [Entity(PredicatePath = "dog")]
+            public partial class Dog : Animal { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var dogCode = result.EmittedFiles.Single(f => f.FileName.Contains(".Dog.")).Source;
+
+        // Child must inherit from the parent entity class, not EntityBase.
+        dogCode.ShouldContain("partial class Dog : global::Demo.Animal");
+        // Child must NOT re-emit an IRI field or a parameterless new-instance ctor body.
+        dogCode.ShouldNotContain("__forge_identityUuid = global::System.Guid.NewGuid();");
+    }
+
+    [Fact]
+    public void Uuidv4_subtype_emits_forwarding_ctor_pair()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "animals", PredicatePath = "animal")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Animal { }
+
+            [Entity]
+            public partial class Dog : Animal { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var dogCode = result.EmittedFiles.Single(f => f.FileName.Contains(".Dog.")).Source;
+
+        // Public parameterless ctor forwarding to base (new-instance path).
+        dogCode.ShouldContain("public Dog() : base() { }");
+        // Internal (Guid) ctor forwarding to base (hydration path).
+        dogCode.ShouldContain("internal Dog(global::System.Guid persistedUuid) : base(persistedUuid) { }");
+    }
+
+    [Fact]
+    public void Uuidv5_subtype_does_not_emit_ctors()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "things", PredicatePath = "thing")]
+            [Identity(IdentityGenerator.PropertyBasedEncoded)]
+            public partial class Thing
+            {
+                [IdentityPart(0)] public partial string Name { get; init; }
+            }
+
+            [Entity]
+            public partial class SpecialThing : Thing { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var childCode = result.EmittedFiles.Single(f => f.FileName.Contains(".SpecialThing.")).Source;
+
+        childCode.ShouldNotContain("SpecialThing(global::System.Guid");
+        childCode.ShouldNotContain("MaterializeIdentity");
+        childCode.ShouldNotContain("EnsureIdentity");
+    }
+
+    [Fact]
+    public void Entity_subtype_wires_only_declared_members()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "vehicles", PredicatePath = "vehicle")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Vehicle
+            {
+                [Owning("hasDriver")] public partial EntityRef<Driver>? Driver { get; set; }
+            }
+
+            [Entity(Path = "drivers", PredicatePath = "driver")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Driver { }
+
+            [Entity(PredicatePath = "truck")]
+            public partial class Truck : Vehicle
+            {
+                [Owning("hasTrailer")] public partial EntityRef<Trailer>? Trailer { get; set; }
+            }
+
+            [Entity(Path = "trailers", PredicatePath = "trailer")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class Trailer { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var truckCode = result.EmittedFiles.Single(f => f.FileName.Contains(".Truck.")).Source;
+
+        // Truck's generated code must wire its own Trailer ref.
+        truckCode.ShouldContain("__forge_ref_Trailer");
+        // Truck's generated code must NOT re-wire the inherited Driver ref.
+        truckCode.ShouldNotContain("__forge_ref_Driver");
+    }
+
+    [Fact]
+    public void Reports_FORGE0006_when_identity_declared_on_subtype()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "base-items")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class BaseItem { }
+
+            [Entity]
+            [Identity(IdentityGenerator.Random)]
+            public partial class ChildItem : BaseItem { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldContain(d => d.Id == "FORGE0006" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Reports_FORGE0007_when_path_set_on_subtype()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "base-items")]
+            [Identity(IdentityGenerator.Random)]
+            public partial class BaseItem { }
+
+            [Entity(Path = "child-items")]
+            public partial class ChildItem : BaseItem { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldContain(d => d.Id == "FORGE0007" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Entity_subtype_compiled_code_is_error_free()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "things", PredicatePath = "thing")]
+            [Identity(IdentityGenerator.PropertyBasedEncoded)]
+            public partial class Thing
+            {
+                [IdentityPart(0)] public partial string Name { get; init; }
+                [Predicate("description")]
+                public string Description { get; set; } = "";
+            }
+
+            [Entity(PredicatePath = "special-thing")]
+            public partial class SpecialThing : Thing
+            {
+                [Predicate("rank")]
+                public int Rank { get; set; }
+            }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var errors = result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
+        errors.ShouldBeEmpty(string.Join("\n", errors.Select(e => e.ToString())));
+    }
 }

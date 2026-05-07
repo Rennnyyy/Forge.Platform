@@ -61,7 +61,10 @@ internal static class OperationEntityBinder
 
     private static EntityBindingPlan BuildPlan(Type t)
     {
-        var identityAttr = t.GetCustomAttribute<IdentityAttribute>()
+        // IdentityAttribute has Inherited = false; walk the base-type chain manually so
+        // that entity subtypes (which must not redeclare [Identity] per ADR-0016) are
+        // accepted here.
+        var identityAttr = FindAttributeOnTypeOrBases<IdentityAttribute>(t)
             ?? throw new InvalidOperationException(
                 $"Type '{t.Name}' is missing the [Identity] attribute.");
 
@@ -308,6 +311,25 @@ internal static class OperationEntityBinder
     {
         var idx = iri.LastIndexOf('/');
         return idx >= 0 && idx + 1 < iri.Length ? iri[(idx + 1)..] : iri;
+    }
+
+    /// <summary>
+    /// Walks <paramref name="type"/> and its base types to find a custom attribute of
+    /// type <typeparamref name="TAttr"/>. Required because <see cref="IdentityAttribute"/>
+    /// has <c>Inherited = false</c>, so <c>GetCustomAttribute(inherit: true)</c> does not
+    /// traverse the hierarchy.
+    /// </summary>
+    private static TAttr? FindAttributeOnTypeOrBases<TAttr>(Type type)
+        where TAttr : Attribute
+    {
+        var t = type;
+        while (t is not null)
+        {
+            var attr = t.GetCustomAttribute<TAttr>();
+            if (attr is not null) return attr;
+            t = t.BaseType;
+        }
+        return null;
     }
 }
 

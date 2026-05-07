@@ -51,10 +51,13 @@ public static class OperationEndpointsHttpServiceCollectionExtensions
                 var opAttr = entityType.GetCustomAttribute<OperationEndpointsAttribute>();
                 if (opAttr is null) continue;
 
-                if (entityType.GetCustomAttribute<IdentityAttribute>() is null)
+                // IdentityAttribute has Inherited = false so GetCustomAttribute(inherit: true)
+                // does not traverse the base-type chain. Walk manually so that entity subtypes
+                // (which must not redeclare [Identity] per ADR-0016 / FORGE0006) are still accepted.
+                if (!HasIdentityAttributeOnTypeOrBases(entityType))
                     throw new InvalidOperationException(
                         $"Entity type '{entityType.FullName}' carries [OperationEndpoints] " +
-                        "but is missing the required [Identity] attribute.");
+                        "but is missing the required [Identity] attribute (checked on this type and all base types).");
 
                 var path = opAttr.Path ?? entityAttr.Path
                     ?? throw new InvalidOperationException(
@@ -76,4 +79,22 @@ public static class OperationEndpointsHttpServiceCollectionExtensions
         this IServiceCollection services)
         where T : class
         => services.AddOperationEndpointsHttp(typeof(T).Assembly);
+
+    /// <summary>
+    /// Returns <see langword="true"/> if <paramref name="type"/> or any of its base types
+    /// carries <see cref="IdentityAttribute"/>. Because <see cref="IdentityAttribute"/> has
+    /// <c>Inherited = false</c>, the standard <c>GetCustomAttribute(inherit: true)</c> overload
+    /// does not traverse the type hierarchy; we walk it explicitly.
+    /// </summary>
+    private static bool HasIdentityAttributeOnTypeOrBases(Type type)
+    {
+        var t = type;
+        while (t is not null)
+        {
+            if (t.GetCustomAttribute<IdentityAttribute>() is not null)
+                return true;
+            t = t.BaseType;
+        }
+        return false;
+    }
 }

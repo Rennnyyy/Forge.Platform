@@ -14,3 +14,4 @@ See [root ADR README](../../../adr/README.md) for format and rules.
 - [0004 — Entity operation aspect demonstration for generated CUD handlers](0004-entity-operation-aspect-book-demo.md)
 - [0005 — Complex Studio entity: all scalars + all owned relation flavours](0005-complex-studio-entity-demo.md)
 - [0006 — Genre as [Enumeration] and relation demonstration via capability handler](0006-genre-enumeration-and-relation-demo.md)
+- [0008 — Featured Artist entity: entity type inheritance demonstration](0008-featured-artist-inheritance-demo.md)

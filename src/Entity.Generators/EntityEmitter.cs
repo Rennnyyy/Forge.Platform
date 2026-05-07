@@ -19,38 +19,68 @@ internal static class EntityEmitter
         var hasNamespace = m.Namespace.Length > 0;
         if (hasNamespace) sb.Append("namespace ").Append(m.Namespace).AppendLine(";").AppendLine();
 
+        // Child entities inherit from their parent entity class; root entities inherit EntityBase.
+        var baseClass = m.BaseEntityTypeFqn ?? "global::Forge.Entity.EntityBase";
+
         sb.Append(m.IsSealed ? "sealed " : "")
           .Append("partial class ")
           .Append(m.TypeName)
-          .AppendLine(" : global::Forge.Entity.EntityBase")
+          .Append(" : ").AppendLine(baseClass)
           .AppendLine("{");
 
-        EmitIdentityFields(sb, m);
-        EmitIdentityPartProperties(sb, m);
+        if (!m.IsEntitySubtype)
+        {
+            EmitIdentityFields(sb, m);
+            EmitIdentityPartProperties(sb, m);
+        }
+        else if (m.IdentityStrategy == IdentityStrategy.UuidV4)
+        {
+            // UuidV4 subtypes need an explicit ctor pair — emitting (Guid) suppresses the
+            // C# auto-generated default ctor so we also emit the parameterless one.
+            EmitSubtypeV4Ctors(sb, m);
+        }
+
         EmitOwningSingleRefs(sb, m, registry);
         EmitOwningCollections(sb, m, registry);
         EmitInverseRefs(sb, m);
         EmitInverseCollections(sb, m);
 
-        if (m.IdentityStrategy == IdentityStrategy.Path
-            || m.IdentityStrategy == IdentityStrategy.UuidV5)
+        if (!m.IsEntitySubtype)
         {
-            EmitIdentityMaterialization(sb, m);
-            sb.AppendLine("    protected override void EnsureIdentity() => MaterializeIdentity();");
-            sb.AppendLine();
+            if (m.IdentityStrategy == IdentityStrategy.Path
+                || m.IdentityStrategy == IdentityStrategy.UuidV5)
+            {
+                EmitIdentityMaterialization(sb, m);
+                sb.AppendLine("    protected override void EnsureIdentity() => MaterializeIdentity();");
+                sb.AppendLine();
+            }
+
+            if (m.IdentityStrategy == IdentityStrategy.UuidV5)
+                EmitUuidV5Helper(sb);
+
+            if (m.IsEnumeration)
+                EmitEnumerationStaticInit(sb, m);
         }
-
-        if (m.IdentityStrategy == IdentityStrategy.UuidV5)
-            EmitUuidV5Helper(sb);
-
-        if (m.IsEnumeration)
-            EmitEnumerationStaticInit(sb, m);
 
         sb.AppendLine("}");
         return sb.ToString();
     }
 
     // ---------------------------------------------------------------- Identity
+
+    /// <summary>
+    /// For UuidV4 entity subtypes: emitting the explicit (Guid) ctor suppresses the C# default
+    /// ctor, so we also emit a public parameterless ctor that forwards to the parent's new-instance
+    /// ctor (which seals the IRI with a fresh UUID).
+    /// </summary>
+    private static void EmitSubtypeV4Ctors(StringBuilder sb, EntityModel m)
+    {
+        sb.Append("    public ").Append(m.TypeName).AppendLine("() : base() { }");
+        sb.AppendLine();
+        sb.Append("    internal ").Append(m.TypeName)
+          .AppendLine("(global::System.Guid persistedUuid) : base(persistedUuid) { }");
+        sb.AppendLine();
+    }
 
     private static void EmitIdentityFields(StringBuilder sb, EntityModel m)
     {

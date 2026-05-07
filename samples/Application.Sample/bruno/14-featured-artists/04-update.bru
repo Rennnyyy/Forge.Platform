@@ -1,0 +1,32 @@
+meta {
+  name: Featured Artists - update (PUT ?iri=)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/entities/featured-artists?iri={{featuredArtistIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Lumina Sol",
+    "country": "Brazil",
+    "bio": "Multi-genre artist headlining the platform since 2022.",
+    "active": true,
+    "debutYear": 2019,
+    "featuredSince": 2023,
+    "sponsorName": "Stellar Audio Group"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

@@ -36,12 +36,30 @@ public sealed class EntityOperationsGenerator : IIncrementalGenerator
                     }
                 }
 
+                // Detect entity subtypes: base type also carries [Entity].
+                var isSubtype = false;
+                var baseType = symbol.BaseType;
+                while (baseType is not null && baseType.SpecialType == SpecialType.None)
+                {
+                    foreach (var attr in baseType.GetAttributes())
+                    {
+                        if (attr.AttributeClass?.ToDisplayString() == "Forge.Entity.EntityAttribute")
+                        {
+                            isSubtype = true;
+                            break;
+                        }
+                    }
+                    if (isSubtype) break;
+                    baseType = baseType.BaseType;
+                }
+
                 return (
                     Ns: symbol.ContainingNamespace.IsGlobalNamespace
                         ? ""
                         : symbol.ContainingNamespace.ToDisplayString(),
                     TypeName: symbol.Name,
                     IsSealed: symbol.IsSealed,
+                    IsSubtype: isSubtype,
                     Skip: hasNoOps
                 );
             });
@@ -50,7 +68,7 @@ public sealed class EntityOperationsGenerator : IIncrementalGenerator
         {
             if (model.Skip) return;
 
-            var source = EntityOperationsEmitter.Emit(model.Ns, model.TypeName, model.IsSealed);
+            var source = EntityOperationsEmitter.Emit(model.Ns, model.TypeName, model.IsSealed, model.IsSubtype);
             var hint = model.Ns.Length == 0
                 ? $"{model.TypeName}.g.ops.cs"
                 : $"{model.Ns}.{model.TypeName}.g.ops.cs";

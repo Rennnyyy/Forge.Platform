@@ -1,0 +1,51 @@
+meta {
+  name: Featured Artists - PUT plain Artist via child endpoint
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/entities/featured-artists?iri={{plainArtistIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Plain Jane Artist",
+    "country": "Germany",
+    "bio": "Now upgraded to featured status via the child-type endpoint.",
+    "active": true,
+    "debutYear": 2010,
+    "featuredSince": 2024,
+    "sponsorName": "Horizon Media"
+  }
+}
+
+docs {
+  ## Parent entity PUT via child endpoint (type upgrade)
+
+  The entity at `{{plainArtistIri}}` was created through `POST api/entities/artists` and
+  has only base-type `rdf:type` triples (`<…/artists>`).
+
+  When this PUT is sent to the **featured-artists** endpoint the server binds the request
+  body to a `FeaturedArtist` instance (reusing the same UUID from the IRI), then writes
+  it back via `EntityStore.ReplaceAsync<FeaturedArtist>`.  The written graph now carries
+  two `rdf:type` triples:
+
+  - `<iri> rdf:type <…/artists/FeaturedArtist>` — the concrete subtype
+  - `<iri> rdf:type <…/artists>`               — the inherited base type
+
+  The entity is effectively **upgraded** from `Artist` to `FeaturedArtist` by writing
+  through the child endpoint.  A subsequent `GET api/entities/featured-artists` will
+  return it; it continues to appear in `GET api/entities/artists` as well.
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Featured Artists - delete featured (DELETE ?iri=)
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/featured-artists?iri={{featuredArtistIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

@@ -47,4 +47,20 @@ internal static class EntityDiagnostics
         category: "Forge.Entity",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor IdentityOnSubtype = new(
+        id: "FORGE0006",
+        title: "Entity subtype must not declare [Identity]",
+        messageFormat: "Class '{0}' inherits from an [Entity] class and must not declare [Identity]. Identity is inherited from the root ancestor.",
+        category: "Forge.Entity",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor PathOnSubtype = new(
+        id: "FORGE0007",
+        title: "Entity subtype must not declare Path on [Entity]",
+        messageFormat: "Class '{0}' inherits from an [Entity] class and must not set Path on [Entity]. The instance IRI path is inherited from the root ancestor. Use PredicatePath to scope predicate names.",
+        category: "Forge.Entity",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

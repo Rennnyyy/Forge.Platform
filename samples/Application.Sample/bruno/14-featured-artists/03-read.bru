@@ -1,0 +1,19 @@
+meta {
+  name: Featured Artists - read (GET ?iri=)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/entities/featured-artists?iri={{featuredArtistIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.name: eq Lumina Sol
+  res.body.featuredSince: eq 2022
+  res.body.sponsorName: eq SoundBridge Records
+}

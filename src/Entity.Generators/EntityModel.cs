@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 namespace Forge.Entity.Generators;
 
 /// <summary>Identity strategy mirrored from <c>Forge.Entity.IdentityGenerator</c>.</summary>
-internal enum IdentityStrategy { Path, UuidV4, UuidV5 }
+internal enum IdentityStrategy { Path, UuidV4, UuidV5, Inherited }
 
 /// <summary>Kind of an entity reference property.</summary>
 internal enum RefKind { OwningSingle, OwningCollection, InverseSingle, InverseCollection }
@@ -46,8 +46,11 @@ internal sealed record EntityModel(
     ImmutableArray<IdentityPartModel> IdentityParts,
     ImmutableArray<RefModel> References,
     Location DeclarationLocation,
-    bool IsPartial)
+    bool IsPartial,
+    string? BaseEntityTypeFqn,
+    string? BaseEntityTypeDisplayName)
 {
+    public bool IsEntitySubtype => BaseEntityTypeFqn is not null;
     public string FileName => Namespace.Length == 0 ? $"{TypeName}.g.cs" : $"{Namespace}.{TypeName}.g.cs";
 }
 

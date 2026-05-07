@@ -1,0 +1,36 @@
+meta {
+  name: Featured Artists - create (POST)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/featured-artists
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Lumina Sol",
+    "country": "Brazil",
+    "bio": "Multi-genre artist headlining the platform since 2022.",
+    "active": true,
+    "debutYear": 2019,
+    "featuredSince": 2022,
+    "sponsorName": "SoundBridge Records"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("featuredArtistIri", res.body.iri);
+}

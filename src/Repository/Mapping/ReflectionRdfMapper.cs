@@ -122,7 +122,17 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         var plan = _plan.Value;
 
         var subj = RdfTerm.Iri(entity.Iri);
-        sink.Add(new RdfTriple(subj, RdfVocab.RdfTypeIri, RdfTerm.Iri(typeIri)));
+        // Emit rdf:type for the concrete type, then strip one path segment per ancestor level
+        // to emit ancestor type IRIs (ADR-0016: child type IRI = {parent-type-IRI}/{ChildClass}).
+        var currentTypeIri = typeIri;
+        sink.Add(new RdfTriple(subj, RdfVocab.RdfTypeIri, RdfTerm.Iri(currentTypeIri)));
+        for (int i = 0; i < plan.EntityAncestorCount; i++)
+        {
+            var lastSlash = currentTypeIri.LastIndexOf('/');
+            if (lastSlash <= 0) break;
+            currentTypeIri = currentTypeIri[..lastSlash];
+            sink.Add(new RdfTriple(subj, RdfVocab.RdfTypeIri, RdfTerm.Iri(currentTypeIri)));
+        }
 
         // [Predicate] data
         foreach (var dp in plan.DataProperties)
@@ -234,7 +244,8 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         MethodInfo HydrateIriMethod,
         IReadOnlyList<DataProp> DataProperties,
         IReadOnlyList<RefProp> OwningSingleRefs,
-        IReadOnlyList<CollectionProp> OwningCollections);
+        IReadOnlyList<CollectionProp> OwningCollections,
+        int EntityAncestorCount);
 
     private sealed record DataProp(
         PropertyInfo Property,
@@ -261,9 +272,11 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         var entityAttr = t.GetCustomAttribute<EntityAttribute>()
             ?? throw new InvalidOperationException(
                 $"Type {t.FullName} is not decorated with [Entity].");
-        var identityAttr = t.GetCustomAttribute<IdentityAttribute>()
+
+        // Walk the type chain to find [Identity] — child entities do not declare it themselves.
+        var identityAttr = FindAttributeOnTypeOrBases<IdentityAttribute>(t)
             ?? throw new InvalidOperationException(
-                $"Type {t.FullName} is missing the required [Identity(...)] attribute.");
+                $"Type {t.FullName} (or any of its base entity types) is missing the required [Identity(...)] attribute.");
 
         var strategy = identityAttr.Generator switch
         {
@@ -271,6 +284,12 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             IdentityGenerator.PropertyBasedEncoded => IdentityStrategy.UuidV5,
             _ => IdentityStrategy.Path,
         };
+
+        // EntityPath for type IRI: for subtypes this builds "{parentPath}/{ChildName}" recursively.
+        var entityPath = ComputeEntityPathForTypeIri(t);
+
+        // Count ancestor entity types for multi-type rdf:type projection.
+        var ancestorCount = CountEntityAncestors(t);
 
         var guidCtor = t.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             .FirstOrDefault(c => c.GetParameters() is [{ ParameterType: { } p }] && p == typeof(Guid));
@@ -283,6 +302,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         var single = new List<RefProp>();
         var coll = new List<CollectionProp>();
 
+        // PredicatePath for the mapper metadata: use child's own PredicatePath/Path if set.
         var predPath = entityAttr.PredicatePath ?? entityAttr.Path;
 
         foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
@@ -295,12 +315,17 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             // Inverse refs/collections are not projected, not hydrated (ADR-0013, v1).
             if (inverse is not null) continue;
 
+            // Resolve predicate IRI from the DECLARING type to handle inheritance correctly:
+            // a property declared on Artist uses Artist's PredicatePath, not FeaturedArtist's.
+            var declaringEntityAttr = prop.DeclaringType?.GetCustomAttribute<EntityAttribute>(inherit: false);
+            var propPredPath = declaringEntityAttr?.PredicatePath ?? declaringEntityAttr?.Path;
+
             // Owning ref / collection
             if (owning is not null)
             {
                 var (kind, target) = ClassifyRef(prop.PropertyType);
                 if (target is null) continue;
-                var resolved = PredicateResolver.Resolve(owning.Predicate, predPath);
+                var resolved = PredicateResolver.Resolve(owning.Predicate, propPredPath);
                 if (kind == RefKindLite.Single)
                 {
                     var refType = typeof(EntityRef<>).MakeGenericType(target);
@@ -321,15 +346,91 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             {
                 FieldInfo? partField = null;
                 if (idPart is not null)
-                    partField = t.GetField($"__forge_part_{prop.Name}",
-                        BindingFlags.NonPublic | BindingFlags.Instance);
-                var resolved = PredicateResolver.Resolve(pred.Predicate, predPath);
+                    // Search the entire type hierarchy for the backing field — it may be on a base class.
+                    partField = GetFieldFromTypeHierarchy(t, $"__forge_part_{prop.Name}");
+                var resolved = PredicateResolver.Resolve(pred.Predicate, propPredPath);
                 data.Add(new DataProp(prop, resolved, idPart is not null, partField));
             }
         }
 
-        return new TypePlan(strategy, entityAttr.Path, predPath, guidCtor, hydrateIri,
-            data, single, coll);
+        return new TypePlan(strategy, entityPath, predPath, guidCtor, hydrateIri,
+            data, single, coll, ancestorCount);
+    }
+
+    // --------------------------------------------------------------- Type-chain helpers
+
+    /// <summary>
+    /// Walk the type hierarchy (including <paramref name="t"/> itself) to find the first
+    /// attribute of type <typeparamref name="TAttr"/> declared directly on any class in the chain.
+    /// Uses <c>inherit: false</c> to match how the generator reads attributes.
+    /// </summary>
+    private static TAttr? FindAttributeOnTypeOrBases<TAttr>(Type t) where TAttr : Attribute
+    {
+        var current = t;
+        while (current != null && current != typeof(object))
+        {
+            var attr = current.GetCustomAttribute<TAttr>(inherit: false);
+            if (attr is not null) return attr;
+            current = current.BaseType;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Compute the entity path component used for the <c>rdf:type</c> IRI.
+    /// For root entities this equals <c>[Entity(Path)]</c> (or the type name if Path is null).
+    /// For subtype entities (<c>[Entity]</c> without <c>Path</c>), the path is
+    /// <c>{parentPath}/{ChildClassName}</c>, recursively applied.
+    /// </summary>
+    private static string ComputeEntityPathForTypeIri(Type t)
+    {
+        var entityAttr = t.GetCustomAttribute<EntityAttribute>(inherit: false);
+        if (entityAttr == null) return t.Name;
+
+        // If an explicit Path is set this is the root entity (or a root without a meaningful parent).
+        if (!string.IsNullOrEmpty(entityAttr.Path)) return entityAttr.Path!;
+
+        // Walk up to find the nearest entity-annotated ancestor.
+        var baseType = t.BaseType;
+        while (baseType != null && baseType != typeof(EntityBase) && baseType != typeof(object))
+        {
+            if (baseType.GetCustomAttribute<EntityAttribute>(inherit: false) != null)
+                return $"{ComputeEntityPathForTypeIri(baseType)}/{t.Name}";
+            baseType = baseType.BaseType;
+        }
+
+        // Root entity with no Path: fall back to the type name.
+        return t.Name;
+    }
+
+    /// <summary>Count entity-annotated (via <c>[Entity]</c>) types in the base-type chain.</summary>
+    private static int CountEntityAncestors(Type t)
+    {
+        int count = 0;
+        var current = t.BaseType;
+        while (current != null && current != typeof(EntityBase) && current != typeof(object))
+        {
+            if (current.GetCustomAttribute<EntityAttribute>(inherit: false) != null)
+                count++;
+            current = current.BaseType;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Search <paramref name="t"/> and all base types for a non-public instance field
+    /// with the given name.
+    /// </summary>
+    private static FieldInfo? GetFieldFromTypeHierarchy(Type t, string fieldName)
+    {
+        var current = t;
+        while (current != null && current != typeof(object))
+        {
+            var f = current.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (f is not null) return f;
+            current = current.BaseType;
+        }
+        return null;
     }
 
     private enum RefKindLite { Single, Collection }
