@@ -80,7 +80,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         aria.RegisteredAt = registeredAt;
         aria.ExternalId = externalId;
         aria.Website = website;
-        await s.Artists.SaveAsync(aria);
+        await s.Store.SaveAsync(aria);
 
         var loaded = await s.Artists.LoadAsync(aria.Iri);
 
@@ -111,7 +111,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         // Kai Storm: no bio, no website
         var kai = new Artist { Name = "Kai Storm", Country = "uk" };
         kai.DebutYear = 2015;
-        await s.Artists.SaveAsync(kai);
+        await s.Store.SaveAsync(kai);
 
         var loaded = await s.Artists.LoadAsync(kai.Iri);
         loaded.Bio.ShouldBeNull();
@@ -150,11 +150,11 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
         merge.FoundedYear = 1992;
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(merge);
 
         var eclipse = new Album { Title = "Eclipse", ReleaseYear = 2023 };
         eclipse.ReleasedBy = EntityRef<Label>.ForIri(merge.Iri);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         EntityRef<Label>? refVal = loaded.ReleasedBy;
@@ -184,12 +184,12 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var eclipse = new Album { Title = "Eclipse", ReleaseYear = 2023 };
         var voltage = new Album { Title = "Voltage", ReleaseYear = 2024 };
-        await s.Albums.SaveAsync(eclipse);
-        await s.Albums.SaveAsync(voltage);
+        await s.Store.SaveAsync(eclipse);
+        await s.Store.SaveAsync(voltage);
 
         await merge.Albums.AddAsync(eclipse);
         await merge.Albums.AddAsync(voltage);
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(merge);
 
         var loaded = await s.Labels.LoadAsync(merge.Iri);
         var titles = new List<string>();
@@ -211,15 +211,15 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         var t2 = new Track { Title = "Midnight Run", Position = 2, DurationSeconds = 195 };
         var t3 = new Track { Title = "Fade Out", Position = 3, DurationSeconds = 310 };
-        await s.Tracks.SaveAsync(t1);
-        await s.Tracks.SaveAsync(t2);
-        await s.Tracks.SaveAsync(t3);
+        await s.Store.SaveAsync(t1);
+        await s.Store.SaveAsync(t2);
+        await s.Store.SaveAsync(t3);
 
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Tracks.AddAsync(t1);
         await eclipse.Tracks.AddAsync(t2);
         await eclipse.Tracks.AddAsync(t3);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         var seen = new List<(string Title, int Dur)>();
@@ -246,19 +246,19 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var kai = new Artist { Name = "Kai Storm", Country = "uk" };
-        await s.Artists.SaveAsync(aria);
-        await s.Artists.SaveAsync(kai);
+        await s.Store.SaveAsync(aria);
+        await s.Store.SaveAsync(kai);
 
         // Eclipse: both artists credited
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Artists.AddAsync(aria);
         await eclipse.Artists.AddAsync(kai);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         // Voltage: only Aria (demonstrating the "M" in M:N — Aria on two albums)
         var voltage = new Album { Title = "Voltage" };
         await voltage.Artists.AddAsync(aria);
-        await s.Albums.SaveAsync(voltage);
+        await s.Store.SaveAsync(voltage);
 
         // Load Eclipse → both artists
         var loadedEclipse = await s.Albums.LoadAsync(eclipse.Iri);
@@ -285,11 +285,11 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         var s = Build();
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        await s.Artists.SaveAsync(aria);
+        await s.Store.SaveAsync(aria);
 
         var sunrise = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         sunrise.PerformedBy = EntityRef<Artist>.ForIri(aria.Iri);
-        await s.Tracks.SaveAsync(sunrise);
+        await s.Store.SaveAsync(sunrise);
 
         var loaded = await s.Tracks.LoadAsync(sunrise.Iri);
         EntityRef<Artist>? perfRef = loaded.PerformedBy;
@@ -314,14 +314,14 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         var t2 = new Track { Title = "Fade Out", Position = 2, DurationSeconds = 310 };
         var t3 = new Track { Title = "Encore", Position = 3, DurationSeconds = 180 };
-        await s.Tracks.SaveAsync(t1);
-        await s.Tracks.SaveAsync(t2);
-        await s.Tracks.SaveAsync(t3);
+        await s.Store.SaveAsync(t1);
+        await s.Store.SaveAsync(t2);
+        await s.Store.SaveAsync(t3);
 
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Tracks.AddAsync(t1);
         await eclipse.Tracks.AddAsync(t2);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         // Replace: add Encore, drop Fade Out (create fresh Album object with same IRI)
         var revised = new Album { Title = "Eclipse (Revised)" };
@@ -330,7 +330,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         // matches on the same IRI derived from the Guid assigned at construction.
         // Instead: just save with the existing instance and mutate.
         await eclipse.Tracks.AddAsync(t3);  // now [t1, t2, t3]
-        await s.Albums.SaveAsync(eclipse, WriteMode.Replace);
+        await s.Store.SaveAsync(eclipse, WriteMode.Replace);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         var titles = new List<string>();
@@ -349,13 +349,13 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
-        await s.Labels.SaveAsync(merge, WriteMode.Create);
+        await s.Store.SaveAsync(merge, WriteMode.Create);
 
         // Same IRI (same Slug → same path): second Create must throw.
         var dupe = new Label { Slug = "merge" };
         dupe.Name = "Duplicate";
         await Should.ThrowAsync<InvalidOperationException>(
-            () => s.Labels.SaveAsync(dupe, WriteMode.Create).AsTask());
+            () => s.Store.SaveAsync(dupe, WriteMode.Create).AsTask());
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -371,15 +371,15 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
-        await s.Artists.SaveAsync(aria);
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(aria);
+        await s.Store.SaveAsync(merge);
 
         var eclipse = new Album { Title = "Eclipse" };
         eclipse.ReleasedBy = EntityRef<Label>.ForIri(merge.Iri);
         await eclipse.Artists.AddAsync(aria);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
-        await s.Albums.DeleteAsync(eclipse.Iri);
+        await s.Store.DeleteAsync(eclipse.Iri);
 
         (await s.Albums.FindAsync(eclipse.Iri)).ShouldBeNull();           // gone
         (await s.Artists.FindAsync(aria.Iri)).ShouldNotBeNull();          // intact
@@ -398,7 +398,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         foreach (var title in new[] { "Eclipse", "Voltage", "Drift" })
         {
             var a = new Album { Title = title, ReleaseYear = 2023 };
-            await s.Albums.SaveAsync(a);
+            await s.Store.SaveAsync(a);
         }
 
         var found = new List<Album>();
@@ -420,7 +420,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var aria1 = new Artist { Name = "Aria Nova", Country = "us" };
         aria1.DebutYear = 2010;
-        await s.Artists.SaveAsync(aria1);
+        await s.Store.SaveAsync(aria1);
 
         // Re-construct with same identity parts → must yield the same IRI.
         var aria2 = new Artist { Name = "Aria Nova", Country = "us" };
@@ -469,7 +469,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         featured.FeaturedSince = 2021;
         featured.SponsorName = "NovaCorp";
 
-        await repo.SaveAsync(featured);
+        await s.Store.SaveAsync(featured);
 
         var loaded = await repo.LoadAsync(featured.Iri);
         loaded.ShouldNotBeNull();
@@ -497,7 +497,7 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var featured = new FeaturedArtist { Name = "Ray Bright", Country = "fr" };
         featured.FeaturedSince = 2023;
-        await repo.SaveAsync(featured);
+        await s.Store.SaveAsync(featured);
 
         var opts = new EntityRepositoryOptions();
         var featuredMapper = new Forge.Repository.Mapping.ReflectionRdfMapper<FeaturedArtist>();
@@ -530,11 +530,11 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var fa = new FeaturedArtist { Name = "Echo Lux", Country = "us" };
         fa.FeaturedSince = 2020;
-        await featuredRepo.SaveAsync(fa);
+        await s.Store.SaveAsync(fa);
 
         // A plain Artist must also be in the store to verify that QueryByTypeAsync is selective.
         var plain = new Artist { Name = "Plain Jane", Country = "uk" };
-        await s.Artists.SaveAsync(plain);
+        await s.Store.SaveAsync(plain);
 
         var featuredResults = new List<FeaturedArtist>();
         await foreach (var item in s.Store.QueryByTypeAsync<FeaturedArtist>())
@@ -553,10 +553,10 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
 
         var fa = new FeaturedArtist { Name = "Sub Star", Country = "us" };
         fa.FeaturedSince = 2024;
-        await featuredRepo.SaveAsync(fa);
+        await s.Store.SaveAsync(fa);
 
         var plain = new Artist { Name = "Plain John", Country = "us" };
-        await s.Artists.SaveAsync(plain);
+        await s.Store.SaveAsync(plain);
 
         // Both plain Artists and FeaturedArtists carry rdf:type <artists>,
         // so querying by Artist should return both IRIs.

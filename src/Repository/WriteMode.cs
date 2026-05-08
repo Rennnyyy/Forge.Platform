@@ -1,6 +1,6 @@
 namespace Forge.Repository;
 
-/// <summary>How <see cref="IEntityRepository{T}.SaveAsync"/> writes an entity to the store.</summary>
+/// <summary>How <see cref="IEntityStore.SaveAsync{T}"/> writes an entity to the store.</summary>
 public enum WriteMode
 {
     /// <summary>

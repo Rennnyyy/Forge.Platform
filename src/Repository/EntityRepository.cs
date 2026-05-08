@@ -26,19 +26,6 @@ public sealed class EntityRepository<T> : IEntityRepository<T> where T : class, 
         return found ?? throw new EntityNotFoundException(typeof(T), iri);
     }
 
-    public ValueTask SaveAsync(T entity, WriteMode mode = WriteMode.Replace,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(entity);
-        return _store.SaveAsync(entity, mode, cancellationToken);
-    }
-
-    public ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(iri);
-        return _store.DeleteAsync(iri, cancellationToken);
-    }
-
     public async IAsyncEnumerable<T> QueryAllAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

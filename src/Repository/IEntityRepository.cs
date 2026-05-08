@@ -12,10 +12,5 @@ public interface IEntityRepository<T> where T : class, IEntity
     /// <summary>Like <see cref="FindAsync"/> but throws if not found.</summary>
     ValueTask<T> LoadAsync(string iri, CancellationToken cancellationToken = default);
 
-    ValueTask SaveAsync(T entity, WriteMode mode = WriteMode.Replace,
-        CancellationToken cancellationToken = default);
-
-    ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default);
-
     IAsyncEnumerable<T> QueryAllAsync(CancellationToken cancellationToken = default);
 }

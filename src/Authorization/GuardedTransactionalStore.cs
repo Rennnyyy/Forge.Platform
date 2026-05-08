@@ -94,9 +94,7 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
     /// <inheritdoc/>
     /// <remarks>
     /// Calls <see cref="IAspectGuard.AuthorizeAsync"/> with <c>aspectToken = "noop"</c>
-    /// before delegating, so that a strict guard also covers direct-write callers that
-    /// bypass <see cref="ITransactionalEntityStore.ExecuteTransactionAsync"/> (e.g.
-    /// <see cref="IEntityRepository{T}"/>).
+    /// before delegating to the inner store.
     /// </remarks>
     public async ValueTask SaveAsync<T>(T entity, WriteMode mode = WriteMode.Replace,
         CancellationToken cancellationToken = default)

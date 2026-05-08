@@ -47,7 +47,7 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
         // Pre-condition: Kai exists, will be updated; Aria will be created; Kai's old IRI
         // is a placeholder to delete.
         var kai = new Artist { Name = "Kai Storm", Country = "us" };
-        await repo.SaveAsync(kai, WriteMode.Create);
+        await store.SaveAsync(kai, WriteMode.Create);
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var kaiUpdated = new Artist { Name = "Kai Storm", Country = "gb" }; // Country changed
@@ -84,7 +84,7 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
 
         // Aria already exists.
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        await repo.SaveAsync(aria, WriteMode.Create);
+        await store.SaveAsync(aria, WriteMode.Create);
 
         // Transaction: delete Aria, then attempt to create a duplicate (same IRI via
         // Create on the same Name+Country → same generated IRI) → second Create fails.
@@ -171,9 +171,9 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
         var repo = new EntityRepository<Artist>(store);
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        await repo.SaveAsync(aria, WriteMode.Create);
+        await store.SaveAsync(aria, WriteMode.Create);
         aria.Bio = "Original bio";
-        await repo.SaveAsync(aria, WriteMode.Replace);
+        await store.SaveAsync(aria, WriteMode.Replace);
 
         // Update bio inside a transaction.
         var ariaBioUpdated = new Artist { Name = "Aria Nova", Country = "us" };

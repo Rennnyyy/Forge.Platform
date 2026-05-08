@@ -78,7 +78,7 @@ public sealed class GraphDbRepositoryTests
         aria.RegisteredAt = registeredAt;
         aria.ExternalId = externalId;
         aria.Website = website;
-        await s.Artists.SaveAsync(aria);
+        await s.Store.SaveAsync(aria);
 
         var loaded = await s.Artists.LoadAsync(aria.Iri);
         loaded.Name.ShouldBe("Aria Nova");
@@ -109,7 +109,7 @@ public sealed class GraphDbRepositoryTests
 
         var kai = new Artist { Name = "Kai Storm", Country = "uk" };
         kai.DebutYear = 2015;
-        await s.Artists.SaveAsync(kai);
+        await s.Store.SaveAsync(kai);
 
         var loaded = await s.Artists.LoadAsync(kai.Iri);
         loaded.Bio.ShouldBeNull();
@@ -154,11 +154,11 @@ public sealed class GraphDbRepositoryTests
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
         merge.FoundedYear = 1992;
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(merge);
 
         var eclipse = new Album { Title = "Eclipse", ReleaseYear = 2023 };
         eclipse.ReleasedBy = EntityRef<Label>.ForIri(merge.Iri);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         EntityRef<Label>? refVal = loaded.ReleasedBy;
@@ -188,11 +188,11 @@ public sealed class GraphDbRepositoryTests
         merge.Name = "Merge Records";
         var eclipse = new Album { Title = "Eclipse", ReleaseYear = 2023 };
         var voltage = new Album { Title = "Voltage", ReleaseYear = 2024 };
-        await s.Albums.SaveAsync(eclipse);
-        await s.Albums.SaveAsync(voltage);
+        await s.Store.SaveAsync(eclipse);
+        await s.Store.SaveAsync(voltage);
         await merge.Albums.AddAsync(eclipse);
         await merge.Albums.AddAsync(voltage);
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(merge);
 
         var loaded = await s.Labels.LoadAsync(merge.Iri);
         var titles = new List<string>();
@@ -215,15 +215,15 @@ public sealed class GraphDbRepositoryTests
         var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         var t2 = new Track { Title = "Midnight Run", Position = 2, DurationSeconds = 195 };
         var t3 = new Track { Title = "Fade Out", Position = 3, DurationSeconds = 310 };
-        await s.Tracks.SaveAsync(t1);
-        await s.Tracks.SaveAsync(t2);
-        await s.Tracks.SaveAsync(t3);
+        await s.Store.SaveAsync(t1);
+        await s.Store.SaveAsync(t2);
+        await s.Store.SaveAsync(t3);
 
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Tracks.AddAsync(t1);
         await eclipse.Tracks.AddAsync(t2);
         await eclipse.Tracks.AddAsync(t3);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         var seen = new List<(string Title, int Dur)>();
@@ -245,17 +245,17 @@ public sealed class GraphDbRepositoryTests
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var kai = new Artist { Name = "Kai Storm", Country = "uk" };
-        await s.Artists.SaveAsync(aria);
-        await s.Artists.SaveAsync(kai);
+        await s.Store.SaveAsync(aria);
+        await s.Store.SaveAsync(kai);
 
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Artists.AddAsync(aria);
         await eclipse.Artists.AddAsync(kai);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         var voltage = new Album { Title = "Voltage" };
         await voltage.Artists.AddAsync(aria);
-        await s.Albums.SaveAsync(voltage);
+        await s.Store.SaveAsync(voltage);
 
         var loadedEclipse = await s.Albums.LoadAsync(eclipse.Iri);
         var eclipseIris = new List<string>();
@@ -282,11 +282,11 @@ public sealed class GraphDbRepositoryTests
         var s = Build();
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        await s.Artists.SaveAsync(aria);
+        await s.Store.SaveAsync(aria);
 
         var sunrise = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         sunrise.PerformedBy = EntityRef<Artist>.ForIri(aria.Iri);
-        await s.Tracks.SaveAsync(sunrise);
+        await s.Store.SaveAsync(sunrise);
 
         var loaded = await s.Tracks.LoadAsync(sunrise.Iri);
         EntityRef<Artist>? perfRef = loaded.PerformedBy;
@@ -313,17 +313,17 @@ public sealed class GraphDbRepositoryTests
         var t1 = new Track { Title = "Sunrise", Position = 1, DurationSeconds = 240 };
         var t2 = new Track { Title = "Fade Out", Position = 2, DurationSeconds = 310 };
         var t3 = new Track { Title = "Encore", Position = 3, DurationSeconds = 180 };
-        await s.Tracks.SaveAsync(t1);
-        await s.Tracks.SaveAsync(t2);
-        await s.Tracks.SaveAsync(t3);
+        await s.Store.SaveAsync(t1);
+        await s.Store.SaveAsync(t2);
+        await s.Store.SaveAsync(t3);
 
         var eclipse = new Album { Title = "Eclipse" };
         await eclipse.Tracks.AddAsync(t1);
         await eclipse.Tracks.AddAsync(t2);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
         await eclipse.Tracks.AddAsync(t3);
-        await s.Albums.SaveAsync(eclipse, WriteMode.Replace);
+        await s.Store.SaveAsync(eclipse, WriteMode.Replace);
 
         var loaded = await s.Albums.LoadAsync(eclipse.Iri);
         var titles = new List<string>();
@@ -344,12 +344,12 @@ public sealed class GraphDbRepositoryTests
 
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
-        await s.Labels.SaveAsync(merge, WriteMode.Create);
+        await s.Store.SaveAsync(merge, WriteMode.Create);
 
         var dupe = new Label { Slug = "merge" };
         dupe.Name = "Duplicate";
         await Should.ThrowAsync<InvalidOperationException>(
-            () => s.Labels.SaveAsync(dupe, WriteMode.Create).AsTask());
+            () => s.Store.SaveAsync(dupe, WriteMode.Create).AsTask());
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -367,15 +367,15 @@ public sealed class GraphDbRepositoryTests
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var merge = new Label { Slug = "merge" };
         merge.Name = "Merge Records";
-        await s.Artists.SaveAsync(aria);
-        await s.Labels.SaveAsync(merge);
+        await s.Store.SaveAsync(aria);
+        await s.Store.SaveAsync(merge);
 
         var eclipse = new Album { Title = "Eclipse" };
         eclipse.ReleasedBy = EntityRef<Label>.ForIri(merge.Iri);
         await eclipse.Artists.AddAsync(aria);
-        await s.Albums.SaveAsync(eclipse);
+        await s.Store.SaveAsync(eclipse);
 
-        await s.Albums.DeleteAsync(eclipse.Iri);
+        await s.Store.DeleteAsync(eclipse.Iri);
 
         (await s.Albums.FindAsync(eclipse.Iri)).ShouldBeNull();
         (await s.Artists.FindAsync(aria.Iri)).ShouldNotBeNull();
@@ -396,7 +396,7 @@ public sealed class GraphDbRepositoryTests
         foreach (var title in new[] { "Eclipse", "Voltage", "Drift" })
         {
             var a = new Album { Title = title, ReleaseYear = 2023 };
-            await s.Albums.SaveAsync(a);
+            await s.Store.SaveAsync(a);
         }
 
         var found = new List<Album>();
@@ -419,7 +419,7 @@ public sealed class GraphDbRepositoryTests
 
         var aria1 = new Artist { Name = "Aria Nova", Country = "us" };
         aria1.DebutYear = 2010;
-        await s.Artists.SaveAsync(aria1);
+        await s.Store.SaveAsync(aria1);
 
         var aria2 = new Artist { Name = "Aria Nova", Country = "us" };
         aria2.Iri.ShouldBe(aria1.Iri);

@@ -62,7 +62,7 @@ public sealed class GraphDbTransactionTests
 
         // Pre-condition: Kai exists (will be deleted then re-created with updated country).
         var kai = new Artist { Name = "Kai Storm", Country = "us" };
-        await repo.SaveAsync(kai, WriteMode.Create);
+        await store.SaveAsync(kai, WriteMode.Create);
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         var kaiUpdated = new Artist { Name = "Kai Storm", Country = "gb" }; // changed Country → new IRI
@@ -98,7 +98,7 @@ public sealed class GraphDbTransactionTests
 
         // Aria already exists.
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
-        await repo.SaveAsync(aria, WriteMode.Create);
+        await store.SaveAsync(aria, WriteMode.Create);
 
         // Transaction: create a new artist, then attempt a duplicate — should fail + rollback.
         var newArtist = new Artist { Name = "Brand New", Country = "de" };
@@ -158,7 +158,7 @@ public sealed class GraphDbTransactionTests
 
         var aria = new Artist { Name = "Aria Nova", Country = "us" };
         aria.Bio = "Original bio";
-        await repo.SaveAsync(aria, WriteMode.Create);
+        await store.SaveAsync(aria, WriteMode.Create);
 
         var ariaUpdated = new Artist { Name = "Aria Nova", Country = "us" };
         ariaUpdated.Bio = "Updated bio";
