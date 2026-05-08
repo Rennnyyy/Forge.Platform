@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Capability\Forge.Capability.csproj" />
+    <ProjectReference Include="..\Execution.Http\Forge.Execution.Http.csproj" />
   </ItemGroup>
 
 </Project>

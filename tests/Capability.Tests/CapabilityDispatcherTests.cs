@@ -3,6 +3,7 @@ using Forge.Aspects;
 using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
 using Forge.Capability;
+using Forge.Execution;
 using Forge.Authorization;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -57,7 +58,7 @@ public sealed class CapabilityDispatcherTests
         IReadOnlyList<object>? events = null)
     {
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
-        CapabilityResult<TestResponse> result = new CapabilityResult<TestResponse>.Ok(
+        ExecutionResult<TestResponse> result = new ExecutionResult<TestResponse>.Ok(
             response ?? new TestResponse("ok"))
         {
             Events = events ?? [],
@@ -67,10 +68,10 @@ public sealed class CapabilityDispatcherTests
         return handler;
     }
 
-    private static ICapabilityHandler<TestCommand, TestResponse> FailHandler(CapabilityError error)
+    private static ICapabilityHandler<TestCommand, TestResponse> FailHandler(ExecutionError error)
     {
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
-        CapabilityResult<TestResponse> result = new CapabilityResult<TestResponse>.Fail(error);
+        ExecutionResult<TestResponse> result = new ExecutionResult<TestResponse>.Fail(error);
         handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CapabilityContext>(), Arg.Any<CancellationToken>())
                .Returns(ValueTask.FromResult(result));
         return handler;
@@ -89,7 +90,7 @@ public sealed class CapabilityDispatcherTests
 
         var result = await dispatcher.DispatchAsync(new TestCommand("ping"), capabilityAspectIri: null);
 
-        var ok = result.ShouldBeOfType<CapabilityResult<TestResponse>.Ok>();
+        var ok = result.ShouldBeOfType<ExecutionResult<TestResponse>.Ok>();
         ok.Response.Output.ShouldBe("pong");
 
         // Engine is called with null aspect for both command and response — both are no-ops inside the engine.
@@ -177,8 +178,8 @@ public sealed class CapabilityDispatcherTests
         CapabilityContext? capturedContext = null;
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
         handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Do<CapabilityContext>(c => capturedContext = c), Arg.Any<CancellationToken>())
-               .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
-                   new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
+               .Returns(ci => ValueTask.FromResult<ExecutionResult<TestResponse>>(
+                   new ExecutionResult<TestResponse>.Ok(new TestResponse("ok"))));
 
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
             handler, Substitute.For<IMessageAspectEngine>(), store);
@@ -224,14 +225,14 @@ public sealed class CapabilityDispatcherTests
         var engine = Substitute.For<IMessageAspectEngine>();
         var responseAspect = Substitute.For<IMessageAspect>();
         responseAspect.Iri.Returns("urn:resp");
-        var handler = FailHandler(new CapabilityError("ERR", "oops"));
+        var handler = FailHandler(new ExecutionError("ERR", "oops"));
         var capAspect = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp" };
         var store = StoreWith(capAspect, ("urn:resp", responseAspect));
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(handler, engine, store);
 
         var result = await dispatcher.DispatchAsync(new TestCommand("q"), "urn:cap");
 
-        result.ShouldBeOfType<CapabilityResult<TestResponse>.Fail>();
+        result.ShouldBeOfType<ExecutionResult<TestResponse>.Fail>();
         // Engine called once for the null command aspect; never for the response.
         await engine.DidNotReceive()
             .ValidateAsync(Arg.Any<object>(), responseAspect, Arg.Any<CancellationToken>());
@@ -298,13 +299,13 @@ public sealed class CapabilityDispatcherTests
 
         var result = await dispatcher.DispatchAsync(new TestCommand("x"));
 
-        var ok = result.ShouldBeOfType<CapabilityResult<TestResponse>.Ok>();
+        var ok = result.ShouldBeOfType<ExecutionResult<TestResponse>.Ok>();
         ok.Response.ShouldBeSameAs(response);
         ok.Events.Count.ShouldBe(1);
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 10. Active ValidationContext scope → AgentToken forwarded to handler context
+    // 10. Active AuthorizationContext scope → AgentToken forwarded to handler context
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -313,8 +314,8 @@ public sealed class CapabilityDispatcherTests
         CapabilityContext? capturedContext = null;
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
         handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Do<CapabilityContext>(c => capturedContext = c), Arg.Any<CancellationToken>())
-               .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
-                   new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
+               .Returns(ci => ValueTask.FromResult<ExecutionResult<TestResponse>>(
+                   new ExecutionResult<TestResponse>.Ok(new TestResponse("ok"))));
 
         var dispatcher = BuildDispatcher(handler);
 
@@ -328,7 +329,7 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 11. No ValidationContext scope → AgentToken in context is null
+    // 11. No AuthorizationContext scope → AgentToken in context is null
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -337,8 +338,8 @@ public sealed class CapabilityDispatcherTests
         CapabilityContext? capturedContext = null;
         var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
         handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Do<CapabilityContext>(c => capturedContext = c), Arg.Any<CancellationToken>())
-               .Returns(ci => ValueTask.FromResult<CapabilityResult<TestResponse>>(
-                   new CapabilityResult<TestResponse>.Ok(new TestResponse("ok"))));
+               .Returns(ci => ValueTask.FromResult<ExecutionResult<TestResponse>>(
+                   new ExecutionResult<TestResponse>.Ok(new TestResponse("ok"))));
 
         var dispatcher = BuildDispatcher(handler);
         await dispatcher.DispatchAsync(new TestCommand("x"));
@@ -378,7 +379,7 @@ public sealed class CapabilityDispatcherTests
         var guard = Substitute.For<IAspectGuard>();
         // Use FailHandler so the response slot is never reached; only the command guard call fires.
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
-            FailHandler(new CapabilityError("ERR", "noop-test")),
+            FailHandler(new ExecutionError("ERR", "noop-test")),
             Substitute.For<IMessageAspectEngine>(),
             Substitute.For<IAspectStore>(),
             guard);
@@ -421,7 +422,7 @@ public sealed class CapabilityDispatcherTests
         var capAspect = new CapabilityAspect { Iri = "urn:cap", ResponseAspectIri = "urn:resp-policy" };
         var store = StoreWith(capAspect, ("urn:resp-policy", responseAspect));
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
-            FailHandler(new CapabilityError("ERR", "oops")),
+            FailHandler(new ExecutionError("ERR", "oops")),
             Substitute.For<IMessageAspectEngine>(), store, guard);
 
         await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");

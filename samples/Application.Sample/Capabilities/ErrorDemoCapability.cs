@@ -1,4 +1,5 @@
 using Forge.Capability;
+using Forge.Execution;
 
 namespace Forge.Application.Sample;
 
@@ -26,13 +27,13 @@ public sealed record TriggerFaultResponse;
 [Capability("demo.fault")]
 public sealed class TriggerFaultHandler : ICapabilityHandler<TriggerFaultCommand, TriggerFaultResponse>
 {
-    public ValueTask<CapabilityResult<TriggerFaultResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<TriggerFaultResponse>> HandleAsync(
         TriggerFaultCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
-        return ValueTask.FromResult<CapabilityResult<TriggerFaultResponse>>(
-            new CapabilityResult<TriggerFaultResponse>.Fail(
-                new CapabilityError("DEMO_FAULT", "This handler always fails by design.")));
+        return ValueTask.FromResult<ExecutionResult<TriggerFaultResponse>>(
+            new ExecutionResult<TriggerFaultResponse>.Fail(
+                new ExecutionError("DEMO_FAULT", "This handler always fails by design.")));
     }
 }

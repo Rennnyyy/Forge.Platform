@@ -1,4 +1,5 @@
 using Forge.Capability;
+using Forge.Execution;
 using Shouldly;
 
 namespace Forge.Capability.Tests;
@@ -150,12 +151,12 @@ public sealed class CapabilityAttributeTests
     private sealed class SampleHandler
         : ICapabilityHandler<SampleCommand, SampleResponse>
     {
-        public ValueTask<CapabilityResult<SampleResponse>> HandleAsync(
+        public ValueTask<ExecutionResult<SampleResponse>> HandleAsync(
             SampleCommand command,
             CapabilityContext context,
             CancellationToken cancellationToken = default)
-            => ValueTask.FromResult<CapabilityResult<SampleResponse>>(
-                new CapabilityResult<SampleResponse>.Ok(new SampleResponse()));
+            => ValueTask.FromResult<ExecutionResult<SampleResponse>>(
+                new ExecutionResult<SampleResponse>.Ok(new SampleResponse()));
     }
 
     private sealed record SampleCommand;

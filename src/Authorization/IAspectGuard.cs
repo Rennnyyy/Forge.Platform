@@ -16,8 +16,8 @@ namespace Forge.Authorization;
 /// </para>
 /// <para>
 /// <strong>Agent token</strong> — bind the caller's identity via
-/// <see cref="ValidationContext.Use"/>. Call sites pass
-/// <see cref="ValidationContext.CurrentAgentToken"/> (or an empty string when no scope
+/// <see cref="AuthorizationContext.Use"/>. Call sites pass
+/// <see cref="AuthorizationContext.CurrentAgentToken"/> (or an empty string when no scope
 /// is active). A strict guard should treat an empty token as anonymous and reject it.
 /// </para>
 /// </remarks>

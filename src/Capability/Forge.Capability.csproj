@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Aspects\Forge.Aspects.csproj" />
     <ProjectReference Include="..\Authorization\Forge.Authorization.csproj" />
+    <ProjectReference Include="..\Execution\Forge.Execution.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 using Forge.Aspects;
 using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
+using Forge.Execution;
 using Forge.Repository;
 using Forge.Authorization;
 
@@ -44,7 +45,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
     }
 
     /// <inheritdoc/>
-    public async ValueTask<CapabilityResult<TResponse>> DispatchAsync(
+    public async ValueTask<ExecutionResult<TResponse>> DispatchAsync(
         TCommand command,
         string? capabilityAspectIri = null,
         CancellationToken cancellationToken = default)
@@ -84,7 +85,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
         var result = await _handler.HandleAsync(command, context, cancellationToken);
 
         // ⑦ Authorize and validate response and events (Ok only).
-        if (result is CapabilityResult<TResponse>.Ok ok)
+        if (result is ExecutionResult<TResponse>.Ok ok)
         {
             await _guard.AuthorizeAsync(
                 agentTokenForGuard,

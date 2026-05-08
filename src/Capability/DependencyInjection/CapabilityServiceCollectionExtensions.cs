@@ -97,6 +97,11 @@ public static class CapabilityServiceCollectionExtensions
         Type responseType,
         Type handlerType)
     {
+        // Ensure IAspectGuard is always resolvable. A real guard registered before this
+        // call (e.g. via AddForgeAuthorization) takes precedence; AllowAllAspectGuard is
+        // the explicit fallback so the DI graph is never broken at startup.
+        services.TryAddSingleton<IAspectGuard>(AllowAllAspectGuard.Instance);
+
         var handlerServiceType = typeof(ICapabilityHandler<,>).MakeGenericType(commandType, responseType);
         var dispatcherServiceType = typeof(ICapabilityDispatcher<,>).MakeGenericType(commandType, responseType);
         var dispatcherImplType = typeof(CapabilityDispatcher<,>).MakeGenericType(commandType, responseType);
@@ -109,7 +114,7 @@ public static class CapabilityServiceCollectionExtensions
                 var handler = sp.GetRequiredService(handlerServiceType);
                 var engine = sp.GetRequiredService<IMessageAspectEngine>();
                 var store = sp.GetRequiredService<IAspectStore>();
-                var guard = sp.GetService<IAspectGuard>();
+                var guard = sp.GetRequiredService<IAspectGuard>();
                 return Activator.CreateInstance(dispatcherImplType, handler, engine, store, guard)!;
             },
             ServiceLifetime.Transient));

@@ -16,8 +16,11 @@ public static class AuthorizationServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="guard">
-    /// The guard to use. When <see langword="null"/>, <see cref="AllowAllOperationGuard.Instance"/>
+    /// The guard to use. When <see langword="null"/>, <see cref="AllowAllAspectGuard.Instance"/>
     /// is used — making this registration safe to include unconditionally in any host.
+    /// The resolved guard is also registered as <see cref="IAspectGuard"/> in the DI container
+    /// (via <c>TryAddSingleton</c>) so capability dispatchers can resolve it without a
+    /// separate explicit registration.
     /// </param>
     /// <remarks>
     /// Must be called <em>after</em> a backend (e.g. <c>UseInMemory()</c>) has been
@@ -35,6 +38,12 @@ public static class AuthorizationServiceCollectionExtensions
         var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ITransactionalEntityStore));
         if (rawDescriptor is null)
             return services;
+
+        // Make the resolved guard visible in the DI container so that capability
+        // dispatchers (and any diagnostics tooling) can resolve IAspectGuard without
+        // needing a separate explicit registration. TryAdd semantics: a guard registered
+        // by the application before calling AddForgeAuthorization takes precedence.
+        services.TryAddSingleton<IAspectGuard>(effectiveGuard);
 
         services.Remove(rawDescriptor);
 

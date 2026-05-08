@@ -45,3 +45,5 @@ Option 1.
 - Tests using `AllowAllOperationGuard` need no `ValidationContext.Use(…)` call.
 - A stricter guard that rejects empty tokens forces all callers to set a context first,
   which is the desired behavior for authenticated scenarios.
+
+> *`ValidationContext` renamed to `AuthorizationContext` due to a later refactor aligning on the Authorization namespace. All references to `ValidationContext.Use` and `ValidationContext.CurrentAgentToken` in this ADR should be read as `AuthorizationContext.Use` and `AuthorizationContext.CurrentAgentToken`.*

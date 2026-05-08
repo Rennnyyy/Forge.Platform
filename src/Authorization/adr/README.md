@@ -11,3 +11,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0002 — `ValidationContext`: ambient agent-token binding via AsyncLocal](0002-validation-context-async-local.md)
 - [0003 — `GuardedTransactionalStore`: decorator that enforces pre-commit validation of all operations](0003-guarded-transactional-store.md)
 - [0004 — `IAspectGuard` unifies authorization; supersedes `IOperationGuard`](0004-iaspect-guard-unifies-operation-guard.md)
+- [0005 — Register `IAspectGuard` in the DI container](0005-iaspect-guard-registered-in-di.md)

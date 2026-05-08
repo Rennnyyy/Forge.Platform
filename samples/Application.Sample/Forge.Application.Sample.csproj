@@ -22,6 +22,8 @@
     </ProjectReference>
     <!-- Capability handler contract, dispatcher, context -->
     <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
+    <!-- ExecutionResult<T> / ExecutionError used directly in capability handlers -->
+    <ProjectReference Include="..\..\src\Execution\Forge.Execution.csproj" />
     <!-- HTTP transport: MapOperations(), AddOperationEndpointsHttp() -->
     <ProjectReference Include="..\..\src\Operations.Http\Forge.Operations.Http.csproj" />
     <!-- HTTP transport: MapCapabilities(), AddCapabilityHttp() -->

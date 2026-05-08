@@ -2,6 +2,7 @@ using Forge.Aspects;
 using Forge.Aspects.Abstractions;
 using Forge.Capability;
 using Forge.Entity;
+using Forge.Execution;
 using Forge.Operations;
 using Forge.Repository;
 using Forge.Repository.Transaction;
@@ -93,7 +94,7 @@ public sealed class CreateLinkedStudioHandler
 
     public CreateLinkedStudioHandler(ITransactionalEntityStore store) => _store = store;
 
-    public async ValueTask<CapabilityResult<CreateLinkedStudioResponse>> HandleAsync(
+    public async ValueTask<ExecutionResult<CreateLinkedStudioResponse>> HandleAsync(
         CreateLinkedStudioCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
@@ -108,8 +109,8 @@ public sealed class CreateLinkedStudioHandler
                 command.ManagedByArtistIri, cancellationToken);
 
             if (managedByArtist is null)
-                return new CapabilityResult<CreateLinkedStudioResponse>.Fail(
-                    new CapabilityError("RELATION_NOT_FOUND",
+                return new ExecutionResult<CreateLinkedStudioResponse>.Fail(
+                    new ExecutionError("RELATION_NOT_FOUND",
                         $"Artist '{command.ManagedByArtistIri}' does not exist."));
         }
 
@@ -119,8 +120,8 @@ public sealed class CreateLinkedStudioHandler
         {
             var recording = await EntityOperations.ReadAsync<Recording>(iri, cancellationToken);
             if (recording is null)
-                return new CapabilityResult<CreateLinkedStudioResponse>.Fail(
-                    new CapabilityError("RELATION_NOT_FOUND",
+                return new ExecutionResult<CreateLinkedStudioResponse>.Fail(
+                    new ExecutionError("RELATION_NOT_FOUND",
                         $"Recording '{iri}' does not exist."));
 
             recordings.Add(recording);
@@ -132,8 +133,8 @@ public sealed class CreateLinkedStudioHandler
         {
             var genre = Genre.All.FirstOrDefault(g => g.Iri == iri);
             if (genre is null)
-                return new CapabilityResult<CreateLinkedStudioResponse>.Fail(
-                    new CapabilityError("RELATION_NOT_FOUND",
+                return new ExecutionResult<CreateLinkedStudioResponse>.Fail(
+                    new ExecutionError("RELATION_NOT_FOUND",
                         $"Genre '{iri}' is not a known genre IRI."));
 
             genres.Add(genre);
@@ -169,7 +170,7 @@ public sealed class CreateLinkedStudioHandler
         tx.Create(studio, Aspect.NoOpIri);
         await tx.CommitAsync(cancellationToken);
 
-        return new CapabilityResult<CreateLinkedStudioResponse>.Ok(
+        return new ExecutionResult<CreateLinkedStudioResponse>.Ok(
             new CreateLinkedStudioResponse(
                 studio.Iri,
                 managedByArtist?.Iri,

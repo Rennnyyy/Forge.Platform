@@ -51,3 +51,10 @@ public interface IAspect
 > *This ADR supersedes the naming context of Aspects ADR-0004 for the Repository slice.
 > The original thin token was called `IAspect` (ADR-0004), renamed `IOperationAspect`
 > (Aspects ADR-0006), then restored to `IAspect` (Aspects ADR-0009).*
+
+---
+
+> *Adjustment (ADR-0009): `IAspect` and `Aspect` were moved from `Forge.Repository` to
+> `Forge.Aspects.Abstractions` to break a circular dependency introduced when
+> `Forge.Aspects` gained a reference to `Forge.Repository`. The public surface and
+> semantics are unchanged; only the home assembly changed.*

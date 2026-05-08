@@ -1,4 +1,5 @@
 using Forge.Capability;
+using Forge.Execution;
 
 namespace Forge.Application.Sample;
 
@@ -49,13 +50,13 @@ public sealed record AspectDemoResponse(string Name, string? ActiveAspectIri);
 [Capability("demo.aspect")]
 public sealed class AspectDemoHandler : ICapabilityHandler<AspectDemoCommand, AspectDemoResponse>
 {
-    public ValueTask<CapabilityResult<AspectDemoResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<AspectDemoResponse>> HandleAsync(
         AspectDemoCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
-        return ValueTask.FromResult<CapabilityResult<AspectDemoResponse>>(
-            new CapabilityResult<AspectDemoResponse>.Ok(
+        return ValueTask.FromResult<ExecutionResult<AspectDemoResponse>>(
+            new ExecutionResult<AspectDemoResponse>.Ok(
                 new AspectDemoResponse(command.Name, context.Aspect?.Iri)));
     }
 }

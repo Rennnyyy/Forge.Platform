@@ -92,3 +92,5 @@ established upstream by the host; it does not manage the lifetime of that scope.
   Host code remains the sole owner of `ValidationContext.Use(…)` lifetimes.
 - Tests that do not establish a `ValidationContext` scope will see `context.AgentToken == null`,
   which is the correct and expected behavior.
+
+> *`ValidationContext` renamed to `AuthorizationContext` due to a later refactor aligning on the Authorization namespace. All references to `ValidationContext.Use` and `ValidationContext.CurrentAgentToken` in this ADR should be read as `AuthorizationContext.Use` and `AuthorizationContext.CurrentAgentToken`.*

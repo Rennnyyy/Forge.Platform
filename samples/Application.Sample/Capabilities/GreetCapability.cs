@@ -1,4 +1,5 @@
 using Forge.Capability;
+using Forge.Execution;
 
 namespace Forge.Application.Sample;
 
@@ -22,13 +23,13 @@ public sealed record GreetResponse(string Message);
 [Capability("demo.greet")]
 public sealed class GreetHandler : ICapabilityHandler<GreetCommand, GreetResponse>
 {
-    public ValueTask<CapabilityResult<GreetResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<GreetResponse>> HandleAsync(
         GreetCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
         var message = $"Hello, {command.Name}! The Forge platform is running.";
-        return ValueTask.FromResult<CapabilityResult<GreetResponse>>(
-            new CapabilityResult<GreetResponse>.Ok(new GreetResponse(message)));
+        return ValueTask.FromResult<ExecutionResult<GreetResponse>>(
+            new ExecutionResult<GreetResponse>.Ok(new GreetResponse(message)));
     }
 }

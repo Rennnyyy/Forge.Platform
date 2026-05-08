@@ -3,6 +3,7 @@ using Forge.Aspects;
 using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
 using Forge.Capability.DependencyInjection;
+using Forge.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
@@ -23,23 +24,23 @@ public sealed record AltResponse(string Result);
 [Capability("scan.ping")]
 public sealed class ScanHandler : ICapabilityHandler<ScanCommand, ScanResponse>
 {
-    public ValueTask<CapabilityResult<ScanResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<ScanResponse>> HandleAsync(
         ScanCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<ScanResponse>>(
-            new CapabilityResult<ScanResponse>.Ok(new ScanResponse("ok")));
+        => ValueTask.FromResult<ExecutionResult<ScanResponse>>(
+            new ExecutionResult<ScanResponse>.Ok(new ScanResponse("ok")));
 }
 
 [Capability("scan.alt")]
 public sealed class ScanAltHandler : ICapabilityHandler<AltCommand, AltResponse>
 {
-    public ValueTask<CapabilityResult<AltResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<AltResponse>> HandleAsync(
         AltCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<AltResponse>>(
-            new CapabilityResult<AltResponse>.Ok(new AltResponse("alt")));
+        => ValueTask.FromResult<ExecutionResult<AltResponse>>(
+            new ExecutionResult<AltResponse>.Ok(new AltResponse("alt")));
 }
 
 /// <summary>
@@ -161,7 +162,7 @@ public sealed class AddCapabilityHandlersTests
 
         var result = await dispatcher.DispatchAsync(new ScanCommand("hello"));
 
-        var ok = result.ShouldBeOfType<CapabilityResult<ScanResponse>.Ok>();
+        var ok = result.ShouldBeOfType<ExecutionResult<ScanResponse>.Ok>();
         ok.Response.Result.ShouldBe("ok");
     }
 
@@ -191,10 +192,10 @@ public sealed class AddCapabilityHandlersTests
 [Capability("scan.explicit")]
 public sealed class ExplicitScanHandler : ICapabilityHandler<ScanCommand, ScanResponse>
 {
-    public ValueTask<CapabilityResult<ScanResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<ScanResponse>> HandleAsync(
         ScanCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<ScanResponse>>(
-            new CapabilityResult<ScanResponse>.Ok(new ScanResponse("explicit")));
+        => ValueTask.FromResult<ExecutionResult<ScanResponse>>(
+            new ExecutionResult<ScanResponse>.Ok(new ScanResponse("explicit")));
 }

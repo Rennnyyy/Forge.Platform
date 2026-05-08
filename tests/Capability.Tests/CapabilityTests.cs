@@ -2,6 +2,7 @@ using Forge.Aspects;
 using Forge.Aspects.Abstractions;
 using Forge.Aspects.Message;
 using Forge.Capability;
+using Forge.Execution;
 using Forge.Authorization;
 using NSubstitute;
 using Shouldly;
@@ -10,7 +11,7 @@ namespace Forge.Capability.Tests;
 
 /// <summary>
 /// Behavioral tests for the core Capability types:
-/// <see cref="CapabilityContext"/>, <see cref="CapabilityResult{TResponse}"/>,
+/// <see cref="CapabilityContext"/>, <see cref="ExecutionResult{TResponse}"/>,
 /// and <see cref="ICapabilityHandler{TCommand,TResponse}"/>.
 /// </summary>
 public sealed class CapabilityContextTests
@@ -40,14 +41,14 @@ public sealed class CapabilityContextTests
     }
 }
 
-public sealed class CapabilityResultTests
+public sealed class ExecutionResultTests
 {
     private sealed record MyResponse(string Value);
 
     [Fact]
     public void Ok_result_with_no_events_has_empty_events_list()
     {
-        var result = new CapabilityResult<MyResponse>.Ok(new MyResponse("hello"));
+        var result = new ExecutionResult<MyResponse>.Ok(new MyResponse("hello"));
 
         result.Response.Value.ShouldBe("hello");
         result.Events.ShouldBeEmpty();
@@ -57,7 +58,7 @@ public sealed class CapabilityResultTests
     public void Ok_result_with_populated_events_round_trips()
     {
         var events = new object[] { "event-1", 42 };
-        var result = new CapabilityResult<MyResponse>.Ok(new MyResponse("world"))
+        var result = new ExecutionResult<MyResponse>.Ok(new MyResponse("world"))
         {
             Events = events,
         };
@@ -70,8 +71,8 @@ public sealed class CapabilityResultTests
     [Fact]
     public void Fail_result_carries_error_code_and_message()
     {
-        var result = new CapabilityResult<MyResponse>.Fail(
-            new CapabilityError("NOT_FOUND", "Artist not found"));
+        var result = new ExecutionResult<MyResponse>.Fail(
+            new ExecutionError("NOT_FOUND", "Artist not found"));
 
         result.Error.Code.ShouldBe("NOT_FOUND");
         result.Error.Message.ShouldBe("Artist not found");
@@ -81,20 +82,20 @@ public sealed class CapabilityResultTests
     [Fact]
     public void Pattern_match_distinguishes_ok_from_fail()
     {
-        CapabilityResult<MyResponse> ok = new CapabilityResult<MyResponse>.Ok(new MyResponse("v"));
-        CapabilityResult<MyResponse> fail = new CapabilityResult<MyResponse>.Fail(
-            new CapabilityError("ERR", "bad"));
+        ExecutionResult<MyResponse> ok = new ExecutionResult<MyResponse>.Ok(new MyResponse("v"));
+        ExecutionResult<MyResponse> fail = new ExecutionResult<MyResponse>.Fail(
+            new ExecutionError("ERR", "bad"));
 
         var okBranch = ok switch
         {
-            CapabilityResult<MyResponse>.Ok o => o.Response.Value,
-            CapabilityResult<MyResponse>.Fail f => f.Error.Code,
+            ExecutionResult<MyResponse>.Ok o => o.Response.Value,
+            ExecutionResult<MyResponse>.Fail f => f.Error.Code,
             _ => "unexpected",
         };
         var failBranch = fail switch
         {
-            CapabilityResult<MyResponse>.Ok o => o.Response.Value,
-            CapabilityResult<MyResponse>.Fail f => f.Error.Code,
+            ExecutionResult<MyResponse>.Ok o => o.Response.Value,
+            ExecutionResult<MyResponse>.Fail f => f.Error.Code,
             _ => "unexpected",
         };
 
@@ -110,13 +111,13 @@ public sealed class CapabilityHandlerTests
 
     private sealed class PingHandler : ICapabilityHandler<PingCommand, PingResponse>
     {
-        public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+        public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
             PingCommand command,
             CapabilityContext context,
             CancellationToken cancellationToken = default)
         {
             // The handler reads context.AgentToken — no dependency on ValidationContext.
-            CapabilityResult<PingResponse> result = new CapabilityResult<PingResponse>.Ok(
+            ExecutionResult<PingResponse> result = new ExecutionResult<PingResponse>.Ok(
                 new PingResponse($"{command.Message} from {context.AgentToken ?? "anonymous"}"));
             return ValueTask.FromResult(result);
         }
@@ -131,7 +132,7 @@ public sealed class CapabilityHandlerTests
 
         var result = await handler.HandleAsync(command, context);
 
-        var ok = result.ShouldBeOfType<CapabilityResult<PingResponse>.Ok>();
+        var ok = result.ShouldBeOfType<ExecutionResult<PingResponse>.Ok>();
         ok.Response.Echo.ShouldBe("ping from anonymous");
         ok.Events.ShouldBeEmpty();
     }
@@ -145,7 +146,7 @@ public sealed class CapabilityHandlerTests
 
         var result = await handler.HandleAsync(command, context);
 
-        var fail = result.ShouldBeOfType<CapabilityResult<PingResponse>.Fail>();
+        var fail = result.ShouldBeOfType<ExecutionResult<PingResponse>.Fail>();
         fail.Error.Code.ShouldBe("INVALID");
         fail.Error.Message.ShouldBe("Command rejected");
     }
@@ -158,26 +159,26 @@ public sealed class CapabilityHandlerTests
         var store = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IAspectStore>();
         var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
 
-        CapabilityResult<PingResponse> result;
+        ExecutionResult<PingResponse> result;
         using (AuthorizationContext.Use("user-007"))
         {
             result = await dispatcher.DispatchAsync(new PingCommand("ping"));
         }
 
         // Assert: the handler received the agent token through CapabilityContext.
-        var ok = result.ShouldBeOfType<CapabilityResult<PingResponse>.Ok>();
+        var ok = result.ShouldBeOfType<ExecutionResult<PingResponse>.Ok>();
         ok.Response.Echo.ShouldBe("ping from user-007");
     }
 
     private sealed class FailingHandler : ICapabilityHandler<PingCommand, PingResponse>
     {
-        public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+        public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
             PingCommand command,
             CapabilityContext context,
             CancellationToken cancellationToken = default)
         {
-            CapabilityResult<PingResponse> result = new CapabilityResult<PingResponse>.Fail(
-                new CapabilityError("INVALID", "Command rejected"));
+            ExecutionResult<PingResponse> result = new ExecutionResult<PingResponse>.Fail(
+                new ExecutionError("INVALID", "Command rejected"));
             return ValueTask.FromResult(result);
         }
     }

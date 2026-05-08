@@ -1,6 +1,6 @@
-# 0011 — Assembly-scan autodiscovery for capability handler registration
+# 0018 — Assembly-scan autodiscovery for capability handler registration
 
-- **Status**: accepted
+- **Status**: superseded by [0011](0011-assembly-scanning-registration.md)
 - **Date**: 2026-05-04
 - **Author**: agent
 

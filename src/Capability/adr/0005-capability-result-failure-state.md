@@ -123,3 +123,9 @@ and absent (empty) on `Fail` results by default.
 - A caller that forgets to handle the `Fail` case will receive a compiler warning
   (non-exhaustive switch) or a `MatchFailureException` at runtime, making bugs surface early.
 - Tests can assert on the concrete nested type directly, keeping assertions readable.
+
+---
+
+> *Adjustment (ADR-0009): `CapabilityResult<TResponse>` and `CapabilityError` were migrated to
+> `ExecutionResult<TResponse>` and `ExecutionError` in `Forge.Execution` per ADR-0016.
+> The discriminated-union shape and semantics are identical; only the home assembly changed.*

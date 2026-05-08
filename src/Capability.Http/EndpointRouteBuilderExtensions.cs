@@ -1,6 +1,7 @@
 using System.Reflection;
-using Forge.Aspects;
-using Forge.Aspects.Message;
+using Forge.Capability;
+using Forge.Execution;
+using Forge.Execution.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -99,33 +100,17 @@ public static class EndpointRouteBuilderExtensions
         {
             var iri = await provider.GetCapabilityAspectIriAsync(httpContext, ct);
 
-            CapabilityResult<TResponse> result;
-            try
+            return await ExecutionEndpointHelper.InvokeAsync(async () =>
             {
-                result = await dispatcher.DispatchAsync(command, iri, ct);
-            }
-            catch (MessageAspectViolationException ex)
-            {
-                // SHACL constraint rejected the command before the handler was reached.
-                // Surface as 422 so callers distinguish policy rejection from server errors.
-                // See Capability.Http ADR-0007.
-                return Results.UnprocessableEntity(
-                    new CapabilityError("SHACL_VIOLATION", ex.Message));
-            }
-            catch (AspectViolationException ex)
-            {
-                // Entity-graph constraint (IOperationAspect Local SHACL or Context SPARQL)
-                // fired during transaction commit. Surface as 422. See Capability.Http ADR-0008.
-                return Results.UnprocessableEntity(
-                    new CapabilityError("ENTITY_SHACL_VIOLATION", ex.Message));
-            }
+                var result = await dispatcher.DispatchAsync(command, iri, ct);
 
-            return result switch
-            {
-                CapabilityResult<TResponse>.Ok ok => Results.Ok(ok.Response),
-                CapabilityResult<TResponse>.Fail fail => Results.UnprocessableEntity(fail.Error),
-                _ => Results.StatusCode(500),
-            };
+                return result switch
+                {
+                    ExecutionResult<TResponse>.Ok ok => Results.Ok(ok.Response),
+                    ExecutionResult<TResponse>.Fail fail => Results.UnprocessableEntity(fail.Error),
+                    _ => Results.StatusCode(500),
+                };
+            });
         });
     }
 }

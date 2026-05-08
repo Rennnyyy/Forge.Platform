@@ -7,6 +7,7 @@ using Forge.Capability;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
+using Forge.Execution;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -26,35 +27,35 @@ public sealed record PingResponse(string Output);
 [Capability("test.ping")]
 public sealed class PingHandler : ICapabilityHandler<PingCommand, PingResponse>
 {
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Ok(new PingResponse("pong:" + command.Input)));
+        => ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Ok(new PingResponse("pong:" + command.Input)));
 }
 
 [Capability("test.fail")]
 public sealed class FailingHandler : ICapabilityHandler<PingCommand, PingResponse>
 {
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Fail(
-                new CapabilityError("TEST_ERROR", "intentional failure")));
+        => ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Fail(
+                new ExecutionError("TEST_ERROR", "intentional failure")));
 }
 
 // Handler without [Capability] — used for error-case tests only.
 public sealed class NoAttributeHandler : ICapabilityHandler<PingCommand, PingResponse>
 {
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+        => ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Ok(new PingResponse("ok")));
 }
 
 // Handlers with bodyless methods — used for ADR-0005 guard tests only.
@@ -62,24 +63,24 @@ public sealed class NoAttributeHandler : ICapabilityHandler<PingCommand, PingRes
 [CapabilityEndpoint("GET")]
 public sealed class GetHandler : ICapabilityHandler<PingCommand, PingResponse>
 {
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+        => ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Ok(new PingResponse("ok")));
 }
 
 [Capability("test.delete")]
 [CapabilityEndpoint("DELETE")]
 public sealed class DeleteHandler : ICapabilityHandler<PingCommand, PingResponse>
 {
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
-        => ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+        => ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Ok(new PingResponse("ok")));
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -90,14 +91,14 @@ public sealed class CapturingHandler : ICapabilityHandler<PingCommand, PingRespo
 {
     public string? CapturedCapabilityAspectIri { get; private set; }
 
-    public ValueTask<CapabilityResult<PingResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PingResponse>> HandleAsync(
         PingCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
         CapturedCapabilityAspectIri = context.Aspect?.Iri;
-        return ValueTask.FromResult<CapabilityResult<PingResponse>>(
-            new CapabilityResult<PingResponse>.Ok(new PingResponse("ok")));
+        return ValueTask.FromResult<ExecutionResult<PingResponse>>(
+            new ExecutionResult<PingResponse>.Ok(new PingResponse("ok")));
     }
 }
 
@@ -170,7 +171,7 @@ public sealed class MapCapabilitiesTests
         var response = await client.PostAsJsonAsync("/api/capabilities/test/fail", new PingCommand("x"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        var body = await response.Content.ReadFromJsonAsync<CapabilityError>();
+        var body = await response.Content.ReadFromJsonAsync<ExecutionError>();
         body.ShouldNotBeNull();
         body!.Code.ShouldBe("TEST_ERROR");
         body.Message.ShouldBe("intentional failure");

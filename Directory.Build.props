@@ -13,9 +13,7 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
   </PropertyGroup>
 
-  <!-- Loosen warnings-as-errors in test projects (folder-based) -->
-  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('/tests/')) Or $(MSBuildProjectDirectory.Contains('\tests\'))">
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
-
+  <!-- Test projects share the same strict build settings as production code.
+       When a specific warning is intentionally suppressed in tests, add it to
+       WarningsNotAsErrors or use #pragma warning disable at the site. -->
 </Project>

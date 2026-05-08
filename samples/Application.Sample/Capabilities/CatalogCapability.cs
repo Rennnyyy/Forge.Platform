@@ -1,4 +1,5 @@
 using Forge.Capability;
+using Forge.Execution;
 using Forge.Capability.Http;
 
 namespace Forge.Application.Sample;
@@ -55,7 +56,7 @@ public sealed class CreateItemHandler : ICapabilityHandler<CreateItemCommand, Cr
 
     public CreateItemHandler(ItemStore store) => _store = store;
 
-    public ValueTask<CapabilityResult<CreateItemResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<CreateItemResponse>> HandleAsync(
         CreateItemCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
@@ -73,8 +74,8 @@ public sealed class CreateItemHandler : ICapabilityHandler<CreateItemCommand, Cr
             Dimensions: command.Dimensions,
             CreatedAt: storedAt));
 
-        return ValueTask.FromResult<CapabilityResult<CreateItemResponse>>(
-            new CapabilityResult<CreateItemResponse>.Ok(
+        return ValueTask.FromResult<ExecutionResult<CreateItemResponse>>(
+            new ExecutionResult<CreateItemResponse>.Ok(
                 new CreateItemResponse(itemId, storedAt)));
     }
 }
@@ -100,16 +101,16 @@ public sealed class UpdateItemHandler : ICapabilityHandler<UpdateItemCommand, Up
 
     public UpdateItemHandler(ItemStore store) => _store = store;
 
-    public ValueTask<CapabilityResult<UpdateItemResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<UpdateItemResponse>> HandleAsync(
         UpdateItemCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
         var existing = _store.TryGet(command.Id);
         if (existing is null)
-            return ValueTask.FromResult<CapabilityResult<UpdateItemResponse>>(
-                new CapabilityResult<UpdateItemResponse>.Fail(
-                    new CapabilityError("ITEM_NOT_FOUND", $"No item with id '{command.Id}'.")));
+            return ValueTask.FromResult<ExecutionResult<UpdateItemResponse>>(
+                new ExecutionResult<UpdateItemResponse>.Fail(
+                    new ExecutionError("ITEM_NOT_FOUND", $"No item with id '{command.Id}'.")));
 
         var updatedAt = DateTimeOffset.UtcNow;
         _store.Save(existing with
@@ -122,8 +123,8 @@ public sealed class UpdateItemHandler : ICapabilityHandler<UpdateItemCommand, Up
             Dimensions = command.Dimensions,
         });
 
-        return ValueTask.FromResult<CapabilityResult<UpdateItemResponse>>(
-            new CapabilityResult<UpdateItemResponse>.Ok(
+        return ValueTask.FromResult<ExecutionResult<UpdateItemResponse>>(
+            new ExecutionResult<UpdateItemResponse>.Ok(
                 new UpdateItemResponse(command.Id, updatedAt)));
     }
 }
@@ -147,16 +148,16 @@ public sealed class PatchItemHandler : ICapabilityHandler<PatchItemCommand, Patc
 
     public PatchItemHandler(ItemStore store) => _store = store;
 
-    public ValueTask<CapabilityResult<PatchItemResponse>> HandleAsync(
+    public ValueTask<ExecutionResult<PatchItemResponse>> HandleAsync(
         PatchItemCommand command,
         CapabilityContext context,
         CancellationToken cancellationToken = default)
     {
         var existing = _store.TryGet(command.Id);
         if (existing is null)
-            return ValueTask.FromResult<CapabilityResult<PatchItemResponse>>(
-                new CapabilityResult<PatchItemResponse>.Fail(
-                    new CapabilityError("ITEM_NOT_FOUND", $"No item with id '{command.Id}'.")));
+            return ValueTask.FromResult<ExecutionResult<PatchItemResponse>>(
+                new ExecutionResult<PatchItemResponse>.Fail(
+                    new ExecutionError("ITEM_NOT_FOUND", $"No item with id '{command.Id}'.")));
 
         var updatedAt = DateTimeOffset.UtcNow;
         _store.Save(existing with
@@ -166,8 +167,8 @@ public sealed class PatchItemHandler : ICapabilityHandler<PatchItemCommand, Patc
             Quantity = command.Quantity ?? existing.Quantity,
         });
 
-        return ValueTask.FromResult<CapabilityResult<PatchItemResponse>>(
-            new CapabilityResult<PatchItemResponse>.Ok(
+        return ValueTask.FromResult<ExecutionResult<PatchItemResponse>>(
+            new ExecutionResult<PatchItemResponse>.Ok(
                 new PatchItemResponse(command.Id, updatedAt)));
     }
 }

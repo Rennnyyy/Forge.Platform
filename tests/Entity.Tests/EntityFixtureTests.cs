@@ -211,7 +211,7 @@ public class EntityFixtureTests
 
         await foo.Bars.AddAsync(bar);
 
-        bar.Container.ShouldNotBeNull();
+        _ = bar.Container.ShouldNotBeNull();
         bar.Container!.ValueOrThrow.ShouldBe(foo);
     }
 

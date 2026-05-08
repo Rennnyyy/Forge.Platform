@@ -6,7 +6,7 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 
 | Sub-folder | Namespace | Sub-concern | Rule |
 |------------|-----------|-------------|------|
-| _(root)_ | `Forge.Repository` | Store contracts, entity repository facade, aspect token, write mode. | A file belongs here if it is a primary public contract consumed by the widest range of callers (`IEntityStore`, `IEntityRepository<T>`, `ISparqlQueryStore`, `IAspect`, `Aspect`, `WriteMode`, `EntityRepositoryOptions`). |
+| _(root)_ | `Forge.Repository` | Store contracts, entity repository facade, write mode. | A file belongs here if it is a primary public contract consumed by the widest range of callers (`IEntityStore`, `IEntityRepository<T>`, `ISparqlQueryStore`, `WriteMode`, `EntityRepositoryOptions`). The `IAspect` and `Aspect` types that originally lived here have moved to `Forge.Aspects.Abstractions` to break a circular dependency — see Repository ADR-0001. |
 | `Rdf/` | `Forge.Repository.Rdf` | RDF model types and vocabulary constants. | A file belongs here if it defines a low-level RDF model type (`RdfTerm`, `RdfTriple`, `RdfGraph`) or a vocabulary constant set (`RdfVocab`). |
 | `Mapping/` | `Forge.Repository.Mapping` | RDF ↔ entity mapping contracts and reflection-based implementation. | A file belongs here if its primary subject is the translation between C# entities and RDF triples: mapper contracts (`IRdfMapper`, `IRdfTripleSink`, `IRdfMapperRegistry`), the registry implementation (`RdfMapperRegistry`), and supporting helpers (`ReflectionRdfMapper`, `PredicateResolver`, `LiteralCodec`). |
 | `Transaction/` | `Forge.Repository.Transaction` | Multi-operation ACID transaction model. | A file belongs here if its primary subject is transactional semantics: the `ITransactionalEntityStore` contract, `EntityTransaction` builder, and `TransactionOperation` hierarchy. |
@@ -22,8 +22,6 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 
 ### Root (`Forge.Repository`)
 
-- `IAspect.cs` — marker interface for a named validation policy.
-- `Aspect.cs` — well-known aspect singletons (`NoOp`).
 - `IEntityStore.cs` — backend boundary; type-agnostic store.
 - `ISparqlQueryStore.cs` — optional SPARQL query capability.
 - `IEntityRepository.cs` — typed application-facing facade.

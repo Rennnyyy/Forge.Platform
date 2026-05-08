@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\Capability.Http\Forge.Capability.Http.csproj" />
     <ProjectReference Include="..\..\src\Capability\Forge.Capability.csproj" />
     <ProjectReference Include="..\..\src\Authorization\Forge.Authorization.csproj" />
+    <ProjectReference Include="..\..\src\Execution\Forge.Execution.csproj" />
   </ItemGroup>
 
 </Project>

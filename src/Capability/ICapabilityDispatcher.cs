@@ -1,3 +1,5 @@
+using Forge.Execution;
+
 namespace Forge.Capability;
 
 /// <summary>
@@ -28,7 +30,7 @@ public interface ICapabilityDispatcher<TCommand, TResponse>
     /// <see cref="Forge.Aspects.IAspectStore"/>, or <c>null</c> for a fully permissive
     /// execution (no SHACL validation on any message). See Capability ADR-0007.
     /// </param>
-    ValueTask<CapabilityResult<TResponse>> DispatchAsync(
+    ValueTask<ExecutionResult<TResponse>> DispatchAsync(
         TCommand command,
         string? capabilityAspectIri = null,
         CancellationToken cancellationToken = default);
