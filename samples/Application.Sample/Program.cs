@@ -11,6 +11,7 @@ using Forge.Operations;
 using Forge.Operations.Http;
 using Forge.Operations.Http.DependencyInjection;
 using Forge.Repository;
+using Forge.Authorization.Http.DependencyInjection;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.GraphDb.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
@@ -21,6 +22,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Permissive when no aspects are registered; keeps the pipeline running without
 // any policy enforcement in this demo.
 builder.Services.AddForgeAspects();
+
+// ── 1b. Authorization guard check ────────────────────────────────────────────
+// Registers the startup filter that enforces Forge:Authorization:RequireExplicitGuard.
+// The default (appsettings.json) sets RequireExplicitGuard = true, so the app will
+// fail to start unless a real IAspectGuard is configured.
+// appsettings.Development.json sets it to false — this sample uses AllowAllAspectGuard
+// (no custom guard), which is acceptable for local development.
+// See Authorization ADR-0004 and review flaw #1.
+builder.Services.AddForgeAuthorizationHttp(builder.Configuration);
 
 // ── 2. Entity store ───────────────────────────────────────────────────────────
 // Backend is controlled by Forge:EntityRepository:Backend in appsettings.json.

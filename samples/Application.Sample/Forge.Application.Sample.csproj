@@ -30,6 +30,8 @@
     <ProjectReference Include="..\..\src\Capability.Http\Forge.Capability.Http.csproj" />
     <!-- Aspect infrastructure (permissive when no aspects are registered) -->
     <ProjectReference Include="..\..\src\Aspects\Forge.Aspects.csproj" />
+    <!-- Authorization: guard check + agent-token middleware -->
+    <ProjectReference Include="..\..\src\Authorization.Http\Forge.Authorization.Http.csproj" />
     <!-- RDF mapper + IEntityStore abstraction -->
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <!-- In-memory RDF store (no infrastructure needed) -->

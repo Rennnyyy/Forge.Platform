@@ -368,6 +368,7 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
         psi.ArgumentList.Add("exec");
         psi.ArgumentList.Add(dll);
         psi.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}";
+        psi.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
 
         var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start the sample app process.");
