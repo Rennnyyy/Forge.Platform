@@ -1,0 +1,18 @@
+meta {
+  name: Studios - read recording inverse relation (GET ?iri= recording sees owning studio)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/entities/recordings?iri={{recordingIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.title: eq Sonic Forge Session Take 1
+  res.body.producedBy: eq {{studioIri}}
+}

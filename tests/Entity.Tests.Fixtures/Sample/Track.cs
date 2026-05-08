@@ -22,4 +22,12 @@ public partial class Track
     /// <summary>N:1 — many tracks performed by the same artist.</summary>
     [Owning("performedBy")]
     public partial EntityRef<Artist>? PerformedBy { get; set; }
+
+    /// <summary>
+    /// Inverse — the <see cref="Album"/> that contains this track.
+    /// Populated at load time via the inverse-ref loader (ADR-0017).
+    /// Read-only; mutate via <see cref="Album.Tracks"/>.
+    /// </summary>
+    [Inverse(nameof(Album.Tracks), "hasTrack")]
+    public partial EntityRef<Album>? ContainedBy { get; }
 }

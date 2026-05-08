@@ -32,7 +32,11 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
 
     // --------------------------------------------------------------- Hydrate
 
-    public T? Hydrate(string iri, RdfGraph subjectGraph)
+    public async ValueTask<T?> HydrateAsync(
+        string iri,
+        RdfGraph subjectGraph,
+        IInverseRefLoader? inverseLoader = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
         ArgumentNullException.ThrowIfNull(subjectGraph);
@@ -76,6 +80,20 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             var members = ReadOrderedList(subjectGraph, oc.PredicateIri);
             foreach (var memberIri in members)
                 AddStubToCollection(collection, oc.TargetType, memberIri);
+        }
+
+        // 5. Populate inverse single refs (ADR-0017) by querying the store in reverse.
+        if (inverseLoader is not null)
+        {
+            foreach (var ir in plan.InverseSingleRefs)
+            {
+                var ownerIri = await inverseLoader
+                    .LoadInverseRefIriAsync(iri, ir.PredicateIri, cancellationToken)
+                    .ConfigureAwait(false);
+                if (ownerIri is null) continue;
+                var refInstance = MakeEntityRefForIri(ir.TargetType, ownerIri);
+                ir.BackingField?.SetValue(instance, refInstance);
+            }
         }
 
         return instance;
@@ -245,6 +263,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         IReadOnlyList<DataProp> DataProperties,
         IReadOnlyList<RefProp> OwningSingleRefs,
         IReadOnlyList<CollectionProp> OwningCollections,
+        IReadOnlyList<InverseRefProp> InverseSingleRefs,
         int EntityAncestorCount);
 
     private sealed record DataProp(
@@ -258,6 +277,12 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         Type TargetType,
         string PredicateIri,
         MethodInfo? IriGetter);
+
+    private sealed record InverseRefProp(
+        PropertyInfo Property,
+        Type TargetType,
+        string PredicateIri,
+        FieldInfo? BackingField);
 
     private sealed record CollectionProp(
         PropertyInfo Property,
@@ -301,6 +326,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         var data = new List<DataProp>();
         var single = new List<RefProp>();
         var coll = new List<CollectionProp>();
+        var inverseRefs = new List<InverseRefProp>();
 
         // PredicatePath for the mapper metadata: use child's own PredicatePath/Path if set.
         var predPath = entityAttr.PredicatePath ?? entityAttr.Path;
@@ -312,8 +338,23 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             var idPart = prop.GetCustomAttribute<IdentityPartAttribute>();
             var pred = prop.GetCustomAttribute<PredicateAttribute>();
 
-            // Inverse refs/collections are not projected, not hydrated (ADR-0013, v1).
-            if (inverse is not null) continue;
+            // Inverse refs: single refs are hydrated via IInverseRefLoader (ADR-0017);
+            // inverse collections are handled by DeferredEntityRefCollectionImpl (ADR-0009).
+            if (inverse is not null)
+            {
+                var (invKind, invTarget) = ClassifyRef(prop.PropertyType);
+                if (invKind == RefKindLite.Single && invTarget is not null)
+                {
+                    // The predicate must resolve to the SAME IRI as the owning side stores,
+                    // so use the owning type's PredicatePath (mirrors how owning side resolves it).
+                    var owningEntityAttr = invTarget.GetCustomAttribute<EntityAttribute>();
+                    var owningPredPath = owningEntityAttr?.PredicatePath ?? owningEntityAttr?.Path;
+                    var resolved = PredicateResolver.Resolve(inverse.Predicate, owningPredPath);
+                    var backingField = GetFieldFromTypeHierarchy(t, $"__forge_inv_{prop.Name}");
+                    inverseRefs.Add(new InverseRefProp(prop, invTarget, resolved, backingField));
+                }
+                continue; // inverse collections handled by generator-emitted deferred impl
+            }
 
             // Resolve predicate IRI from the DECLARING type to handle inheritance correctly:
             // a property declared on Artist uses Artist's PredicatePath, not FeaturedArtist's.
@@ -354,7 +395,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         }
 
         return new TypePlan(strategy, entityPath, predPath, guidCtor, hydrateIri,
-            data, single, coll, ancestorCount);
+            data, single, coll, inverseRefs, ancestorCount);
     }
 
     // --------------------------------------------------------------- Type-chain helpers

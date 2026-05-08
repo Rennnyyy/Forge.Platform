@@ -15,7 +15,7 @@ namespace Forge.Repository.InMemory;
 /// embedded scenarios. The same behavioral spec is asserted against the GraphDB
 /// backend to keep the two implementations interchangeable.
 /// </summary>
-public sealed partial class InMemoryEntityStore : IEntityStore
+public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoader
 {
     private readonly Graph _graph;
     private readonly IRdfMapperRegistry _registry;
@@ -45,7 +45,7 @@ public sealed partial class InMemoryEntityStore : IEntityStore
         where T : class
         => LoadAsync<T>(iri, cancellationToken);
 
-    public ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
@@ -53,10 +53,10 @@ public sealed partial class InMemoryEntityStore : IEntityStore
 
         var subj = _graph.CreateUriNode(UriFactory.Create(iri));
         var subjectGraph = BuildSubjectClosure(subj, iri);
-        if (subjectGraph.Count == 0) return ValueTask.FromResult<T?>(null);
+        if (subjectGraph.Count == 0) return null;
 
         var mapper = _registry.For<T>();
-        return ValueTask.FromResult(mapper.Hydrate(iri, subjectGraph));
+        return await mapper.HydrateAsync(iri, subjectGraph, this, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Walk the graph collecting all triples reachable from <paramref name="subject"/>,
@@ -210,9 +210,58 @@ public sealed partial class InMemoryEntityStore : IEntityStore
         }
     }
 
-    // ------------------------------------------------------------------ ICollectionLoader
+    // ------------------------------------------------------------------ IInverseRefLoader
 
-#pragma warning disable CS1998
+    /// <summary>
+    /// Reverse lookup: finds the subject that points to <paramref name="targetIri"/> via
+    /// <paramref name="predicate"/> either as a direct object or inside an <c>rdf:List</c>.
+    /// Returns the first matching subject IRI, or <see langword="null"/> if none found.
+    /// </summary>
+    public ValueTask<string?> LoadInverseRefIriAsync(
+        string targetIri,
+        string predicate,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var predNode = _graph.CreateUriNode(UriFactory.Create(predicate));
+
+        foreach (var triple in _graph.GetTriplesWithPredicate(predNode))
+        {
+            if (triple.Subject is not IUriNode ownerUri) continue;
+            if (ListOrDirectContains(triple.Object, targetIri))
+                return ValueTask.FromResult<string?>(ownerUri.Uri.AbsoluteUri);
+        }
+        return ValueTask.FromResult<string?>(null);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="head"/> either IS
+    /// <paramref name="targetIri"/> (direct reference) or is an <c>rdf:List</c> blank
+    /// node chain that contains <paramref name="targetIri"/> as a <c>rdf:first</c> value.
+    /// </summary>
+    private bool ListOrDirectContains(INode head, string targetIri)
+    {
+        var rdfFirst = _graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
+        var rdfRest  = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
+        var rdfNil   = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
+
+        // Direct IRI match.
+        if (head is IUriNode u && u.Uri.AbsoluteUri == targetIri) return true;
+
+        // Walk rdf:List chain looking for rdf:first = targetIri.
+        var current = head;
+        while (current is IBlankNode)
+        {
+            var first = _graph.GetTriplesWithSubjectPredicate(current, rdfFirst).FirstOrDefault()?.Object;
+            if (first is IUriNode fu && fu.Uri.AbsoluteUri == targetIri) return true;
+            var rest = _graph.GetTriplesWithSubjectPredicate(current, rdfRest).FirstOrDefault()?.Object;
+            if (rest is null || (rest is IUriNode ru && ru.Equals(rdfNil))) break;
+            current = rest;
+        }
+        return false;
+    }
+
+
     public async IAsyncEnumerable<string> LoadCollectionIrisAsync<T>(
         string ownerIri, string predicate,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

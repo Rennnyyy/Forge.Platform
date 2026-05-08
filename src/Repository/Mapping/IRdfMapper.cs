@@ -35,8 +35,14 @@ public interface IRdfMapper<T> : IRdfMapper where T : class, IEntity
     /// Build a <typeparamref name="T"/> instance from the triple closure of
     /// <paramref name="iri"/>. Returns null if the closure does not contain a recognizable
     /// instance of <typeparamref name="T"/> (e.g. wrong rdf:type, missing data).
+    /// When <paramref name="inverseLoader"/> is provided, inverse single-ref properties
+    /// (ADR-0017) are populated by querying the store for the owning entity's IRI.
     /// </summary>
-    T? Hydrate(string iri, RdfGraph subjectGraph);
+    ValueTask<T?> HydrateAsync(
+        string iri,
+        RdfGraph subjectGraph,
+        IInverseRefLoader? inverseLoader = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Emit triples representing <paramref name="entity"/> into <paramref name="sink"/>.

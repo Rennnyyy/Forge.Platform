@@ -43,4 +43,12 @@ public partial class Recording
     /// <summary>Optional position within the studio's recording sequence.</summary>
     [Predicate("trackNumber")]
     public int? TrackNumber { get; set; }
+
+    /// <summary>
+    /// Inverse — the <see cref="Studio"/> that produced this recording.
+    /// Populated at load time via the inverse-ref loader (ADR-0017).
+    /// Read-only; mutate via <see cref="Studio.Recordings"/>.
+    /// </summary>
+    [Inverse(nameof(Studio.Recordings), "hasRecording")]
+    public partial EntityRef<Studio>? ProducedBy { get; }
 }

@@ -19,7 +19,7 @@ namespace Forge.Repository.GraphDb;
 /// DELETE WHERE). Behaves identically to <c>InMemoryEntityStore</c> w.r.t. the mapper
 /// contract — the two share a behavioral test suite.
 /// </summary>
-public sealed partial class GraphDbEntityStore : IEntityStore
+public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
 {
     private readonly HttpClient _http;
     private readonly IRdfMapperRegistry _registry;
@@ -69,7 +69,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore
         var subjectGraph = ToRdfGraph(graph, iri);
         if (subjectGraph.Count == 0) return null;
 
-        return _registry.For<T>().Hydrate(iri, subjectGraph);
+        return await _registry.For<T>().HydrateAsync(iri, subjectGraph, this, cancellationToken).ConfigureAwait(false);
     }
 
     // ------------------------------------------------------------------ Save
@@ -164,6 +164,36 @@ public sealed partial class GraphDbEntityStore : IEntityStore
             var loaded = await LoadAsync<T>(iri, cancellationToken).ConfigureAwait(false);
             if (loaded is not null) yield return loaded;
         }
+    }
+
+    // ------------------------------------------------------------------ IInverseRefLoader
+
+    /// <summary>
+    /// Reverse SPARQL lookup: finds the entity that points to <paramref name="targetIri"/>
+    /// via <paramref name="predicate"/> either directly or through an <c>rdf:List</c> chain.
+    /// Returns the first matching owner IRI, or <see langword="null"/> if none found.
+    /// </summary>
+    public async ValueTask<string?> LoadInverseRefIriAsync(
+        string targetIri,
+        string predicate,
+        CancellationToken cancellationToken = default)
+    {
+        var sparql = NamedGraphWrap(_repoOptions.NamedGraph, $@"
+SELECT ?owner WHERE {{
+  {{
+    ?owner <{Escape(predicate)}> <{Escape(targetIri)}> .
+  }}
+  UNION
+  {{
+    ?owner <{Escape(predicate)}> ?list .
+    ?list <{RdfVocab.Rest}>* ?node .
+    ?node <{RdfVocab.First}> <{Escape(targetIri)}> .
+  }}
+}}
+LIMIT 1");
+
+        var iris = await SelectIrisAsync(sparql, "owner", cancellationToken).ConfigureAwait(false);
+        return iris.Count > 0 ? iris[0] : null;
     }
 
     // ------------------------------------------------------------------ ICollectionLoader

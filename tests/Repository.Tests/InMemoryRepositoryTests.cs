@@ -302,7 +302,36 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // 10. WriteMode.Replace — swapping the track list rewrites the rdf:List
+    // 10. Inverse single ref — Track.ContainedBy resolves to its Album (ADR-0017)
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Inverse_single_ref_on_Track_resolves_to_owning_Album()
+    {
+        var s = Build();
+
+        var track = new Track { Title = "Silver Lining", Position = 1, DurationSeconds = 220 };
+        await s.Store.SaveAsync(track);
+
+        var album = new Album { Title = "Homecoming", ReleaseYear = 2026 };
+        await album.Tracks.AddAsync(track);
+        await s.Store.SaveAsync(album);
+
+        // Load the track back — ContainedBy (inverse single ref) must point to the album.
+        var loadedTrack = await s.Tracks.LoadAsync(track.Iri);
+        var containedBy = loadedTrack.ContainedBy;
+        Assert.NotNull(containedBy);
+        containedBy!.Iri.ShouldBe(album.Iri);
+
+        // Resolve the ref inside a session — must produce the owning Album.
+        using var session = EntitySession.Begin(s.Store);
+        var resolvedAlbum = await containedBy!;
+        resolvedAlbum.ShouldNotBeNull();
+        resolvedAlbum!.Title.ShouldBe("Homecoming");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 11. WriteMode.Replace — swapping the track list rewrites the rdf:List
     // ════════════════════════════════════════════════════════════════════════
 
     [Fact]
