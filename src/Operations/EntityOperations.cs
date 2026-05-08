@@ -63,20 +63,54 @@ public static class EntityOperations
             "Call EntityOperations.Use(store) before invoking entity operations.");
 
     // ── Delegation helpers called by generated entity methods ────────────────
+    // These route through EntityTransaction so that AspectEnforcingTransactionalStore
+    // (and any other ITransactionalEntityStore decorator) is exercised for every write.
+    // Stores that do not implement ITransactionalEntityStore fall back to direct SaveAsync /
+    // DeleteAsync to preserve compatibility with bare-backend test scenarios.
 
     /// <summary>Persist a new entity; fails if a subject with the same IRI already exists.</summary>
-    public static ValueTask CreateAsync<T>(T entity, CancellationToken cancellationToken = default)
+    public static async ValueTask CreateAsync<T>(T entity, CancellationToken cancellationToken = default)
         where T : class, IEntity
-        => RequireStore().SaveAsync(entity, WriteMode.Create, cancellationToken);
+    {
+        var store = RequireStore();
+        if (store is ITransactionalEntityStore txStore)
+        {
+            await using var tx = new EntityTransaction(txStore);
+            tx.Create(entity);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+            await store.SaveAsync(entity, WriteMode.Create, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Replace an existing entity (full PUT semantics).</summary>
-    public static ValueTask UpdateAsync<T>(T entity, CancellationToken cancellationToken = default)
+    public static async ValueTask UpdateAsync<T>(T entity, CancellationToken cancellationToken = default)
         where T : class, IEntity
-        => RequireStore().SaveAsync(entity, WriteMode.Replace, cancellationToken);
+    {
+        var store = RequireStore();
+        if (store is ITransactionalEntityStore txStore)
+        {
+            await using var tx = new EntityTransaction(txStore);
+            tx.Update(entity);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+            await store.SaveAsync(entity, WriteMode.Replace, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Delete every triple whose subject is <paramref name="iri"/>.</summary>
-    public static ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
-        => RequireStore().DeleteAsync(iri, cancellationToken);
+    public static async ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
+    {
+        var store = RequireStore();
+        if (store is ITransactionalEntityStore txStore)
+        {
+            await using var tx = new EntityTransaction(txStore);
+            tx.Delete(iri);
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+            await store.DeleteAsync(iri, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Load a single entity by IRI, or <see langword="null"/> if absent.</summary>
     public static ValueTask<T?> ReadAsync<T>(string iri, CancellationToken cancellationToken = default)
