@@ -94,6 +94,24 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
                 var refInstance = MakeEntityRefForIri(ir.TargetType, ownerIri);
                 ir.BackingField?.SetValue(instance, refInstance);
             }
+
+            // 6. Populate inverse collections (ADR-0018) by querying the store in reverse.
+            foreach (var ic in plan.InverseCollections)
+            {
+                var collection = ic.Property.GetValue(instance);
+                if (collection is null) continue;
+                await foreach (var memberIri in LoadInverseCollectionIris(
+                    inverseLoader, iri, ic.PredicateIri, ic.TargetType, cancellationToken)
+                    .ConfigureAwait(false))
+                {
+                    AddStubToCollection(collection, ic.TargetType, memberIri);
+                }
+                // For lazy inverse collections (IsLazy = true), the mapper drives the load
+                // so mark the collection resolved now, regardless of how many items were found.
+                // This ensures the key appears in single-read HTTP responses (ADR-0018).
+                if (ic.IsLazy && collection is IEntityRefCollectionState state)
+                    await state.EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return instance;
@@ -252,6 +270,29 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             dict[memberIri] = null; // null value means "IRI known, entity not yet loaded"
     }
 
+    /// <summary>
+    /// Dispatch <c>IInverseRefLoader.LoadInverseCollectionIrisAsync&lt;T&gt;</c> via a cached
+    /// generic <see cref="MethodInfo"/> so that the caller does not need to know <typeparamref
+    /// name="T"/> at compile time.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Type, MethodInfo> _inverseCollLoaderMethods = new();
+
+    private static IAsyncEnumerable<string> LoadInverseCollectionIris(
+        IInverseRefLoader loader,
+        string entityIri,
+        string predicateIri,
+        Type targetType,
+        CancellationToken cancellationToken)
+    {
+        var method = _inverseCollLoaderMethods.GetOrAdd(targetType, static t =>
+            typeof(IInverseRefLoader)
+                .GetMethod(nameof(IInverseRefLoader.LoadInverseCollectionIrisAsync))!
+                .MakeGenericMethod(t));
+        return (IAsyncEnumerable<string>)method.Invoke(
+            loader,
+            new object[] { entityIri, predicateIri, cancellationToken })!;
+    }
+
     // --------------------------------------------------------------- Plan (built once per type)
 
     private sealed record TypePlan(
@@ -264,6 +305,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         IReadOnlyList<RefProp> OwningSingleRefs,
         IReadOnlyList<CollectionProp> OwningCollections,
         IReadOnlyList<InverseRefProp> InverseSingleRefs,
+        IReadOnlyList<InverseCollectionProp> InverseCollections,
         int EntityAncestorCount);
 
     private sealed record DataProp(
@@ -283,6 +325,12 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         Type TargetType,
         string PredicateIri,
         FieldInfo? BackingField);
+
+    private sealed record InverseCollectionProp(
+        PropertyInfo Property,
+        Type TargetType,
+        string PredicateIri,
+        bool IsLazy);
 
     private sealed record CollectionProp(
         PropertyInfo Property,
@@ -327,6 +375,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         var single = new List<RefProp>();
         var coll = new List<CollectionProp>();
         var inverseRefs = new List<InverseRefProp>();
+        var inverseCollections = new List<InverseCollectionProp>();
 
         // PredicatePath for the mapper metadata: use child's own PredicatePath/Path if set.
         var predPath = entityAttr.PredicatePath ?? entityAttr.Path;
@@ -339,7 +388,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
             var pred = prop.GetCustomAttribute<PredicateAttribute>();
 
             // Inverse refs: single refs are hydrated via IInverseRefLoader (ADR-0017);
-            // inverse collections are handled by DeferredEntityRefCollectionImpl (ADR-0009).
+            // inverse collections are hydrated via IInverseRefLoader step 6 (ADR-0018).
             if (inverse is not null)
             {
                 var (invKind, invTarget) = ClassifyRef(prop.PropertyType);
@@ -353,7 +402,15 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
                     var backingField = GetFieldFromTypeHierarchy(t, $"__forge_inv_{prop.Name}");
                     inverseRefs.Add(new InverseRefProp(prop, invTarget, resolved, backingField));
                 }
-                continue; // inverse collections handled by generator-emitted deferred impl
+                else if (invKind == RefKindLite.Collection && invTarget is not null)
+                {
+                    // Same predicate-resolution rule: use the owning entity's PredicatePath.
+                    var owningEntityAttr = invTarget.GetCustomAttribute<EntityAttribute>();
+                    var owningPredPath = owningEntityAttr?.PredicatePath ?? owningEntityAttr?.Path;
+                    var resolved = PredicateResolver.Resolve(inverse.Predicate, owningPredPath);
+                    inverseCollections.Add(new InverseCollectionProp(prop, invTarget, resolved, inverse.Lazy));
+                }
+                continue;
             }
 
             // Resolve predicate IRI from the DECLARING type to handle inheritance correctly:
@@ -395,7 +452,7 @@ public sealed class ReflectionRdfMapper<T> : IRdfMapper<T> where T : class, IEnt
         }
 
         return new TypePlan(strategy, entityPath, predPath, guidCtor, hydrateIri,
-            data, single, coll, inverseRefs, ancestorCount);
+            data, single, coll, inverseRefs, inverseCollections, ancestorCount);
     }
 
     // --------------------------------------------------------------- Type-chain helpers

@@ -41,4 +41,14 @@ public partial class Artist
 
     [Predicate("debutYear")]
     public int DebutYear { get; set; }
+
+    /// <summary>
+    /// Inverse — the <see cref="Studio"/> entities managed by this artist.
+    /// Populated at load time via the inverse-ref loader (ADR-0018).
+    /// Read-only; mutate via <see cref="Studio.ManagedBy"/>.
+    /// <br/>
+    /// Eager (non-lazy) — always included in both list and single-read responses.
+    /// </summary>
+    [Inverse(nameof(Studio.ManagedBy), "managedBy")]
+    public partial EntityRefCollection<Studio> ManagedStudios { get; }
 }

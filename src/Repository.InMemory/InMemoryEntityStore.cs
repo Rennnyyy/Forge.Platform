@@ -235,6 +235,27 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
     }
 
     /// <summary>
+    /// Reverse collection lookup: yields the IRI of every subject that points to
+    /// <paramref name="targetIri"/> via <paramref name="predicate"/> (absolute IRI),
+    /// either as a direct object or inside an <c>rdf:List</c> chain (ADR-0018).
+    /// </summary>
+    public async IAsyncEnumerable<string> LoadInverseCollectionIrisAsync<T>(
+        string targetIri,
+        string predicate,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        where T : class, IEntity
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var predNode = _graph.CreateUriNode(UriFactory.Create(predicate));
+        foreach (var triple in _graph.GetTriplesWithPredicate(predNode))
+        {
+            if (triple.Subject is not IUriNode ownerUri) continue;
+            if (ListOrDirectContains(triple.Object, targetIri))
+                yield return ownerUri.Uri.AbsoluteUri;
+        }
+    }
+
+    /// <summary>
     /// Returns <see langword="true"/> when <paramref name="head"/> either IS
     /// <paramref name="targetIri"/> (direct reference) or is an <c>rdf:List</c> blank
     /// node chain that contains <paramref name="targetIri"/> as a <c>rdf:first</c> value.

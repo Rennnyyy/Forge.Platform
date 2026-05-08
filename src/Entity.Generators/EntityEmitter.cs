@@ -393,8 +393,7 @@ internal static class EntityEmitter
               .Append("> ").Append(r.PropertyName).Append(" => ").Append(fieldName);
             if (r.IsLazy)
             {
-                sb.Append(" ??= new global::Forge.Entity.DeferredEntityRefCollectionImpl<").Append(targetDisplay)
-                  .Append(">(ownerIriSelector: () => Iri, predicate: \"").Append(r.Predicate).AppendLine("\");");
+                sb.Append(" ??= new global::Forge.Entity.LazyInverseEntityRefCollectionImpl<").Append(targetDisplay).AppendLine(">(); // deferred — IsResolved=false, omitted from HTTP responses");
             }
             else
             {
@@ -408,9 +407,7 @@ internal static class EntityEmitter
             sb.AppendLine("    {");
             if (r.IsLazy)
             {
-                sb.Append("        ").Append(fieldName).Append(" ??= new global::Forge.Entity.DeferredEntityRefCollectionImpl<")
-                  .Append(targetDisplay).Append(">(ownerIriSelector: () => Iri, predicate: \"")
-                  .Append(r.Predicate).AppendLine("\");");
+                sb.Append("        ").Append(fieldName).Append(" ??= new global::Forge.Entity.LazyInverseEntityRefCollectionImpl<").Append(targetDisplay).AppendLine(">();");
             }
             else
             {

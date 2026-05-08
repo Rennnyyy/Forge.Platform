@@ -67,6 +67,7 @@ Effort scale: **XS** < 30 min · **S** < 2 h · **M** < 1 day · **L** < 1 week 
 
 ### Summary
 
+- ⭐ **Rating** - for each category from the lens table, give an overall rating for how well the repository performs in that area (1-5 stars).
 - ✅ **Strengths** — what the repository does well architecturally
 - 🚫 **Must fix before the next release** — critical and high items that are release blockers
 - 🗺️ **Recommended sequencing** — suggested order to tackle the fix plan to minimise rework

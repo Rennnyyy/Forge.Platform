@@ -202,3 +202,85 @@ public sealed class DeferredEntityRefCollectionImpl<T> : EntityRefCollection<T>
         }
     }
 }
+
+/// <summary>
+/// Lazy inverse collection emitted by the generator for <c>[Inverse(Lazy = true)]</c>
+/// collection properties. Behaves exactly like <see cref="EntityRefCollectionImpl{T}"/>
+/// but starts with <see cref="IsResolved"/> = <see langword="false"/> so that
+/// the HTTP serializer omits the key from responses where population was skipped
+/// (e.g. list responses for enumeration entities). Once any IRI is added (e.g. by
+/// the mapper's <c>HydrateAsync</c> step) or once <see cref="EnsureLoadedAsync"/> is
+/// called, <see cref="IsResolved"/> flips to <see langword="true"/> and the key appears
+/// in the response normally.
+/// </summary>
+public sealed class LazyInverseEntityRefCollectionImpl<T> : EntityRefCollection<T>
+    where T : class, IEntity
+{
+    private readonly Dictionary<string, T?> _byIri = new(StringComparer.Ordinal);
+    private bool _resolved;
+
+    /// <summary>
+    /// <see langword="false"/> until any IRI is added or <see cref="EnsureLoadedAsync"/> is called,
+    /// allowing the JSON serializer to omit the key from list responses where population
+    /// was intentionally skipped.
+    /// </summary>
+    public bool IsResolved => _resolved;
+
+    public int LoadedCount
+    {
+        get
+        {
+            var n = 0;
+            foreach (var v in _byIri.Values) if (v is not null) n++;
+            return n;
+        }
+    }
+
+    public IReadOnlyCollection<string> Iris => _byIri.Keys;
+
+    public ValueTask EnsureLoadedAsync(CancellationToken cancellationToken = default)
+    {
+        _resolved = true;
+        return default;
+    }
+
+    public ValueTask AddAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        _byIri[entity.Iri] = entity;
+        _resolved = true;
+        return default;
+    }
+
+    public ValueTask RemoveAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        _byIri.Remove(entity.Iri);
+        return default;
+    }
+
+    public ValueTask<bool> ContainsAsync(string iri, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(_byIri.ContainsKey(iri));
+
+    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    {
+        var snapshot = new KeyValuePair<string, T?>[_byIri.Count];
+        var i = 0;
+        foreach (var kv in _byIri) snapshot[i++] = kv;
+        foreach (var kv in snapshot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (kv.Value is not null)
+            {
+                yield return kv.Value;
+            }
+            else
+            {
+                var loader = EntitySession.RequireLoader();
+                var loaded = await loader.LoadAsync<T>(kv.Key, cancellationToken).ConfigureAwait(false);
+                _byIri[kv.Key] = loaded;
+                if (loaded is not null) yield return loaded;
+            }
+        }
+    }
+}

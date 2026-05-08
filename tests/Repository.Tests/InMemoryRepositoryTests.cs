@@ -331,7 +331,45 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // 11. WriteMode.Replace — swapping the track list rewrites the rdf:List
+    // 11. Inverse collection — Artist.Albums resolves to owning Albums (ADR-0018)
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Inverse_collection_on_Artist_loads_albums_that_reference_it()
+    {
+        var s = Build();
+
+        var aria = new Artist { Name = "Aria Nova", Country = "SE" };
+        await s.Store.SaveAsync(aria);
+
+        var album1 = new Album { Title = "Morning Light", ReleaseYear = 2024 };
+        var album2 = new Album { Title = "Twilight", ReleaseYear = 2025 };
+        await s.Store.SaveAsync(album1);
+        await s.Store.SaveAsync(album2);
+
+        // Add aria to both albums' owning Artists collection.
+        await album1.Artists.AddAsync(aria);
+        await s.Store.SaveAsync(album1);
+
+        await album2.Artists.AddAsync(aria);
+        await s.Store.SaveAsync(album2);
+
+        // Load the artist back — Albums (inverse collection) must contain both albums.
+        var loadedArtist = await s.Artists.LoadAsync(aria.Iri);
+        var albumIris = loadedArtist.Albums.Iris.ToHashSet();
+        albumIris.ShouldContain(album1.Iri);
+        albumIris.ShouldContain(album2.Iri);
+
+        // Resolve entities inside a session.
+        using var session = EntitySession.Begin(s.Store);
+        var titles = new List<string>();
+        await foreach (var a in loadedArtist.Albums) titles.Add(a.Title);
+        titles.ShouldContain("Morning Light");
+        titles.ShouldContain("Twilight");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 12. WriteMode.Replace — swapping the track list rewrites the rdf:List
     // ════════════════════════════════════════════════════════════════════════
 
     [Fact]

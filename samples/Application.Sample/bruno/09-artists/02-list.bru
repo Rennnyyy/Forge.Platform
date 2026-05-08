@@ -13,4 +13,5 @@ get {
 assert {
   res.status: eq 200
   res.body.items: isDefined
+  res.body.items[0].managedStudios: isDefined
 }

@@ -66,5 +66,15 @@ public sealed partial class Genre
     /// <summary>Optional free-text description of the genre.</summary>
     [Predicate("description")]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Inverse — the <see cref="Studio"/> entities that list this genre in their
+    /// <see cref="Studio.Genres"/> collection. Populated at load time by the inverse
+    /// collection loader (ADR-0018). Read-only; mutate via <see cref="Studio.Genres"/>.
+    /// <br/>
+    /// <c>Lazy = true</c> — skipped in list responses (key omitted); hydrated on single read.
+    /// </summary>
+    [Inverse(nameof(Studio.Genres), "hasGenre", Lazy = true)]
+    public partial EntityRefCollection<Studio> ProducedBy { get; }
 }
 

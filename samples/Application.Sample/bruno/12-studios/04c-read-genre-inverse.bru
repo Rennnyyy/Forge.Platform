@@ -1,0 +1,18 @@
+meta {
+  name: Studios - read genre inverse collection (GET ?iri= jazz genre sees owning studio)
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/entities/genres?iri=https://forge-it.net/genres/jazz
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.slug: eq jazz
+  res.body.producedBy: contains {{studioIri}}
+}

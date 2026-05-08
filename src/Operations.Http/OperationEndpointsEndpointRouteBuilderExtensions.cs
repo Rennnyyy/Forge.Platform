@@ -8,6 +8,8 @@ using Forge.Execution.Http;
 using Forge.Operations;
 using Forge.Operations.Http.DependencyInjection;
 using Forge.Repository;
+using Forge.Repository.Mapping;
+using Forge.Repository.Rdf;
 using Forge.Repository.Transaction;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -199,8 +201,9 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
 
     /// <summary>
     /// Registers read-only GET (List + Read) endpoints for <c>[Enumeration]</c> entity types.
-    /// Instances are served from the static <c>IReadOnlyList&lt;T&gt; All</c> property
-    /// compiled into the assembly — no store access required.
+    /// List responses are served from the static <c>IReadOnlyList&lt;T&gt; All</c> property.
+    /// Read-by-IRI responses are fully hydrated via the mapper so that <c>[Inverse]</c>
+    /// collections are populated from the store (ADR-0018).
     /// </summary>
     private static void RegisterEnumerationEndpointsFor<T>(
         IEndpointRouteBuilder app,
@@ -215,11 +218,21 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
         IReadOnlyList<T> GetAll() =>
             allProperty?.GetValue(null) as IReadOnlyList<T> ?? [];
 
+        // When the enumeration type has [Inverse] properties, the read-by-IRI path must
+        // go through the mapper so that inverse collections are populated (ADR-0018).
+        // The static instance is projected to RDF and re-hydrated with the inverse loader
+        // to produce a fresh per-request entity with both scalar and inverse data.
+        var hasInverseProps = typeof(T)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Any(p => p.GetCustomAttribute<InverseAttribute>() is not null);
+        var mapper = hasInverseProps ? new ReflectionRdfMapper<T>() : null;
+        var typeIri = new EntityRepositoryOptions().ResolveTypeIri(typeof(T).Name, desc.Path);
+
         var path = $"api/entities/{desc.Path}";
 
         // ── GET api/entities/{path}          — List  ─────────────────────────
         // ── GET api/entities/{path}?iri=…    — Read  ─────────────────────────
-        app.MapGet(path, (string? iri) =>
+        app.MapGet(path, async (string? iri, IEntityStore store, HttpContext ctx) =>
         {
             var all = GetAll();
 
@@ -230,9 +243,30 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
                     return Results.NotFound(new ExecutionError("NOT_FOUND",
                         $"No {typeof(T).Name} with IRI '{iri}' exists. " +
                         $"Use GET api/entities/{desc.Path} to list valid IRIs."));
+
+                // Re-hydrate the static instance through the mapper so that
+                // [Inverse] collections are populated from the store (ADR-0018).
+                if (mapper is not null && store is IInverseRefLoader inverseLoader)
+                {
+                    var sink = new CollectingTripleSink();
+                    mapper.Project(match, sink, typeIri);
+                    var graph = new RdfGraph(iri);
+                    foreach (var triple in sink.Triples)
+                        graph.Add(triple);
+                    var hydrated = await mapper
+                        .HydrateAsync(iri, graph, inverseLoader, ctx.RequestAborted)
+                        .ConfigureAwait(false);
+                    return hydrated is not null ? Results.Ok(hydrated) : Results.Ok(match);
+                }
+
                 return Results.Ok(match);
             }
 
+            // For list responses, return the static instances directly — no store roundtrips.
+            // Eager inverse collections ([Inverse] without Lazy = true) would need per-entity
+            // store queries; lazy inverse collections ([Inverse(Lazy = true)]) stay as
+            // LazyInverseEntityRefCollectionImpl (IsResolved = false) and are omitted
+            // from the JSON response by the SuppressUnresolvedEntityRefCollections modifier.
             return Results.Ok(new OperationListResponse<T>([.. all]));
         });
     }

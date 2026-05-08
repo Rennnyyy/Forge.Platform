@@ -53,4 +53,12 @@ public partial class Artist
     /// <summary>Nullable Uri — intentionally omitted on some artists.</summary>
     [Predicate("website")]
     public Uri? Website { get; set; }
+
+    /// <summary>
+    /// M:N inverse — Albums that list this artist as a performer
+    /// (inverse of <see cref="Album.Artists"/>).  Read-only; mutate via
+    /// <see cref="Album.Artists"/>.
+    /// </summary>
+    [Inverse(nameof(Album.Artists), "hasArtist")]
+    public partial EntityRefCollection<Album> Albums { get; }
 }

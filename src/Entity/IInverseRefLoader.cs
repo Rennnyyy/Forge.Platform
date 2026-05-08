@@ -21,4 +21,17 @@ public interface IInverseRefLoader
         string targetIri,
         string predicate,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the IRIs of all entities that point to <paramref name="targetIri"/>
+    /// via <paramref name="predicate"/> (absolute IRI) — either as a direct object or as
+    /// a member of an <c>rdf:List</c> reachable from the predicate object. Used to
+    /// hydrate inverse <c>EntityRefCollection&lt;T&gt;</c> properties at load time
+    /// (ADR-0018).
+    /// </summary>
+    IAsyncEnumerable<string> LoadInverseCollectionIrisAsync<T>(
+        string targetIri,
+        string predicate,
+        CancellationToken cancellationToken = default)
+        where T : class, IEntity;
 }

@@ -173,6 +173,24 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
     /// via <paramref name="predicate"/> either directly or through an <c>rdf:List</c> chain.
     /// Returns the first matching owner IRI, or <see langword="null"/> if none found.
     /// </summary>
+    public async IAsyncEnumerable<string> LoadInverseCollectionIrisAsync<T>(
+        string targetIri,
+        string predicate,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        where T : class, IEntity
+    {
+        var sparql = NamedGraphWrap(_repoOptions.NamedGraph, $@"
+SELECT ?owner WHERE {{
+  {{ ?owner <{Escape(predicate)}> <{Escape(targetIri)}> }}
+  UNION
+  {{ ?owner <{Escape(predicate)}> ?list .
+     ?list <{RdfVocab.Rest}>* ?node .
+     ?node <{RdfVocab.First}> <{Escape(targetIri)}> . }}
+}}");
+        var iris = await SelectIrisAsync(sparql, "owner", cancellationToken).ConfigureAwait(false);
+        foreach (var iri in iris) yield return iri;
+    }
+
     public async ValueTask<string?> LoadInverseRefIriAsync(
         string targetIri,
         string predicate,

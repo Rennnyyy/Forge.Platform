@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json.Serialization.Metadata;
 using Forge.Entity;
 using Forge.Operations.Http;
 using Microsoft.AspNetCore.Http.Json;
@@ -35,10 +36,15 @@ public static class OperationEndpointsHttpServiceCollectionExtensions
 
         // Register JSON converters for EntityRef<T> and EntityRefCollection<T> so that
         // GET/LIST endpoints serialize owned-relation IRIs correctly. See ADR-0001.
+        // Also register a TypeInfoResolver modifier that suppresses unresolved (lazy) inverse
+        // collection properties from HTTP responses (key is omitted entirely). See ADR-0018.
         services.Configure<JsonOptions>(o =>
         {
             o.SerializerOptions.Converters.Add(new EntityRefJsonConverterFactory());
             o.SerializerOptions.Converters.Add(new EntityRefCollectionJsonConverterFactory());
+            o.SerializerOptions.TypeInfoResolver =
+                (o.SerializerOptions.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver())
+                .WithAddedModifier(SuppressUnresolvedEntityRefCollections);
         });
 
         foreach (var assembly in assemblies)
@@ -96,5 +102,24 @@ public static class OperationEndpointsHttpServiceCollectionExtensions
             t = t.BaseType;
         }
         return false;
+    }
+
+    /// <summary>
+    /// <see cref="JsonTypeInfo"/> modifier that sets <c>ShouldSerialize = false</c> on any
+    /// property whose type implements <see cref="IEntityRefCollectionState"/> and whose runtime
+    /// value reports <see cref="IEntityRefCollectionState.IsResolved"/> = <see langword="false"/>.
+    /// This causes lazy inverse collection keys to be omitted entirely from HTTP responses (ADR-0018).
+    /// </summary>
+    private static void SuppressUnresolvedEntityRefCollections(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object) return;
+        foreach (var prop in typeInfo.Properties)
+        {
+            if (!typeof(IEntityRefCollectionState).IsAssignableFrom(prop.PropertyType)) continue;
+            var originalShouldSerialize = prop.ShouldSerialize;
+            prop.ShouldSerialize = (obj, value) =>
+                (originalShouldSerialize?.Invoke(obj, value) ?? true) &&
+                (value is not IEntityRefCollectionState s || s.IsResolved);
+        }
     }
 }

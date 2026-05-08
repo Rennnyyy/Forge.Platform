@@ -1,7 +1,7 @@
 meta {
-  name: Artists - read (GET ?iri=)
+  name: Studios - read artist inverse collection (GET ?iri= artist sees managing studio)
   type: http
-  seq: 3
+  seq: 9
 }
 
 get {
@@ -13,7 +13,5 @@ get {
 assert {
   res.status: eq 200
   res.body.iri: isDefined
-  res.body.name: eq Aria Nova
-  res.body.active: eq true
-  res.body.managedStudios: isDefined
+  res.body.managedStudios: contains {{studioIri}}
 }
