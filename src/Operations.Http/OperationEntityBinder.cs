@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Forge.Entity;
 using Forge.Execution;
+using Forge.Operations;
 
 namespace Forge.Operations.Http;
 
@@ -306,6 +307,85 @@ internal static class OperationEntityBinder
             }
         }
     }
+
+    // ──────────────────────────────────────────────────────────── Relation validation
+
+    private static readonly MethodInfo CheckStoreExistsOpenMethod =
+        typeof(OperationEntityBinder)
+            .GetMethod(nameof(CheckStoreExistsAsync), BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new InvalidOperationException("Could not reflect CheckStoreExistsAsync.");
+
+    /// <summary>
+    /// Validates all <c>[Owning]</c> relation IRIs present on <paramref name="entity"/>
+    /// after binding. Single refs (<c>EntityRef&lt;T&gt;?</c>) and collection stubs
+    /// (<c>EntityRefCollection&lt;T&gt;.Iris</c>) are checked against the ambient store
+    /// for regular entity targets, or against the static <c>All</c> vocabulary for
+    /// <see cref="EnumerationAttribute"/> targets.
+    /// Returns the first <c>RELATION_NOT_FOUND</c> error on failure, or
+    /// <see langword="null"/> when every IRI resolves.
+    /// </summary>
+    internal static async ValueTask<ExecutionError?> ValidateOwningRelationsAsync<T>(
+        T entity, CancellationToken cancellationToken = default)
+        where T : class, IEntity
+    {
+        var plan = GetPlan(typeof(T));
+
+        foreach (var single in plan.OwningSingles)
+        {
+            var refObj = single.Property.GetValue(entity);
+            if (refObj is null) continue;
+
+            var iriProp = refObj.GetType().GetProperty("Iri")!;
+            var iri = (string)iriProp.GetValue(refObj)!;
+
+            var error = await CheckRelationIriAsync(single.TargetType, iri, cancellationToken);
+            if (error is not null) return error;
+        }
+
+        foreach (var coll in plan.OwningCollections)
+        {
+            var collObj = coll.Property.GetValue(entity);
+            if (collObj is null) continue;
+
+            var collInterface = typeof(EntityRefCollection<>).MakeGenericType(coll.TargetType);
+            var irisProp = collInterface.GetProperty("Iris")!;
+            var iris = (IReadOnlyCollection<string>)irisProp.GetValue(collObj)!;
+
+            foreach (var iri in iris)
+            {
+                var error = await CheckRelationIriAsync(coll.TargetType, iri, cancellationToken);
+                if (error is not null) return error;
+            }
+        }
+
+        return null;
+    }
+
+    private static async ValueTask<ExecutionError?> CheckRelationIriAsync(
+        Type targetType, string iri, CancellationToken cancellationToken)
+    {
+        if (targetType.GetCustomAttribute<EnumerationAttribute>() is not null)
+        {
+            var allProp = targetType.GetProperty("All",
+                BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+            if (allProp?.GetValue(null) is IEnumerable<IEntity> all && all.Any(e => e.Iri == iri))
+                return null;
+            return new ExecutionError("RELATION_NOT_FOUND",
+                $"'{iri}' is not a known {targetType.Name} IRI.");
+        }
+
+        var method = CheckStoreExistsOpenMethod.MakeGenericMethod(targetType);
+        var task = (Task<bool>)method.Invoke(null, [iri, cancellationToken])!;
+        return await task
+            ? null
+            : new ExecutionError("RELATION_NOT_FOUND",
+                $"{targetType.Name} '{iri}' does not exist.");
+    }
+
+    private static async Task<bool> CheckStoreExistsAsync<TTarget>(
+        string iri, CancellationToken ct)
+        where TTarget : class, IEntity
+        => await EntityOperations.ReadAsync<TTarget>(iri, ct) is not null;
 
     private static string ExtractIriSuffix(string iri)
     {

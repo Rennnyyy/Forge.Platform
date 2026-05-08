@@ -1,6 +1,6 @@
 # 0006 — Genre as [Enumeration] and relation demonstration via capability handler
 
-- **Status**: accepted
+- **Status**: superseded by [0009](0009-remove-studio-relations-capability.md)
 - **Date**: 2026-05-07
 - **Author**: agent
 

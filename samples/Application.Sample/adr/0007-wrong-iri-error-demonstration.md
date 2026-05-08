@@ -1,6 +1,6 @@
 # 0007 — Wrong-IRI error demonstration for EntityRef and EntityRefCollection
 
-- **Status**: accepted
+- **Status**: superseded by [0009](0009-remove-studio-relations-capability.md)
 - **Date**: 2026-05-08
 - **Author**: agent
 

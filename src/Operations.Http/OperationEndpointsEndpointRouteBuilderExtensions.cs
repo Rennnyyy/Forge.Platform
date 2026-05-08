@@ -101,6 +101,10 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
             {
                 var entity = OperationEntityBinder.CreateFromJson<T>(body);
 
+                var relError = await OperationEntityBinder.ValidateOwningRelationsAsync(entity, ctx.RequestAborted);
+                if (relError is not null)
+                    return Results.UnprocessableEntity(relError);
+
                 await using var tx = EntityOperations.BeginTransaction();
                 tx.Create(entity, aspectIri);
                 await tx.CommitAsync();
@@ -156,6 +160,10 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
                 var (entity, error) = OperationEntityBinder.UpdateFromJson<T>(iri, body);
                 if (error is not null)
                     return Results.BadRequest(error);
+
+                var relError = await OperationEntityBinder.ValidateOwningRelationsAsync(entity!, ctx.RequestAborted);
+                if (relError is not null)
+                    return Results.UnprocessableEntity(relError);
 
                 await using var tx = EntityOperations.BeginTransaction();
                 tx.Update(entity!, aspectIri);

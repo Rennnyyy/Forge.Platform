@@ -1,0 +1,37 @@
+meta {
+  name: Studios - bad enumeration IRI (M:N genres → 422)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/entities/studios
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Bad Genre Ref Studio",
+    "active": true,
+    "foundedYear": 2010,
+    "sessionCount": 0,
+    "acousticRating": 0.0,
+    "reputationScore": 0.0,
+    "budget": 0.00,
+    "openedOn": "2010-01-01",
+    "lastBookedAt": "2026-05-01T00:00:00+00:00",
+    "externalId": "00000000-0000-0000-0000-000000000003",
+    "website": "https://forge-it.net/demos/bad-ref",
+    "genres": ["https://forge-it.net/genres/not-a-real-genre"]
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq RELATION_NOT_FOUND
+}
