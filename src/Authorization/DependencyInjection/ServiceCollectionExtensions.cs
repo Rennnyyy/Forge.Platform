@@ -24,9 +24,11 @@ public static class AuthorizationServiceCollectionExtensions
     /// separate explicit registration.
     /// </param>
     /// <remarks>
-    /// Must be called <em>after</em> a backend (e.g. <c>UseInMemory()</c>) has been
-    /// registered, so that the <see cref="ITransactionalEntityStore"/> descriptor is
-    /// already present in the collection.
+    /// May be called in any order relative to the backend (<c>UseInMemory()</c> /
+    /// <c>UseGraphDb()</c>) and
+    /// <see cref="Forge.Aspects.DependencyInjection.AspectsServiceCollectionExtensions.AddForgeAspects"/>.
+    /// The inner <see cref="ITransactionalEntityStore"/> is resolved via keyed services at
+    /// provider-build time rather than at registration time (see ADR-0014).
     /// </remarks>
     public static IServiceCollection AddForgeAuthorization(
         this IServiceCollection services,

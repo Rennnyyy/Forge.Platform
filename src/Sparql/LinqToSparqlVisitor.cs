@@ -261,7 +261,7 @@ internal static class LinqToSparqlVisitor
             ExpressionType.NotEqual => "!=",
             _ => throw new NotSupportedException("IRI comparison only supports '==' / '!='."),
         };
-        filter = $"(?s {sym} <{s}>)";
+        filter = $"(?s {sym} <{EscapeIri(s)}>)";
         return true;
     }
 
@@ -384,7 +384,7 @@ internal static class LinqToSparqlVisitor
         if (t == typeof(DateTime)) return EmitTypedLiteral(((DateTime)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
         if (t == typeof(DateTimeOffset)) return EmitTypedLiteral(((DateTimeOffset)value).ToString("o", CultureInfo.InvariantCulture), XsdDateTime);
         if (t == typeof(DateOnly)) return EmitTypedLiteral(((DateOnly)value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), XsdDate);
-        if (t == typeof(Uri)) return $"<{((Uri)value)}>";
+        if (t == typeof(Uri)) return $"<{EscapeIri(((Uri)value).ToString())}>"; // safe: EscapeIri escapes the IRI terminator
         return EmitTypedLiteral(Convert.ToString(value, CultureInfo.InvariantCulture) ?? "", XsdString);
     }
 
@@ -393,6 +393,14 @@ internal static class LinqToSparqlVisitor
 
     private static string EmitStringLiteral(string lex) =>
         $"\"{EscapeSparqlString(lex)}\"";
+
+    /// <summary>
+    /// Escapes a string for safe embedding inside an IRI literal (angle-bracket form <c>&lt;iri&gt;</c>).
+    /// Only <c>&gt;</c> needs escaping because it is the terminator; other characters are valid
+    /// in IRIs per RFC 3987 and do not need percent-encoding at this layer.
+    /// See SPARQL 1.1 §19.9 grammar rule <c>IRIREF</c>.
+    /// </summary>
+    private static string EscapeIri(string iri) => iri.Replace(">", "%3E");
 
     private static string EscapeSparqlString(string s)
     {

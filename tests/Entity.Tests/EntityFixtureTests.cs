@@ -8,13 +8,14 @@ namespace Forge.Entity.Tests;
 /// Draft tests showing how entities are defined and exercised.
 /// They double as the executable spec the source generator must satisfy.
 /// </summary>
-public class EntityFixtureTests
+public class EntityFixtureTests : IDisposable
 {
-    public EntityFixtureTests()
-    {
-        // Tests are isolated; setting BaseIri here is fine for the demo.
-        EntityOptions.BaseIri = "https://forge-it.net";
-    }
+    // Bind a per-instance ambient scope so parallel test runners do not race on the
+    // global static BaseIri field. EntityOptionsInstance defaults to "https://forge-it.net".
+    private readonly IDisposable _optionsScope =
+        EntityOptions.Use(new EntityOptionsInstance());
+
+    public void Dispose() => _optionsScope.Dispose();
 
     // -------------------------------------------------------------- Identity
 

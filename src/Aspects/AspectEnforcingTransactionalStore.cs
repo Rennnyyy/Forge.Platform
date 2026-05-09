@@ -2,6 +2,7 @@ using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 using Forge.Aspects.Operation;
+using System.Collections.Concurrent;
 
 namespace Forge.Aspects;
 
@@ -11,12 +12,17 @@ namespace Forge.Aspects;
 /// (Aspects ADR-0001 §"Validation pipeline"). Operations are applied one at a time so
 /// that SPARQL context queries observe intermediate state from earlier operations in
 /// the same transaction (enabling queue-order semantics per ADR-0001).
+/// See Aspects ADR-0012 for the snapshot-based compensation design.
 /// </summary>
 internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntityStore
 {
     private readonly ITransactionalEntityStore _inner;
     private readonly ISparqlQueryStore _queryStore;
     private readonly IOperationAspectEngine _engine;
+
+    // Cache of ISnapshotCaptor singletons keyed by entity CLR type.
+    // Built on first use via MakeGenericType; amortises reflection cost across calls.
+    private static readonly ConcurrentDictionary<Type, ISnapshotCaptor> _captors = new();
 
     public AspectEnforcingTransactionalStore(
         ITransactionalEntityStore inner,
@@ -37,7 +43,8 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
     /// Validates and applies each operation in order. Each operation is validated (local + context)
     /// against the current store state (which includes the effects of previous operations in this
     /// same transaction) before being applied. If validation fails the already-applied operations
-    /// are rolled back via compensating operations.
+    /// are rolled back via compensating closures captured before each apply.
+    /// See Aspects ADR-0012 for the snapshot-before-apply rollback strategy.
     /// </summary>
     public async ValueTask ExecuteTransactionAsync(
         IReadOnlyList<TransactionOperation> operations,
@@ -46,26 +53,35 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
         ArgumentNullException.ThrowIfNull(operations);
         if (operations.Count == 0) return;
 
-        var applied = new List<TransactionOperation>(operations.Count);
+        // Each entry is a closure that undoes the corresponding applied operation.
+        // Pushed in forward order; popped in LIFO order during rollback.
+        var undoStack = new Stack<Func<CancellationToken, ValueTask>>(operations.Count);
         try
         {
             foreach (var op in operations)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // Capture undo BEFORE applying — snapshot current entity state so that
+                // rollback can restore it even across opaque backend transactions.
+                var undo = await CaptureUndoAsync(op, cancellationToken).ConfigureAwait(false);
+
                 // Validate against current progressive store state (LOCAL → CONTEXT).
                 await _engine.ValidateAsync(op, _queryStore, cancellationToken).ConfigureAwait(false);
 
                 // Apply via single-op inner transaction — makes state visible to subsequent SPARQL.
                 await _inner.ExecuteTransactionAsync([op], cancellationToken).ConfigureAwait(false);
-                applied.Add(op);
+
+                // Only push after successful apply so failed-before-apply ops are not undone.
+                if (undo is not null)
+                    undoStack.Push(undo);
             }
         }
         catch
         {
-            // Rollback: compensate already-applied ops in reverse.
-            if (applied.Count > 0)
-                await RollbackAsync(applied, CancellationToken.None).ConfigureAwait(false);
+            // Rollback: apply undo closures in LIFO order (= reverse application order).
+            if (undoStack.Count > 0)
+                await RollbackAsync(undoStack, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }
@@ -101,41 +117,101 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
         string ownerIri, string predicate, CancellationToken ct)
         => ((ICollectionLoader)_inner).LoadCollectionIrisAsync<T>(ownerIri, predicate, ct);
 
-    // ------------------------------------------------------------------ Rollback
+    // ------------------------------------------------------------------ Undo capture
 
-    private async ValueTask RollbackAsync(List<TransactionOperation> applied, CancellationToken ct)
+    private async ValueTask<Func<CancellationToken, ValueTask>?> CaptureUndoAsync(
+        TransactionOperation op, CancellationToken ct)
     {
-        // Apply compensating operations in reverse order, swallowing any errors so the
-        // original exception propagates to the caller.
-        var compensations = BuildCompensations(applied);
-        if (compensations.Count == 0) return;
+        switch (op)
+        {
+            case EntityWriteOperation write:
+                return await GetCaptor(write.Entity.GetType())
+                    .CaptureUndoAsync(_inner, write.EntityIri, OperationKind.Write, write.Mode == WriteMode.Create, ct)
+                    .ConfigureAwait(false);
 
-        try
-        {
-            await _inner.ExecuteTransactionAsync(compensations, ct).ConfigureAwait(false);
-        }
-        catch
-        {
-            // Swallow — the compensation failed, but the original exception is more important.
+            case DeleteOperation { EntityType: { } entityType } del:
+                return await GetCaptor(entityType)
+                    .CaptureUndoAsync(_inner, del.Iri, OperationKind.Delete, isCreate: false, ct)
+                    .ConfigureAwait(false);
+
+            default:
+                // DeleteOperation with no EntityType: no snapshot possible; undo is a no-op.
+                return null;
         }
     }
 
-    private static IReadOnlyList<TransactionOperation> BuildCompensations(
-        List<TransactionOperation> applied)
+    // ------------------------------------------------------------------ Rollback
+
+    private static async ValueTask RollbackAsync(
+        Stack<Func<CancellationToken, ValueTask>> undoStack, CancellationToken ct)
     {
-        var result = new List<TransactionOperation>(applied.Count);
-        for (var i = applied.Count - 1; i >= 0; i--)
+        while (undoStack.TryPop(out var undo))
         {
-            var op = applied[i];
-            if (op is CreateOperation<IEntity> create)
+            try
             {
-                // Undo a Create by deleting the entity.
-                result.Add(new DeleteOperation(create.TypedEntity.Iri));
+                await undo(ct).ConfigureAwait(false);
             }
-            // Update and Delete rollbacks require pre-transaction snapshots, which the
-            // decorator does not currently capture. These are not exercised by Trunk 2
-            // test cases (validation always fails before apply for those scenarios).
+            catch
+            {
+                // Swallow — best-effort compensation; the original exception takes precedence.
+            }
         }
-        return result;
+    }
+
+    // ------------------------------------------------------------------ Snapshot captor infrastructure
+
+    private enum OperationKind { Write, Delete }
+
+    private static ISnapshotCaptor GetCaptor(Type entityType)
+        => _captors.GetOrAdd(entityType, t =>
+            (ISnapshotCaptor)Activator.CreateInstance(
+                typeof(SnapshotCaptor<>).MakeGenericType(t))!);
+
+    /// <summary>
+    /// Lets <see cref="CaptureUndoAsync"/> dispatch to a typed <c>LoadAsync&lt;T&gt;</c>
+    /// call without knowing <typeparamref name="T"/> at the call site.
+    /// </summary>
+    private interface ISnapshotCaptor
+    {
+        ValueTask<Func<CancellationToken, ValueTask>?> CaptureUndoAsync(
+            ITransactionalEntityStore inner,
+            string iri,
+            OperationKind kind,
+            bool isCreate,
+            CancellationToken ct);
+    }
+
+    private sealed class SnapshotCaptor<T> : ISnapshotCaptor where T : class, IEntity
+    {
+        public async ValueTask<Func<CancellationToken, ValueTask>?> CaptureUndoAsync(
+            ITransactionalEntityStore inner,
+            string iri,
+            OperationKind kind,
+            bool isCreate,
+            CancellationToken ct)
+        {
+            if (isCreate)
+            {
+                // Undo a Create by deleting what was inserted — no load needed.
+                return undoCt => inner.ExecuteTransactionAsync([new DeleteOperation(iri)], undoCt);
+            }
+
+            // For Update and Delete: snapshot current state so rollback can restore it.
+            var snapshot = await inner.LoadAsync<T>(iri, ct).ConfigureAwait(false);
+
+            if (snapshot is null)
+            {
+                // Entity did not exist before this operation.
+                // For a Write (Update) that created the entity: undo by deleting it.
+                // For a Delete on an already-absent entity: nothing to restore.
+                return kind == OperationKind.Write
+                    ? undoCt => inner.ExecuteTransactionAsync([new DeleteOperation(iri)], undoCt)
+                    : null;
+            }
+
+            // Entity existed — undo by restoring the snapshot via a full replacement.
+            return undoCt => inner.ExecuteTransactionAsync(
+                [new UpdateOperation<T>(snapshot)], undoCt);
+        }
     }
 }

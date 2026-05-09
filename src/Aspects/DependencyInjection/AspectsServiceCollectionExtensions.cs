@@ -32,7 +32,11 @@ public static class AspectsServiceCollectionExtensions
     /// </list>
     /// </summary>
     /// <remarks>
-    /// Must be called after the backend (e.g. <c>UseInMemory()</c>) has been registered.
+    /// May be called in any order relative to the backend (<c>UseInMemory()</c> / <c>UseGraphDb()</c>)
+    /// and <see cref="Forge.Authorization.DependencyInjection.AuthorizationServiceCollectionExtensions.AddForgeAuthorization"/>.
+    /// The backend <see cref="IEntityStore"/> and the authorization
+    /// <see cref="ITransactionalEntityStore"/> are resolved via keyed services at
+    /// provider-build time rather than at registration time (see ADR-0014).
     /// </remarks>
     public static IServiceCollection AddForgeAspects(this IServiceCollection services)
     {

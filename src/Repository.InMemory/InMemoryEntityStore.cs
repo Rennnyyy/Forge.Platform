@@ -263,8 +263,8 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
     private bool ListOrDirectContains(INode head, string targetIri)
     {
         var rdfFirst = _graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
-        var rdfRest  = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
-        var rdfNil   = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
+        var rdfRest = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
+        var rdfNil = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
 
         // Direct IRI match.
         if (head is IUriNode u && u.Uri.AbsoluteUri == targetIri) return true;
