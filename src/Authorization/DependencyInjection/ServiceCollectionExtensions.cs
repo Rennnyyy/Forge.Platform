@@ -1,4 +1,5 @@
 using Forge.Repository;
+using Forge.Repository.DependencyInjection;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -35,34 +36,60 @@ public static class AuthorizationServiceCollectionExtensions
 
         var effectiveGuard = guard ?? AllowAllAspectGuard.Instance;
 
-        var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ITransactionalEntityStore));
-        if (rawDescriptor is null)
-            return services;
-
         // Make the resolved guard visible in the DI container so that capability
         // dispatchers (and any diagnostics tooling) can resolve IAspectGuard without
         // needing a separate explicit registration. TryAdd semantics: a guard registered
         // by the application before calling AddForgeAuthorization takes precedence.
         services.TryAddSingleton<IAspectGuard>(effectiveGuard);
 
-        services.Remove(rawDescriptor);
+        // Capture any unkeyed ITransactionalEntityStore that was registered *before* this call
+        // (e.g. AspectEnforcingTransactionalStore from AddForgeAspects, or a direct backend
+        // registration). If none exists yet the inner store is resolved at provider-build time,
+        // making AddForgeAuthorization() order-independent relative to backend/aspect registration.
+        var rawDescriptor = services.FirstOrDefault(
+            d => d.ServiceType == typeof(ITransactionalEntityStore) && d.ServiceKey is null);
+        if (rawDescriptor is not null)
+            services.Remove(rawDescriptor);
 
-        if (rawDescriptor.ImplementationInstance is ITransactionalEntityStore existingInstance)
+        services.AddSingleton<ITransactionalEntityStore>(sp =>
         {
-            services.AddSingleton<ITransactionalEntityStore>(
-                new GuardedTransactionalStore(existingInstance, effectiveGuard));
-        }
-        else
-        {
-            services.AddSingleton<ITransactionalEntityStore>(sp =>
+            ITransactionalEntityStore inner;
+
+            if (rawDescriptor is not null)
             {
-                var inner = rawDescriptor.ImplementationFactory is not null
-                    ? (ITransactionalEntityStore)rawDescriptor.ImplementationFactory(sp)
-                    : (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(
-                        sp, rawDescriptor.ImplementationType!);
-                return new GuardedTransactionalStore(inner, effectiveGuard);
-            });
-        }
+                // Descriptor captured at registration time — resolve it directly.
+                inner = rawDescriptor switch
+                {
+                    { ImplementationInstance: ITransactionalEntityStore inst } => inst,
+                    { ImplementationFactory: { } f } => (ITransactionalEntityStore)f(sp),
+                    { ImplementationType: { } t } =>
+                        (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(sp, t),
+                    _ => throw new InvalidOperationException(
+                        "Unexpected ITransactionalEntityStore service descriptor shape.")
+                };
+            }
+            else
+            {
+                // No ITransactionalEntityStore was registered before AddForgeAuthorization() —
+                // resolve at provider-build time so that call order does not matter.
+                // Prefer the aspect-validating store (AddForgeAspects' keyed registration) so the
+                // decorator stack is always: Guard → AspectEnforcing → Backend.
+                inner =
+                    sp.GetKeyedService<ITransactionalEntityStore>(
+                        ForgeEntityRepositoryBuilder.AspectsTxKey)
+                    // Aspects not used — fall back to the raw backend store directly.
+                    ?? (sp.GetKeyedService<IEntityStore>(
+                            ForgeEntityRepositoryBuilder.BackendStoreKey)
+                        is ITransactionalEntityStore backendTx ? backendTx : null)
+                    ?? throw new InvalidOperationException(
+                        "AddForgeAuthorization() requires an ITransactionalEntityStore to be " +
+                        "available. Ensure UseInMemory() or UseGraphDb() is called via " +
+                        "AddForgeEntityRepository() at any point before the host is built, " +
+                        "or register an ITransactionalEntityStore directly before the host is built.");
+            }
+
+            return new GuardedTransactionalStore(inner, effectiveGuard);
+        });
 
         return services;
     }

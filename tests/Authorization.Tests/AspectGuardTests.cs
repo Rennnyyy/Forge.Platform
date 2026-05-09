@@ -346,6 +346,67 @@ public sealed class GuardedTransactionalStoreTests : IClassFixture<EntityOptions
 
         await mockInner.DidNotReceive().LoadAsync<Artist>(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    // ── Test 3.10 — LoadCollectionIrisAsync calls the guard (Fix #2) ─────────
+
+    [Fact]
+    public async Task LoadCollectionIrisAsync_calls_guard_before_delegating()
+    {
+        var callOrder = new List<string>();
+
+        var mockGuard = Substitute.For<IAspectGuard>();
+        mockGuard
+            .AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callOrder.Add("guard");
+                return ValueTask.CompletedTask;
+            });
+
+        // ICollectionLoader is implemented explicitly by ITransactionalEntityStore via the decorator chain.
+        var (inner, guarded, _) = BuildStores(mockGuard);
+
+        // Seed an artist so the collection load has something to delegate to.
+        var artist = new Artist { Name = "Collection-Guard Artist", Country = "us" };
+        await guarded.ExecuteTransactionAsync([new CreateOperation<Artist>(artist)]);
+        callOrder.Clear(); // ignore the create-phase guard call
+
+        // Act — iterate the collection loader interface (cast to ICollectionLoader).
+        var loader = (ICollectionLoader)guarded;
+        var iris = new List<string>();
+        await foreach (var iri in loader.LoadCollectionIrisAsync<Artist>(
+            artist.Iri, "https://forge-it.net/predicates/albums"))
+            iris.Add(iri);
+
+        // Assert — guard was invoked before the inner store was called.
+        callOrder.ShouldContain("guard");
+    }
+
+    // ── Test 3.11 — denying guard blocks LoadCollectionIrisAsync (Fix #2) ────
+
+    [Fact]
+    public async Task LoadCollectionIrisAsync_does_not_delegate_when_guard_throws()
+    {
+        var mockGuard = Substitute.For<IAspectGuard>();
+        mockGuard
+            .AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException(new UnauthorizedAccessException("collection denied")));
+
+        var mockInner = Substitute.For<ITransactionalEntityStore, ICollectionLoader>();
+        var guarded = new GuardedTransactionalStore(mockInner, mockGuard);
+
+        var loader = (ICollectionLoader)guarded;
+        await Should.ThrowAsync<UnauthorizedAccessException>(async () =>
+        {
+            await foreach (var _ in loader.LoadCollectionIrisAsync<Artist>(
+                "https://forge-it.net/artists/x", "https://forge-it.net/predicates/albums"))
+            { }
+        });
+
+        // Inner ICollectionLoader must never be called when the guard denies.
+        ((ICollectionLoader)mockInner).DidNotReceive()
+            .LoadCollectionIrisAsync<Artist>(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -635,10 +696,11 @@ public sealed class GuardedTransactionalStoreDelegationTests : IClassFixture<Ent
             "https://forge-it.net/artists/explicit-iface", Arg.Any<CancellationToken>());
     }
 
-    // ── Test 7.2 — ICollectionLoader.LoadCollectionIrisAsync delegates directly (no guard) ─
+    // ── Test 7.2 — ICollectionLoader.LoadCollectionIrisAsync calls guard before delegating ─
+    // (Fix #2: deferred collection loading no longer bypasses authorization)
 
     [Fact]
-    public async Task ICollectionLoader_LoadCollectionIrisAsync_delegates_without_guard()
+    public async Task ICollectionLoader_LoadCollectionIrisAsync_calls_guard_before_delegating()
     {
         var (mockInner, mockGuard, guarded) = BuildMocks();
         var expectedIris = new[] { "https://forge-it.net/artists/1", "https://forge-it.net/artists/2" };
@@ -654,7 +716,8 @@ public sealed class GuardedTransactionalStoreDelegationTests : IClassFixture<Ent
             iris.Add(iri);
 
         iris.ShouldBe(expectedIris, ignoreOrder: false);
-        await mockGuard.DidNotReceive().AuthorizeAsync(
+        // Guard must be invoked before delegation (Fix #2).
+        await mockGuard.Received(1).AuthorizeAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }
@@ -710,17 +773,37 @@ public sealed class AddForgeAuthorizationTests
             AuthorizationServiceCollectionExtensions.AddForgeAuthorization(null!));
     }
 
-    // ── Test 8.2 — no ITransactionalEntityStore registered → no-op ───────────
+    // ── Test 8.2 — no ITransactionalEntityStore registered → services added, resolution deferred ──
+    // (Fix #1: AddForgeAuthorization is no longer a no-op; it always registers a deferred store
+    // so that the backend can be registered in any order before the host is built.)
 
     [Fact]
-    public void AddForgeAuthorization_is_no_op_when_no_store_is_registered()
+    public void AddForgeAuthorization_always_registers_services_regardless_of_registration_order()
     {
         var services = new ServiceCollection();
         var countBefore = services.Count;
 
         services.AddForgeAuthorization();
 
-        services.Count.ShouldBe(countBefore);
+        // At least IAspectGuard + ITransactionalEntityStore must have been registered.
+        services.Count.ShouldBeGreaterThan(countBefore);
+        services.Any(d => d.ServiceType == typeof(ITransactionalEntityStore)).ShouldBeTrue();
+        services.Any(d => d.ServiceType == typeof(IAspectGuard)).ShouldBeTrue();
+    }
+
+    // ── Test 8.2b — no backend at all → resolution throws informative error ───
+
+    [Fact]
+    public void AddForgeAuthorization_throws_at_resolution_time_when_no_backend_registered()
+    {
+        var services = new ServiceCollection();
+        services.AddForgeAuthorization();
+
+        using var sp = services.BuildServiceProvider();
+
+        var ex = Should.Throw<InvalidOperationException>(
+            () => sp.GetRequiredService<ITransactionalEntityStore>());
+        ex.Message.ShouldContain("AddForgeAuthorization()");
     }
 
     // ── Test 8.3 — returns same collection (chainability) ────────────────────

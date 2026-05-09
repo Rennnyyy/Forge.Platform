@@ -64,6 +64,28 @@ public static class ServiceCollectionExtensions
 /// </summary>
 public sealed class ForgeEntityRepositoryBuilder
 {
+    /// <summary>
+    /// Keyed-service key under which <c>UseInMemory()</c> and <c>UseGraphDb()</c> register the
+    /// raw backend <see cref="IEntityStore"/> <em>before</em> any decorator is applied.
+    /// <see cref="Forge.Aspects.DependencyInjection.AspectsServiceCollectionExtensions.AddForgeAspects"/>
+    /// and
+    /// <see cref="Forge.Authorization.DependencyInjection.AuthorizationServiceCollectionExtensions.AddForgeAuthorization"/>
+    /// resolve from this key at provider-build time, making them order-independent relative to the
+    /// backend registration.
+    /// </summary>
+    public const string BackendStoreKey = "forge.repository.backend";
+
+    /// <summary>
+    /// Keyed-service key under which
+    /// <see cref="Forge.Aspects.DependencyInjection.AspectsServiceCollectionExtensions.AddForgeAspects"/>
+    /// registers the <see cref="Forge.Repository.Transaction.ITransactionalEntityStore"/> that has
+    /// already been wrapped with SHACL/SPARQL aspect validation.
+    /// <see cref="Forge.Authorization.DependencyInjection.AuthorizationServiceCollectionExtensions.AddForgeAuthorization"/>
+    /// resolves from this key (if present) so the guard runs <em>outside</em> aspect validation
+    /// regardless of the order in which the two methods are called.
+    /// </summary>
+    public const string AspectsTxKey = "forge.aspects.tx";
+
     public IServiceCollection Services { get; }
     public IConfiguration? Configuration { get; }
 

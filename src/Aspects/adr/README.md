@@ -16,3 +16,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0008 — Rename `IShapeAspect` → `IWriteAspect`](0008-rename-ishapeaspect-to-ioperationaspect.md)
 - [0009 — Restore `IAspect` as base token; rename `IWriteAspect` → `IOperationAspect`](0009-rename-ioperationaspect-to-iaspect-iwriteaspect-to-ioperationaspect.md)
 - [0010 — `CapabilityAspect.OperationAspectIri` for entity-graph validation in CUD capabilities](0010-operation-aspect-iri-in-capability-aspect.md)
+- [0011 — `AspectEnforcingEntityStore` implements `IInverseRefLoader`](0011-aspect-enforcing-store-forwards-inverse-ref-loader.md)

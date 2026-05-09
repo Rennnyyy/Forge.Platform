@@ -36,6 +36,9 @@ Evaluate through these lenses in order of priority:
 | 7 | **Build & dependency hygiene** | Unnecessary package references, version drift, projects referencing implementation details they shouldn't? |
 | 8 | **Documentation drift** | ADRs that no longer reflect reality, missing XML docs on public APIs, outdated README sections? |
 
+## Realism
+Be ruthless but realistic. If the codebase has been around for a while, some medium-severity issues are inevitable. Focus on critical and high-severity flaws that will cause the most pain if not fixed, especially those that violate ADRs or create security risks. Also easy wins that can be fixed in under an hour should be highlighted. Remember, the goal is to provide a clear, actionable roadmap to improve the architecture — not to nitpick every minor imperfection. If there are only 2 or 3 critical/high flaws, that's fine — just be honest and specific about the severity and impact of each issue you find. Don't inflate the severity to make it look like there are more problems than there really are, but also don't downplay significant issues. Use your judgement to strike the right balance and provide the most value to the development team. You don't need to find 10 flaws if there aren't 10 significant flaws to find — just be honest and specific about the severity and impact of each issue you identify. Ratings should reflect the actual state of the codebase, not an idealised version of it. If the architecture is generally solid with only a few minor issues, it's better to report that honestly than to exaggerate problems for the sake of filling out a list. The goal is to provide a clear and accurate assessment that the team can trust and act on, not to create a laundry list of issues that may not be meaningful or actionable.
+
 ## Output Format
 
 ### Top 10 Architectural Flaws

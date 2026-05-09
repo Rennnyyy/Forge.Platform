@@ -16,7 +16,7 @@ namespace Forge.Aspects;
 /// <see cref="IQueryAspect"/> from <see cref="QueryAspectScope.Current"/>.
 /// See Aspects ADR-0007.
 /// </summary>
-internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQueryStore
+internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQueryStore, IInverseRefLoader
 {
     private readonly IEntityStore _inner;
     private readonly IQueryAspectEngine _engine;
@@ -109,7 +109,7 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
         return sparql.ExecuteSelectAsync(query, cancellationToken);
     }
 
-    // ------------------------------------------------------------------ IEntityLoader / ICollectionLoader
+    // ------------------------------------------------------------------ IEntityLoader / ICollectionLoader / IInverseRefLoader
 
     ValueTask<T?> IEntityLoader.LoadAsync<T>(string iri, CancellationToken cancellationToken)
         where T : class
@@ -119,6 +119,18 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
         string ownerIri, string predicate, CancellationToken cancellationToken)
         => _inner is ICollectionLoader cl
             ? cl.LoadCollectionIrisAsync<T>(ownerIri, predicate, cancellationToken)
+            : AsyncEnumerable.Empty<string>();
+
+    ValueTask<string?> IInverseRefLoader.LoadInverseRefIriAsync(
+        string targetIri, string predicate, CancellationToken cancellationToken)
+        => _inner is IInverseRefLoader il
+            ? il.LoadInverseRefIriAsync(targetIri, predicate, cancellationToken)
+            : ValueTask.FromResult<string?>(null);
+
+    IAsyncEnumerable<string> IInverseRefLoader.LoadInverseCollectionIrisAsync<T>(
+        string targetIri, string predicate, CancellationToken cancellationToken)
+        => _inner is IInverseRefLoader il
+            ? il.LoadInverseCollectionIrisAsync<T>(targetIri, predicate, cancellationToken)
             : AsyncEnumerable.Empty<string>();
 
     // ------------------------------------------------------------------ Private helpers

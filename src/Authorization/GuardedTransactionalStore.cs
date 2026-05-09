@@ -133,7 +133,25 @@ public sealed class GuardedTransactionalStore : ITransactionalEntityStore
         where T : class
         => LoadAsync<T>(iri, cancellationToken);
 
-    IAsyncEnumerable<string> ICollectionLoader.LoadCollectionIrisAsync<T>(
-        string ownerIri, string predicate, CancellationToken cancellationToken)
-        => ((ICollectionLoader)_inner).LoadCollectionIrisAsync<T>(ownerIri, predicate, cancellationToken);
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Calls <see cref="IAspectGuard.AuthorizeAsync"/> with <c>aspectToken = "noop"</c>
+    /// before streaming collection member IRIs from the inner store.
+    /// This closes the authorization gap that would otherwise allow deferred
+    /// <see cref="Forge.Entity.EntityRef{T}"/> and collection loading to bypass the guard.
+    /// </remarks>
+    async IAsyncEnumerable<string> ICollectionLoader.LoadCollectionIrisAsync<T>(
+        string ownerIri, string predicate,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var agentToken = AuthorizationContext.CurrentAgentToken ?? string.Empty;
+        await _guard.AuthorizeAsync(agentToken, Aspect.NoOpIri, cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var iri in ((ICollectionLoader)_inner)
+            .LoadCollectionIrisAsync<T>(ownerIri, predicate, cancellationToken)
+            .ConfigureAwait(false))
+        {
+            yield return iri;
+        }
+    }
 }

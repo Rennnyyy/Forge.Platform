@@ -16,6 +16,11 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.Services.TryAddSingleton<InMemoryEntityStore>();
+        // Register under the well-known backend key so aspect/auth decorators can resolve
+        // the raw store at provider-build time regardless of call order.
+        builder.Services.TryAddKeyedSingleton<IEntityStore>(
+            ForgeEntityRepositoryBuilder.BackendStoreKey,
+            (sp, _) => sp.GetRequiredService<InMemoryEntityStore>());
         builder.Services.TryAddSingleton<IEntityStore>(sp => sp.GetRequiredService<InMemoryEntityStore>());
         return builder;
     }

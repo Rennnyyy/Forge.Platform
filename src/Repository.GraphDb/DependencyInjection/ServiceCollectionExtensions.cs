@@ -23,6 +23,11 @@ public static class ServiceCollectionExtensions
             builder.Services.PostConfigure(configure);
 
         builder.Services.AddHttpClient<GraphDbEntityStore>();
+        // Register under the well-known backend key so aspect/auth decorators can resolve
+        // the raw store at provider-build time regardless of call order.
+        builder.Services.TryAddKeyedSingleton<IEntityStore>(
+            ForgeEntityRepositoryBuilder.BackendStoreKey,
+            (sp, _) => sp.GetRequiredService<GraphDbEntityStore>());
         builder.Services.TryAddSingleton<IEntityStore>(sp => sp.GetRequiredService<GraphDbEntityStore>());
         return builder;
     }

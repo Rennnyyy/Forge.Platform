@@ -4,6 +4,7 @@ using Forge.Aspects.Message;
 using Forge.Aspects.Operation;
 using Forge.Aspects.Query;
 using Forge.Repository;
+using Forge.Repository.DependencyInjection;
 using Forge.Repository.Mapping;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,57 +54,78 @@ public static class AspectsServiceCollectionExtensions
         services.TryAddSingleton<IQueryAspectEngine, QueryAspectEngine>();
         services.TryAddSingleton<IMessageAspectEngine, MessageAspectEngine>();
 
-        // Capture the raw IEntityStore descriptor BEFORE decoration.
-        var rawDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEntityStore));
+        // ── Inner (raw backend) store ─────────────────────────────────────────────────────────────
+        // Capture any unkeyed IEntityStore that was registered *before* this call (e.g. a direct
+        // services.AddSingleton<IEntityStore>(myStore) in tests that bypass UseInMemory/UseGraphDb).
+        // If none exists yet the backend will be discovered at resolution time via BackendStoreKey,
+        // making AddForgeAspects() order-independent relative to UseInMemory() / UseGraphDb().
+        var rawDescriptor = services.FirstOrDefault(
+            d => d.ServiceType == typeof(IEntityStore) && d.ServiceKey is null);
         if (rawDescriptor is not null)
-        {
             services.Remove(rawDescriptor);
 
-            if (rawDescriptor.ImplementationInstance is IEntityStore existingInstance)
-                services.AddKeyedSingleton<IEntityStore>(InnerStoreKey, existingInstance);
-            else
-                services.AddKeyedSingleton<IEntityStore>(InnerStoreKey,
-                    (sp, _) => ResolveFromDescriptor(rawDescriptor, sp));
+        services.TryAddKeyedSingleton<IEntityStore>(InnerStoreKey, (sp, _) =>
+        {
+            // Prefer a descriptor captured at registration time (backward-compat path for direct
+            // IEntityStore registrations that don't use UseInMemory/UseGraphDb).
+            if (rawDescriptor is not null)
+                return ResolveFromDescriptor(rawDescriptor, sp);
 
-            services.AddSingleton<IEntityStore>(sp =>
-            {
-                var pending = sp.GetRequiredService<PendingAspectRegistrations>();
-                pending.Execute(sp);
+            // Backend was registered after AddForgeAspects() — resolve from the well-known keyed key.
+            return sp.GetKeyedService<IEntityStore>(ForgeEntityRepositoryBuilder.BackendStoreKey)
+                ?? throw new InvalidOperationException(
+                    "AddForgeAspects() requires an IEntityStore backend. " +
+                    "Either call UseInMemory() or UseGraphDb() via AddForgeEntityRepository() " +
+                    "(at any point before the host is built), or register an IEntityStore directly " +
+                    "before calling AddForgeAspects().");
+        });
 
-                return new AspectEnforcingEntityStore(
-                    sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey),
-                    sp.GetRequiredService<IQueryAspectEngine>(),
-                    sp.GetRequiredService<IAspectStore>(),
-                    sp.GetRequiredService<IRdfMapperRegistry>(),
-                    sp.GetRequiredService<IOptions<EntityRepositoryOptions>>());
-            });
-        }
-
-        // ITransactionalEntityStore resolves the raw inner store directly so that ISparqlQueryStore
-        // and ITransactionalEntityStore casts remain valid after IEntityStore is decorated.
-        services.TryAddSingleton<ITransactionalEntityStore>(sp =>
+        // ── AspectEnforcingEntityStore (unkeyed IEntityStore) ────────────────────────────────────
+        services.AddSingleton<IEntityStore>(sp =>
         {
             var pending = sp.GetRequiredService<PendingAspectRegistrations>();
             pending.Execute(sp);
 
-            IEntityStore raw = rawDescriptor is not null
-                ? sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey)
-                : sp.GetRequiredService<IEntityStore>();
+            return new AspectEnforcingEntityStore(
+                sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey),
+                sp.GetRequiredService<IQueryAspectEngine>(),
+                sp.GetRequiredService<IAspectStore>(),
+                sp.GetRequiredService<IRdfMapperRegistry>(),
+                sp.GetRequiredService<IOptions<EntityRepositoryOptions>>());
+        });
+
+        // ── AspectEnforcingTransactionalStore ────────────────────────────────────────────────────
+        // Registered under a well-known keyed key (AspectsTxKey) so AddForgeAuthorization() can
+        // resolve it as the inner store for GuardedTransactionalStore regardless of call order.
+        services.TryAddKeyedSingleton<ITransactionalEntityStore>(
+            ForgeEntityRepositoryBuilder.AspectsTxKey, (sp, _) =>
+        {
+            var pending = sp.GetRequiredService<PendingAspectRegistrations>();
+            pending.Execute(sp);
+
+            var raw = sp.GetRequiredKeyedService<IEntityStore>(InnerStoreKey);
 
             if (raw is not ISparqlQueryStore queryStore)
                 throw new InvalidOperationException(
                     $"AddForgeAspects() requires the registered IEntityStore to implement " +
                     $"ISparqlQueryStore, but '{raw.GetType().FullName}' does not. " +
-                    $"Ensure the backend (e.g. UseInMemory) is registered before AddForgeAspects().");
+                    $"Ensure the backend (e.g. UseInMemory) is registered before the host is built.");
 
             if (raw is not ITransactionalEntityStore txStore)
                 throw new InvalidOperationException(
                     $"AddForgeAspects() requires the registered IEntityStore to implement " +
                     $"ITransactionalEntityStore, but '{raw.GetType().FullName}' does not.");
 
-            var engine = sp.GetRequiredService<IOperationAspectEngine>();
-            return new AspectEnforcingTransactionalStore(txStore, queryStore, engine);
+            return new AspectEnforcingTransactionalStore(
+                txStore, queryStore, sp.GetRequiredService<IOperationAspectEngine>());
         });
+
+        // Expose unkeyed ITransactionalEntityStore for consumers that don't use AddForgeAuthorization.
+        // TryAdd so AddForgeAuthorization() (if registered before or after) can replace this with
+        // GuardedTransactionalStore without conflict.
+        services.TryAddSingleton<ITransactionalEntityStore>(sp =>
+            sp.GetRequiredKeyedService<ITransactionalEntityStore>(
+                ForgeEntityRepositoryBuilder.AspectsTxKey));
 
         return services;
     }
