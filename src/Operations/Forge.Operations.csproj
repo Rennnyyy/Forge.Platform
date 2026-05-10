@@ -8,7 +8,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Entity\Forge.Entity.csproj" />
     <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
-    <ProjectReference Include="..\Sparql\Forge.Sparql.csproj" />
   </ItemGroup>
 
 </Project>

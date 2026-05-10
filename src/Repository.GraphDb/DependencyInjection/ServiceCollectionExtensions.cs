@@ -22,7 +22,9 @@ public static class ServiceCollectionExtensions
         if (configure is not null)
             builder.Services.PostConfigure(configure);
 
-        builder.Services.AddHttpClient<GraphDbEntityStore>();
+        builder.Services.AddTransient<GraphDbAuthHandler>();
+        builder.Services.AddHttpClient<GraphDbEntityStore>()
+            .AddHttpMessageHandler<GraphDbAuthHandler>();
         // Register under the well-known backend key so aspect/auth decorators can resolve
         // the raw store at provider-build time regardless of call order.
         builder.Services.TryAddKeyedSingleton<IEntityStore>(

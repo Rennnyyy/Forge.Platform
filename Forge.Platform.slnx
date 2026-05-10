@@ -58,9 +58,11 @@
     <Project Path="tests/Entity.Generators.Tests/Forge.Entity.Generators.Tests.csproj" />
     <Project Path="tests/Entity.Tests/Forge.Entity.Tests.csproj" />
     <Project Path="tests/Entity.Tests.Fixtures/Forge.Entity.Tests.Fixtures.csproj" />
+    <Project Path="tests/Entity.Tests.Fixtures.Core/Forge.Entity.Tests.Fixtures.Core.csproj" />
     <Project Path="tests/Repository.Tests/Forge.Repository.Tests.csproj" />
     <Project Path="tests/Repository.GraphDb.Tests/Forge.Repository.GraphDb.Tests.csproj" />
     <Project Path="tests/Operations.Tests/Forge.Operations.Tests.csproj" />
+    <Project Path="tests/Operations.Generators.Tests/Forge.Operations.Generators.Tests.csproj" />
     <Project Path="tests/Sparql.Tests/Forge.Sparql.Tests.csproj" />
     <Project Path="tests/Aspects.Tests/Forge.Aspects.Tests.csproj" />
     <Project Path="tests/Capability.Tests/Forge.Capability.Tests.csproj" />

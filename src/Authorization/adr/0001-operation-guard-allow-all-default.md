@@ -1,6 +1,6 @@
 # 0001 — `IOperationGuard`: allow-all-by-default authorization contract for transactions and queries
 
-- **Status**: accepted
+- **Status**: superseded by [0004](0004-iaspect-guard-unifies-operation-guard.md)
 - **Date**: 2026-05-03
 - **Author**: agent
 
@@ -79,3 +79,9 @@ returns `default` (completed `ValueTask`) for both methods without examining eit
 - Per-operation aspect tokens are accessible via `operation.Aspect.Name` inside the
   `AuthorizeTransactionAsync` implementation.
 - Query authorization is a first-class concern, not an afterthought.
+
+> *`IOperationGuard` renamed to `IAspectGuard` and the two-method batch contract replaced by a single `AuthorizeAsync(agentToken, aspectToken)` per-operation method due to Authorization ADR-0004.*
+
+> *`AllowAllOperationGuard` renamed to `AllowAllAspectGuard` due to Authorization ADR-0004.*
+
+> *`Forge.Validation` namespace/slice renamed to `Forge.Authorization` due to Authorization ADR-0004.*

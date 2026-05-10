@@ -1,6 +1,6 @@
 # 0003 — `EntityOperations.Query<T>()` exposes an EF-Core-shaped IQueryable surface
 
-- **Status**: accepted
+- **Status**: accepted; partially superseded — see adjustment note below
 - **Date**: 2026-05-01
 - **Author**: agent
 
@@ -57,3 +57,5 @@ Option 1.
 - The `Operations.Generators` source generator is **not** modified in this change.
   Adding a per-entity `static IQueryable<T> Query()` shortcut on each generated class
   is a follow-up. The static `EntityOperations.Query<T>()` is sufficient for v1.
+
+> *`EntityOperations.Query<T>()` and the `Forge.Operations` → `Forge.Sparql` project reference were removed during an architectural review (fix for flaw #3: Operations must not force Sparql on all consumers). Callers that need LINQ-over-SPARQL access use `EntityOperations.RequireStore().Query<T>()` with an explicit `using Forge.Sparql;`. The decision rationale for Option 1 above (ergonomic ambient entry-point) is superseded by the stricter coupling rule; Option 3 from this ADR is now the recommended approach.*

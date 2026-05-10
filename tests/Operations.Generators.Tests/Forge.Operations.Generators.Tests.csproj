@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Entity\Forge.Entity.csproj" />
+    <!-- Entity generator: emits identity/refs; referenced as normal lib so test driver can invoke it. -->
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
+    <!-- Operations generator: referenced as normal lib so test driver can invoke it. -->
+    <ProjectReference Include="..\..\src\Operations.Generators\Forge.Operations.Generators.csproj" />
+  </ItemGroup>
+
+</Project>

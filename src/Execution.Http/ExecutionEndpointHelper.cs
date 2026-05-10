@@ -1,5 +1,4 @@
-using Forge.Aspects;
-using Forge.Aspects.Message;
+using Forge.Aspects.Abstractions;
 using Microsoft.AspNetCore.Http;
 
 namespace Forge.Execution.Http;
@@ -18,7 +17,7 @@ public static class ExecutionEndpointHelper
     /// 422 responses:
     /// <list type="bullet">
     ///   <item><see cref="MessageAspectViolationException"/> → <c>SHACL_VIOLATION</c></item>
-    ///   <item><see cref="AspectViolationException"/> → <c>ENTITY_SHACL_VIOLATION</c></item>
+    ///   <item><see cref="AspectException"/> → <c>ENTITY_SHACL_VIOLATION</c> (for any aspect violation, including <c>AspectViolationException</c>)</item>
     /// </list>
     /// </summary>
     public static async ValueTask<IResult> InvokeAsync(Func<ValueTask<IResult>> handler)
@@ -33,7 +32,7 @@ public static class ExecutionEndpointHelper
             return Results.UnprocessableEntity(
                 new ExecutionError("SHACL_VIOLATION", ex.Message));
         }
-        catch (AspectViolationException ex)
+        catch (AspectException ex)
         {
             return Results.UnprocessableEntity(
                 new ExecutionError("ENTITY_SHACL_VIOLATION", ex.Message));

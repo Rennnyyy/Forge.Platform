@@ -18,7 +18,6 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Options" />
-    <PackageReference Include="dotNetRDF" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,7 +31,8 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
-    <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+    <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures.Core\Forge.Entity.Tests.Fixtures.Core.csproj" />
   </ItemGroup>
 
 </Project>

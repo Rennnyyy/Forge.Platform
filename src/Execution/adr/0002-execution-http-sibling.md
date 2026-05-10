@@ -52,7 +52,7 @@ Option 1.
 ```
 Forge.Execution.Http
   → Forge.Execution
-  → Forge.Aspects          (for exception catch types)
+  → Forge.Aspects.Abstractions   (for exception catch types: MessageAspectViolationException, AspectException)
   → Microsoft.AspNetCore.App
 ```
 

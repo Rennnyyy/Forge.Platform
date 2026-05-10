@@ -30,7 +30,6 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
-    <ProjectReference Include="..\..\src\Repository.GraphDb\Forge.Repository.GraphDb.csproj" />
     <ProjectReference Include="..\..\src\Aspects\Forge.Aspects.csproj" />
     <ProjectReference Include="..\..\src\Sparql\Forge.Sparql.csproj" />
     <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Forge.Entity.Tests.Fixtures</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Forge.Entity.Tests.Fixtures.Core — lightweight fixture layer.
+
+    Contains the canonical sample entity types (Artist, Album, Label, Track,
+    FeaturedArtist) and EntityOptionsFixture *without* any Forge.Operations
+    dependency. Test projects that exercise IEntityStore / ISparqlQueryStore
+    directly (Repository.Tests, Sparql.Tests, Authorization.Tests,
+    Repository.GraphDb.Tests) reference this project so that they do not
+    drag in the active-record layer transitively.
+
+    Test projects that call generated active-record methods (.CreateAsync(),
+    .ListAsync(), etc.) on sample entities reference the full
+    Forge.Entity.Tests.Fixtures project instead, which adds Forge.Operations
+    and its source generator.
+
+    See tests/Entity.Tests.Fixtures/SLICING.md for the design rationale
+    and the source-generator constraint that requires the entity-type
+    definitions to exist in both projects.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Entity\Forge.Entity.csproj" />
+    <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

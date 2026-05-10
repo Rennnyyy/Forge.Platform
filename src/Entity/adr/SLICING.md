@@ -30,6 +30,7 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 - `EntityCollection.cs` — ordered mutable collection of resolved entity instances.
 - `ICollectionLoader.cs` — contract for deferred collection loading.
 - `IEntityLoader.cs` — contract for loading an entity by IRI.
+- `IInverseRefLoader.cs` — contract for loading inverse (back-)references to an entity.
 - `Iri.cs` — IRI value type with validation and factory helpers.
 
 ### `Attributes/` (`Forge.Entity`)

@@ -1,5 +1,5 @@
 using Forge.Aspects;
-using Forge.Aspects.Message;
+using Forge.Aspects.Abstractions;
 using Forge.Execution;
 using Forge.Execution.Http;
 using Forge.Repository.Transaction;

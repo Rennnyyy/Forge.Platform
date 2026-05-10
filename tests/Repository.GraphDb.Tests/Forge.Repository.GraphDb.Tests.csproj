@@ -36,7 +36,7 @@
     <ProjectReference Include="..\..\src\Repository.GraphDb\Forge.Repository.GraphDb.csproj" />
     <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
     <ProjectReference Include="..\..\src\Sparql\Forge.Sparql.csproj" />
-    <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures.Core\Forge.Entity.Tests.Fixtures.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

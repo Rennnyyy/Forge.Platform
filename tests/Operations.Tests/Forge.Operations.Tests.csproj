@@ -13,7 +13,6 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="dotNetRDF" />
     <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
@@ -27,8 +26,7 @@
     <!-- Entity generator: emits identity/refs; referenced as normal lib so test driver can invoke it. -->
     <ProjectReference Include="..\..\src\Entity.Generators\Forge.Entity.Generators.csproj" />
     <ProjectReference Include="..\..\src\Operations\Forge.Operations.csproj" />
-    <!-- Operations generator: referenced as normal lib so test driver can invoke it. -->
-    <ProjectReference Include="..\..\src\Operations.Generators\Forge.Operations.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Sparql\Forge.Sparql.csproj" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
     <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />

@@ -577,16 +577,18 @@ public sealed class InMemoryRepositoryTests : IClassFixture<EntityOptionsFixture
         concreteTypeIri.ShouldEndWith("/artists/FeaturedArtist");
         ancestorTypeIri.ShouldEndWith("/artists");
 
-        // Both rdf:type triples must appear in the underlying dotNetRDF graph.
-        var rdfTypeNode = s.Store.Graph.CreateUriNode(
-            VDS.RDF.UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
-        var concreteNode = s.Store.Graph.CreateUriNode(VDS.RDF.UriFactory.Create(concreteTypeIri));
-        var ancestorNode = s.Store.Graph.CreateUriNode(VDS.RDF.UriFactory.Create(ancestorTypeIri));
+        // Both rdf:type triples must be present — verified behaviorally via QueryByTypeAsync.
+        // Querying by the concrete type proves the concrete triple was written.
+        var concreteResults = new List<FeaturedArtist>();
+        await foreach (var item in s.Store.QueryByTypeAsync<FeaturedArtist>())
+            concreteResults.Add(item);
+        concreteResults.ShouldHaveSingleItem("concrete rdf:type triple missing");
 
-        s.Store.Graph.GetTriplesWithPredicateObject(rdfTypeNode, concreteNode)
-            .ShouldNotBeEmpty("concrete rdf:type triple missing");
-        s.Store.Graph.GetTriplesWithPredicateObject(rdfTypeNode, ancestorNode)
-            .ShouldNotBeEmpty("ancestor rdf:type triple missing");
+        // Querying by the ancestor type proves the ancestor triple was written (ADR-0016).
+        var ancestorResults = new List<Artist>();
+        await foreach (var item in s.Store.QueryByTypeAsync<Artist>())
+            ancestorResults.Add(item);
+        ancestorResults.ShouldContain(a => a.Iri == featured.Iri, "ancestor rdf:type triple missing");
     }
 
     [Fact]

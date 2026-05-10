@@ -1,6 +1,6 @@
 # 0003 — `GuardedTransactionalStore`: decorator that enforces pre-commit validation of all operations
 
-- **Status**: accepted
+- **Status**: superseded by [0004](0004-iaspect-guard-unifies-operation-guard.md)
 - **Date**: 2026-05-03
 - **Author**: agent
 
@@ -67,3 +67,8 @@ safe to include unconditionally.
 - `GuardedTransactionalStore` does not depend on any SHACL / SPARQL infrastructure;
   the guard is a plain interface.
 - ISparqlQueryStore is forwarded only if the inner store implements it (checked at construction).
+> *`IOperationGuard` renamed to `IAspectGuard`; `AuthorizeTransactionAsync` replaced by per-operation `AuthorizeAsync(agentToken, aspectToken)` loop inside `GuardedTransactionalStore` due to Authorization ADR-0004.*
+
+> *`AllowAllOperationGuard` renamed to `AllowAllAspectGuard` due to Authorization ADR-0004.*
+
+> *`ValidationContext` renamed to `AuthorizationContext`; `AddForgeValidation` renamed to `AddForgeAuthorization` due to Authorization ADR-0004.*

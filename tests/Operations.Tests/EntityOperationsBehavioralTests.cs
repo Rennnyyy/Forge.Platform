@@ -204,14 +204,14 @@ public sealed class EntityOperationsBehavioralTests : IClassFixture<EntityOption
         await new Artist { Name = "Bjorn", Country = "se", Active = false }.CreateAsync();
         await new Artist { Name = "Cleo", Country = "us", Active = true }.CreateAsync();
 
-        var actives = await EntityOperations.Query<Artist>()
+        var actives = await EntityOperations.RequireStore().Query<Artist>()
             .Where(a => a.Active)
             .OrderBy(a => a.Name)
             .ToListAsync();
 
         actives.Select(a => a.Name).ShouldBe(new[] { "Aurora", "Cleo" });
 
-        var count = await EntityOperations.Query<Artist>().CountAsync(a => a.Country == "se");
+        var count = await EntityOperations.RequireStore().Query<Artist>().CountAsync(a => a.Country == "se");
         count.ShouldBe(1);
     }
 }

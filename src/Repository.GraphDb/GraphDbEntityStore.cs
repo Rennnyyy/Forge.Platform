@@ -41,14 +41,9 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         _repoOptions = repoOptions.Value;
         _gdb = gdb.Value;
 
+        // Timeout is configured on the HttpClient directly; credentials are injected
+        // per-request by GraphDbAuthHandler to allow IHttpClientFactory handler rotation.
         _http.Timeout = _gdb.Timeout;
-        if (!string.IsNullOrEmpty(_gdb.Username))
-        {
-            var creds = Convert.ToBase64String(
-                Encoding.UTF8.GetBytes($"{_gdb.Username}:{_gdb.Password ?? string.Empty}"));
-            _http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Basic", creds);
-        }
     }
 
     // ------------------------------------------------------------------ Load

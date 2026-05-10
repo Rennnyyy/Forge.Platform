@@ -1,6 +1,4 @@
-using Forge.Aspects;
 using Forge.Aspects.Abstractions;
-using Forge.Aspects.Message;
 using Forge.Capability;
 using Forge.Execution;
 using Forge.Authorization;
@@ -155,7 +153,7 @@ public sealed class CapabilityHandlerTests
     public async Task Handler_reads_agent_token_from_context_established_by_dispatcher()
     {
         // Arrange: host code establishes the ambient scope before calling DispatchAsync.
-        var engine = NSubstitute.Substitute.For<Forge.Aspects.Message.IMessageAspectEngine>();
+        var engine = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IMessageAspectEngine>();
         var store = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IAspectStore>();
         var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
 

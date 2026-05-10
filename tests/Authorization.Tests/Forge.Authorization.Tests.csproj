@@ -29,7 +29,7 @@
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
     <ProjectReference Include="..\..\src\Authorization\Forge.Authorization.csproj" />
-    <ProjectReference Include="..\Entity.Tests.Fixtures\Forge.Entity.Tests.Fixtures.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures.Core\Forge.Entity.Tests.Fixtures.Core.csproj" />
   </ItemGroup>
 
 </Project>
