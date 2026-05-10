@@ -121,7 +121,12 @@ public static class AspectsServiceCollectionExtensions
                     $"ITransactionalEntityStore, but '{raw.GetType().FullName}' does not.");
 
             return new AspectEnforcingTransactionalStore(
-                txStore, queryStore, sp.GetRequiredService<IOperationAspectEngine>());
+                txStore, queryStore, sp.GetRequiredService<IOperationAspectEngine>(),
+                // The unkeyed IEntityStore is AspectEnforcingEntityStore, which applies
+                // QueryAspectScope filtering on reads. Injecting it here ensures that callers
+                // who resolve ITransactionalEntityStore and call LoadAsync / QueryByTypeAsync
+                // still get query-aspect enforcement (Fix #5 / flaw identified in review).
+                sp.GetRequiredService<IEntityStore>());
         });
 
         // Expose unkeyed ITransactionalEntityStore for consumers that don't use AddForgeAuthorization.

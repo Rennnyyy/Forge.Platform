@@ -1,7 +1,6 @@
 using Forge.Aspects.Abstractions;
-using Forge.Execution;
-using Forge.Repository;
 using Forge.Authorization;
+using Forge.Execution;
 
 namespace Forge.Capability;
 
@@ -50,9 +49,11 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        // ① Resolve the capability aspect (null means permissive).
+        // ① Resolve the capability aspect — throws AspectNotFoundException when the IRI
+        // is supplied but not registered. This makes the system fail-closed: a caller who
+        // provides an IRI gets exactly that policy or a clear error; null means permissive.
         var capAspect = capabilityAspectIri is not null
-            ? _store.TryResolveCapabilityAspect(capabilityAspectIri)
+            ? _store.ResolveCapabilityAspect(capabilityAspectIri)
             : null;
 
         // Resolve per-slot message aspects from the store.
@@ -109,7 +110,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
     }
 
     private IMessageAspect? ResolveMessageAspect(string? iri)
-        => iri is not null ? _store.TryResolveMessage(iri) : null;
+        => iri is not null ? _store.ResolveMessage(iri) : null;
 }
 
 

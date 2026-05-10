@@ -14,7 +14,7 @@ namespace Forge.Authorization;
 /// </code>
 /// </para>
 /// <para>
-/// Tests that use <see cref="AllowAllAspectGuard"/> do not need to call
+/// Tests that use <see cref="Forge.Aspects.Abstractions.AllowAllAspectGuard"/> do not need to call
 /// <see cref="Use"/> because the allow-all guard ignores the token. A stricter guard
 /// that rejects an empty agent token forces authenticated call sites to establish a scope.
 /// </para>

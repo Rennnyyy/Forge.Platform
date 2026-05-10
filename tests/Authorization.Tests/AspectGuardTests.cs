@@ -882,4 +882,48 @@ public sealed class AddForgeAuthorizationTests
             .GetRequiredService<ITransactionalEntityStore>();
         resolved.ShouldBeOfType<GuardedTransactionalStore>();
     }
+
+    // ── Fix #6 — RequireExplicitGuard guard check ─────────────────────────────
+
+    [Fact]
+    public void AddForgeAuthorization_throws_at_resolution_when_RequireExplicitGuard_true_and_AllowAllGuard()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITransactionalEntityStore, NoOpTransactionalStore>();
+        services.Configure<AuthorizationOptions>(o => o.RequireExplicitGuard = true);
+
+        services.AddForgeAuthorization(); // no explicit guard → AllowAllAspectGuard
+
+        using var sp = services.BuildServiceProvider();
+        var ex = Should.Throw<InvalidOperationException>(() => sp.GetRequiredService<ITransactionalEntityStore>());
+        ex.Message.ShouldContain("RequireExplicitGuard");
+        ex.Message.ShouldContain("AllowAllAspectGuard");
+    }
+
+    [Fact]
+    public async Task AddForgeAuthorization_does_not_throw_when_RequireExplicitGuard_false()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITransactionalEntityStore, NoOpTransactionalStore>();
+        services.Configure<AuthorizationOptions>(o => o.RequireExplicitGuard = false);
+
+        services.AddForgeAuthorization();
+
+        await using var sp = services.BuildServiceProvider();
+        Should.NotThrow(() => sp.GetRequiredService<ITransactionalEntityStore>());
+    }
+
+    [Fact]
+    public async Task AddForgeAuthorization_does_not_throw_when_RequireExplicitGuard_true_and_explicit_guard_provided()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITransactionalEntityStore, NoOpTransactionalStore>();
+        services.Configure<AuthorizationOptions>(o => o.RequireExplicitGuard = true);
+
+        var explicitGuard = Substitute.For<IAspectGuard>();
+        services.AddForgeAuthorization(guard: explicitGuard);
+
+        await using var sp = services.BuildServiceProvider();
+        Should.NotThrow(() => sp.GetRequiredService<ITransactionalEntityStore>());
+    }
 }

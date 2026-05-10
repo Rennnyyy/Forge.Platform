@@ -1,8 +1,8 @@
-namespace Forge.Authorization;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>
 /// Default <see cref="IAspectGuard"/> implementation that unconditionally authorizes
-/// every operation — the "allow all" stub. See Validation ADR-0004.
+/// every operation — the "allow all" stub. See Authorization ADR-0004.
 /// </summary>
 /// <remarks>
 /// Use <see cref="Instance"/> rather than constructing a new instance. This is the

@@ -1,3 +1,4 @@
+using Forge.Aspects.Abstractions;
 using Forge.Authorization;
 using Forge.Authorization.Http.DependencyInjection;
 using Microsoft.AspNetCore.Builder;

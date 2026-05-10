@@ -13,7 +13,7 @@ namespace Forge.Aspects.Query;
 /// </summary>
 internal sealed class QueryAspectEngine : IQueryAspectEngine
 {
-    private const string FilterPlaceholder = "##aspect:filter##";
+    private const string FilterPlaceholder = IQueryAspectEngine.FilterPlaceholder;
     private static readonly string ShaclViolationIri = "http://www.w3.org/ns/shacl#Violation";
 
     private readonly IShapeCache _cache;
@@ -61,6 +61,7 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
 
     // ------------------------------------------------------------------ Filter injection
 
+#pragma warning disable CS0618 // Implementing the obsolete interface member
     public string InjectFilter(string sparqlQuery, IQueryAspect aspect)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sparqlQuery);
@@ -75,6 +76,7 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
 
         return sparqlQuery[..lastBrace] + " " + filter + " " + sparqlQuery[lastBrace..];
     }
+#pragma warning restore CS0618
 
     public string InjectFilterDynamic(string sparqlQuery, IQueryAspect aspect)
     {
@@ -102,11 +104,13 @@ internal sealed class QueryAspectEngine : IQueryAspectEngine
 
     /// <summary>
     /// Escapes a caller-supplied IRI before interpolation into a SPARQL angle-bracket IRI literal.
-    /// The only character that can break out of <c>&lt;…&gt;</c> is <c>&gt;</c>; encoding it as
-    /// <c>%3E</c> is safe per RFC 3987 §3.1 and is consistent with
+    /// Both '&lt;' and '&gt;' can break out of the angle-bracket delimiter; encoding them as
+    /// '%3C' / '%3E' is safe per RFC 3987 §3.1 and is consistent with
     /// <c>GraphDbEntityStore.Escape</c>.
     /// </summary>
-    private static string EscapeIri(string iri) => iri.Replace(">", "%3E", StringComparison.Ordinal);
+    private static string EscapeIri(string iri) =>
+        iri.Replace("<", "%3C", StringComparison.Ordinal)
+           .Replace(">", "%3E", StringComparison.Ordinal);
 
     // ------------------------------------------------------------------ Result-shape validation
 

@@ -51,5 +51,5 @@ What this enables or forecloses. Follow-ups.
 - [0012 — Integration-testing samples via Bruno CLI and a subprocess host](0012-sample-integration-tests-bruno.md)
 - [0013 — Bruno collection organised as story chapters](0013-bruno-collection-story-structure.md)
 - [0014 — Registration-order-independent DI decorator chain](0014-registration-order-independent-decorator-chain.md)
-- [0014 — Error-path demonstration chapter in Application.Sample](0014-error-demo-chapter-in-application-sample.md)
-- [0012 — Integration-testing samples via Bruno CLI and a subprocess host](0012-sample-integration-tests-bruno.md)
+- [0015 — Split entity test fixtures into Core and full-CRUD projects](0015-entity-tests-fixtures-split.md)
+- [0016 — Bruno collection expanded to 13 chapters](0016-bruno-chapter-expansion.md)

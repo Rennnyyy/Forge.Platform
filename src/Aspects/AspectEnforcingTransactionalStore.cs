@@ -19,6 +19,11 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
     private readonly ITransactionalEntityStore _inner;
     private readonly ISparqlQueryStore _queryStore;
     private readonly IOperationAspectEngine _engine;
+    // Decorated IEntityStore (AspectEnforcingEntityStore) used for public reads so that
+    // QueryAspectScope filtering applies when callers resolve ITransactionalEntityStore
+    // directly. Write operations and snapshot capture continue to use _inner (the raw
+    // backend) to avoid aspect interference with compensating transactions.
+    private readonly IEntityStore _readStore;
 
     // Cache of ISnapshotCaptor singletons keyed by entity CLR type.
     // Built on first use via MakeGenericType; amortises reflection cost across calls.
@@ -27,14 +32,17 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
     public AspectEnforcingTransactionalStore(
         ITransactionalEntityStore inner,
         ISparqlQueryStore queryStore,
-        IOperationAspectEngine engine)
+        IOperationAspectEngine engine,
+        IEntityStore readStore)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(queryStore);
         ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(readStore);
         _inner = inner;
         _queryStore = queryStore;
         _engine = engine;
+        _readStore = readStore;
     }
 
     // ------------------------------------------------------------------ ITransactionalEntityStore
@@ -92,7 +100,7 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
 
     public ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
         where T : class, IEntity
-        => _inner.LoadAsync<T>(iri, cancellationToken);
+        => _readStore.LoadAsync<T>(iri, cancellationToken);
 
     public ValueTask SaveAsync<T>(T entity, WriteMode mode = WriteMode.Replace,
         CancellationToken cancellationToken = default)
@@ -104,18 +112,18 @@ internal sealed class AspectEnforcingTransactionalStore : ITransactionalEntitySt
 
     public IAsyncEnumerable<T> QueryByTypeAsync<T>(CancellationToken cancellationToken = default)
         where T : class, IEntity
-        => _inner.QueryByTypeAsync<T>(cancellationToken);
+        => _readStore.QueryByTypeAsync<T>(cancellationToken);
 
     public ValueTask DisposeAsync() => _inner.DisposeAsync();
 
     // IEntityLoader / ICollectionLoader pass-through
     ValueTask<T?> IEntityLoader.LoadAsync<T>(string iri, CancellationToken ct)
         where T : class
-        => _inner.LoadAsync<T>(iri, ct);
+        => _readStore.LoadAsync<T>(iri, ct);
 
     IAsyncEnumerable<string> ICollectionLoader.LoadCollectionIrisAsync<T>(
         string ownerIri, string predicate, CancellationToken ct)
-        => ((ICollectionLoader)_inner).LoadCollectionIrisAsync<T>(ownerIri, predicate, ct);
+        => ((ICollectionLoader)_readStore).LoadCollectionIrisAsync<T>(ownerIri, predicate, ct);
 
     // ------------------------------------------------------------------ Undo capture
 

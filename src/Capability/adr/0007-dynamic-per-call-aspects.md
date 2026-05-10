@@ -106,3 +106,9 @@ supplying a full `EventAspects` dictionary is feasible.
 - The `IMessageAspectRegistry` and `[Command]`/`[Response]`/`[Event]` attributes are no
   longer part of the Capability dispatch contract. They remain available in `Forge.Aspects`
   for other consumers that need startup-time registration.
+
+> *Adjustment: `CapabilityAspects.cs` — the new record type defined by this ADR — was
+> subsequently removed. The dispatcher was refactored to resolve aspects by IRI string
+> via `IAspectStore` (see Capability ADR-0011), making `CapabilityAspects` a dead type
+> with no production callers. The per-call-injection rationale from this ADR is preserved:
+> the IRI parameter on `DispatchAsync` serves the same purpose.*

@@ -14,7 +14,8 @@ public sealed class AuthorizationOptions
 
     /// <summary>
     /// When <see langword="true"/> (the default), the application fails to start if the only
-    /// registered <see cref="IAspectGuard"/> is <see cref="AllowAllAspectGuard"/> —
+    /// registered <see cref="Forge.Aspects.Abstractions.IAspectGuard"/> is
+    /// <see cref="Forge.Aspects.Abstractions.AllowAllAspectGuard"/> —
     /// the built-in permit-all stub that enforces no policy.
     /// <para>
     /// Set to <see langword="false"/> in environments where a real guard is intentionally absent

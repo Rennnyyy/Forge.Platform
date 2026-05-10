@@ -58,3 +58,10 @@ public interface IAspect
 > `Forge.Aspects.Abstractions` to break a circular dependency introduced when
 > `Forge.Aspects` gained a reference to `Forge.Repository`. The public surface and
 > semantics are unchanged; only the home assembly changed.*
+
+> *Adjustment: The `IAspect Aspect` property on `TransactionOperation` was refactored to
+> `string AspectIri` (defaulting to `Aspect.NoOpIri`) during the IRI string-based refactor.
+> The thin-token rationale — no circular dependency, no shape data in `Forge.Repository`
+> — is unchanged. The IRI string plays the same thin-identity role that the `IAspect`
+> reference played before; `Forge.Aspects` resolves full shape data from the IRI at
+> execution time.*

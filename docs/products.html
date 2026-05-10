@@ -294,7 +294,7 @@ graph TB
 
     subgraph CAP_T["HTTP Transport  ·  feature"]
       direction LR
-      CAP_HTTP["Capability.Http<br/><small>MapCapabilities()<br/>Route auto-discovery<br/>ICapabilityAspectsProvider</small>"]
+      CAP_HTTP["Capability.Http<br/><small>MapCapabilities()<br/>Route auto-discovery<br/>ICapabilityAspectIriProvider</small>"]
     end
 
     CAP_CORE --> CAP_T
@@ -470,7 +470,7 @@ graph TB
             <div>
               <div class="name">Per-Request Aspects</div>
               <div class="desc">
-                <code>ICapabilityAspectsProvider</code> resolves <code>IMessageAspect</code>
+                <code>ICapabilityAspectIriProvider</code> resolves <code>IMessageAspect</code>
                 instances from <code>X-Forge-*</code> HTTP headers before dispatch.
                 Pluggable — replace the default header reader with any strategy.
                 Absent headers → permissive (null); fail-closed mode configurable.

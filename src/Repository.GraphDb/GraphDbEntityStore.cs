@@ -55,6 +55,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         where T : class, IEntity
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        ValidateAbsoluteIri(iri);
 
         // CONSTRUCT a closure of the subject's reachable graph (follows blank nodes / rdf:Lists).
         var sparql = NamedGraphWrap(_repoOptions.NamedGraph,
@@ -73,6 +74,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         CancellationToken cancellationToken = default) where T : class, IEntity
     {
         ArgumentNullException.ThrowIfNull(entity);
+        ValidateAbsoluteIri(entity.Iri);
 
         var mapper = _registry.For<T>();
         var typeIri = mapper.ResolveTypeIri(_repoOptions);
@@ -124,6 +126,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
     public async ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
+        ValidateAbsoluteIri(iri);
         var sparql = new StringBuilder();
         // Direct triples.
         sparql.Append("DELETE WHERE { ");
@@ -315,7 +318,33 @@ SELECT ?member WHERE {{
     private static string NamedGraphWrap(string? graph, string sparql) =>
         graph is null ? sparql : sparql.Replace("WHERE {", $"WHERE {{ GRAPH <{Escape(graph)}> {{").TrimEnd('}') + " } }";
 
-    private static string Escape(string iri) => iri.Replace(">", "%3E");
+    /// <summary>
+    /// Escapes a caller-supplied IRI before interpolation into a SPARQL angle-bracket IRI literal.
+    /// Both '&lt;' and '&gt;' can break out of the angle-bracket delimiter; encoding them as
+    /// '%3C' / '%3E' is safe per RFC 3987 §3.1.
+    /// </summary>
+    private static string Escape(string iri) =>
+        iri.Replace("<", "%3C", StringComparison.Ordinal)
+           .Replace(">", "%3E", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Validates that <paramref name="iri"/> is a syntactically valid absolute URI before
+    /// it is interpolated into a SPARQL template. Throws <see cref="ArgumentException"/> when
+    /// it is not — rejecting malformed or relative values at the public API boundary.
+    /// </summary>
+    private static void ValidateAbsoluteIri(string iri)
+    {
+        if (iri.Contains('<') || iri.Contains('>'))
+            throw new ArgumentException(
+                $"'{iri}' contains angle brackets ('<' or '>') which are not allowed in an IRI. " +
+                "Angle brackets are reserved SPARQL delimiter characters.",
+                nameof(iri));
+
+        if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+            throw new ArgumentException(
+                $"'{iri}' is not a valid absolute IRI and cannot be used as an entity IRI.",
+                nameof(iri));
+    }
 
     private static RdfGraph ToRdfGraph(IGraph g, string subjectIri)
     {

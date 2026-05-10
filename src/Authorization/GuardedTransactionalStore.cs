@@ -12,19 +12,21 @@ namespace Forge.Authorization;
 /// <remarks>
 /// <para>
 /// <strong>Transaction authorization</strong> — <see cref="IAspectGuard.AuthorizeAsync"/> is
-/// called once per operation <em>before</em> the inner store is contacted. If the guard
-/// throws for any operation, the inner store is never called and the whole transaction
-/// is discarded.
+/// called once per operation <em>before</em> the inner store is contacted, using the
+/// operation's <c>AspectIri</c> as the aspect token. If the guard throws for any
+/// operation, the inner store is never called and the whole transaction is discarded.
 /// </para>
 /// <para>
-/// <strong>Query authorization</strong> — <see cref="LoadAsync{T}"/> and
-/// <see cref="QueryByTypeAsync{T}"/> call <see cref="IAspectGuard.AuthorizeAsync"/> with
-/// <c>aspectToken = "noop"</c> before delegating to the inner store.
+/// <strong>Read and write authorization</strong> — <see cref="LoadAsync{T}"/>,
+/// <see cref="QueryByTypeAsync{T}"/>, <see cref="SaveAsync{T}"/>, <see cref="DeleteAsync"/>,
+/// and the deferred <c>ICollectionLoader</c> path all call
+/// <see cref="IAspectGuard.AuthorizeAsync"/> with <see cref="Aspect.NoOpIri"/> as the
+/// aspect token before delegating to the inner store.
 /// </para>
 /// <para>
-/// Individual-write methods (<c>SaveAsync</c>, <c>DeleteAsync</c>) on <see cref="IEntityStore"/>
-/// delegate directly without a guard call; the primary write API is
-/// <see cref="ITransactionalEntityStore.ExecuteTransactionAsync"/>.
+/// The primary write API is <see cref="ITransactionalEntityStore.ExecuteTransactionAsync"/>;
+/// it alone carries per-operation aspect IRIs. The lower-level <c>SaveAsync</c> /
+/// <c>DeleteAsync</c> methods are also guarded but use <see cref="Aspect.NoOpIri"/>.
 /// </para>
 /// </remarks>
 public sealed class GuardedTransactionalStore : ITransactionalEntityStore

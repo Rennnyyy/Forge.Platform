@@ -16,7 +16,7 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 
 ## ADR-0010 exemption
 
-This slice has 15 flat `.cs` files, which exceeds the 11–20 threshold where sub-folders are
+This slice has 17 flat `.cs` files, which exceeds the 11–20 threshold where sub-folders are
 "recommended" under ADR-0010. The flat layout is retained because **all types are pure contracts
 sharing a single public surface with no framework or external dependencies — only BCL types**.
 Logical groupings (contracts, exceptions, enums) do not form meaningful architectural
@@ -50,3 +50,8 @@ explain why the threshold is not meaningful for the slice.
 - `AspectViolation.cs` — record carrying a single SHACL constraint violation.
 - `MessageAspectViolationException.cs` — thrown when message-aspect SHACL validation fails.
 - `QueryAspectViolationException.cs` — thrown when query-aspect access validation fails.
+
+#### Authorization guards
+
+- `IAspectGuard.cs` — contract for authorizing an agent against an aspect IRI before dispatch.
+- `AllowAllAspectGuard.cs` — sentinel implementation that permits every authorization request; used when no guard is registered (`AllowAllAspectGuard.Instance`).

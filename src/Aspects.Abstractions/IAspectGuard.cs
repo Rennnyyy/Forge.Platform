@@ -1,8 +1,8 @@
-namespace Forge.Authorization;
+namespace Forge.Aspects.Abstractions;
 
 /// <summary>
 /// Authorization primitive: decides whether a given agent may act under a given
-/// aspect policy. See Validation ADR-0004.
+/// aspect policy. See Authorization ADR-0004.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,8 +16,8 @@ namespace Forge.Authorization;
 /// </para>
 /// <para>
 /// <strong>Agent token</strong> — bind the caller's identity via
-/// <see cref="AuthorizationContext.Use"/>. Call sites pass
-/// <see cref="AuthorizationContext.CurrentAgentToken"/> (or an empty string when no scope
+/// <c>AuthorizationContext.Use</c>. Call sites pass
+/// <c>AuthorizationContext.CurrentAgentToken</c> (or an empty string when no scope
 /// is active). A strict guard should treat an empty token as anonymous and reject it.
 /// </para>
 /// </remarks>
@@ -29,8 +29,8 @@ public interface IAspectGuard
     /// </summary>
     /// <param name="agentToken">The calling agent's identity token.</param>
     /// <param name="aspectToken">
-    /// The policy name: <c>aspect.Name</c> for a named aspect, or <c>"noop"</c> when
-    /// no explicit aspect applies (permissive).
+    /// The policy IRI: <c>aspect.Iri</c> for a named aspect, or <see cref="Aspect.NoOpIri"/>
+    /// when no explicit aspect applies (permissive).
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask AuthorizeAsync(

@@ -9,6 +9,15 @@ namespace Forge.Sparql;
 /// </summary>
 internal static class SparqlEmitter
 {
+    /// <summary>
+    /// Placeholder injected into the WHERE clause of every emitted query. Consumed by
+    /// <see cref="Forge.Aspects.Query.IQueryAspectEngine.InjectFilterDynamic"/> to splice
+    /// an ambient <see cref="Forge.Aspects.Abstractions.IQueryAspect"/> filter into the
+    /// query without fragile string-position arithmetic. The placeholder is replaced with
+    /// an empty string when no filter is active.
+    /// </summary>
+    public const string AspectFilterPlaceholder = "##aspect:filter##";
+
     /// <summary>The variable name carrying the entity subject IRI in the result-set.</summary>
     public const string SubjectVar = "s";
 
@@ -49,6 +58,11 @@ internal static class SparqlEmitter
             sb.Append(string.Join(" && ", model.Filters));
             sb.Append(')');
         }
+
+        // Aspect-filter placeholder: replaced at query-dispatch time by
+        // IQueryAspectEngine.InjectFilterDynamic. Empty-string substitution when no aspect
+        // is active leaves the WHERE clause syntactically clean.
+        sb.Append(' ').Append(AspectFilterPlaceholder);
 
         sb.Append(" }");
 

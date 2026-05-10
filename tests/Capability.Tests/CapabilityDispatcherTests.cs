@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using Forge.Aspects.Abstractions;
 using Forge.Capability;
 using Forge.Execution;
-using Forge.Authorization;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
@@ -45,9 +44,9 @@ public sealed class CapabilityDispatcherTests
         params (string iri, IMessageAspect aspect)[] messageAspects)
     {
         var store = Substitute.For<IAspectStore>();
-        store.TryResolveCapabilityAspect(capAspect.Iri).Returns(capAspect);
+        store.ResolveCapabilityAspect(capAspect.Iri).Returns(capAspect);
         foreach (var (iri, aspect) in messageAspects)
-            store.TryResolveMessage(iri).Returns(aspect);
+            store.ResolveMessage(iri).Returns(aspect);
         return store;
     }
 
@@ -454,7 +453,28 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 17. Guard throws on command → exception propagates, handler not called
+    // 17. Unknown capability IRI → AspectNotFoundException (fail-closed)
+    // ───────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Unknown_capability_iri_throws_AspectNotFoundException()
+    {
+        var store = Substitute.For<IAspectStore>();
+        store.ResolveCapabilityAspect("urn:unknown")
+             .Throws(new AspectNotFoundException("capability aspect", "urn:unknown"));
+        var handler = Substitute.For<ICapabilityHandler<TestCommand, TestResponse>>();
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            handler, Substitute.For<IMessageAspectEngine>(), store);
+
+        await Should.ThrowAsync<AspectNotFoundException>(
+            () => dispatcher.DispatchAsync(new TestCommand("x"), "urn:unknown").AsTask());
+
+        await handler.DidNotReceive()
+            .HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CapabilityContext>(), Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // 18. Guard throws on command → exception propagates, handler not called
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]

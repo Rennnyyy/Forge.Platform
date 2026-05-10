@@ -24,6 +24,12 @@ public sealed partial class InMemoryEntityStore : ISparqlQueryStore
         ArgumentException.ThrowIfNullOrWhiteSpace(sparql);
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Strip the aspect-filter placeholder in case it reached the raw backend without being
+        // resolved by AspectEnforcingEntityStore (e.g. tests that use the store directly).
+        const string placeholder = "##aspect:filter##";
+        if (sparql.Contains(placeholder, StringComparison.Ordinal))
+            sparql = sparql.Replace(placeholder, string.Empty, StringComparison.Ordinal);
+
         var parser = new SparqlQueryParser();
         var parsed = parser.ParseFromString(sparql);
 

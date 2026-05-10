@@ -1,0 +1,45 @@
+name: Lint
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  adr-0006-canonical-url-lint:
+    name: ADR-0006 — No placeholder URLs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for banned placeholder base URLs (forge.example / forge.local)
+        # ADR-0006 requires all canonical base-URLs in source, configuration, and samples
+        # to use one of the approved schemes (forge.example for documentation examples,
+        # forge.local for local-development defaults). This step fails the build if any
+        # of those placeholder strings appear in committed files outside of the ADR/docs
+        # folder itself and the workflow file that defines this check.
+        run: |
+          result=$(grep --recursive \
+            --include='*.cs' \
+            --include='*.json' \
+            --include='*.bru' \
+            --include='*.md' \
+            --include='*.html' \
+            --include='*.yml' \
+            --include='*.yaml' \
+            --exclude-dir='.git' \
+            --exclude-dir='bin' \
+            --exclude-dir='obj' \
+            --exclude='lint.yml' \
+            -E 'forge\.(example|local)' . \
+            | grep --invert-match \
+              --fixed-strings \
+              -e 'adr/' \
+              -e 'docs/' \
+            || true)
+          if [ -n "$result" ]; then
+            echo "::error::ADR-0006 violation: placeholder base URL found in committed files."
+            echo "$result"
+            exit 1
+          fi

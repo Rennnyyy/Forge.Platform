@@ -1,8 +1,10 @@
+using Forge.Aspects.Abstractions;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Forge.Authorization.DependencyInjection;
 
@@ -89,6 +91,24 @@ public static class AuthorizationServiceCollectionExtensions
                         "AddForgeEntityRepository() at any point before the host is built, " +
                         "or register an ITransactionalEntityStore directly before the host is built.");
             }
+
+            // Guard check — applies to all host types. HTTP hosts additionally get
+            // AllowAllGuardStartupFilter which fires slightly earlier and provides a richer
+            // error context. This factory-time check covers generic-host / background-service
+            // scenarios where no IStartupFilter is run.
+            // Check is conditioned on AuthorizationOptions being explicitly configured so that
+            // test hosts using a plain ServiceCollection without configuration binding do not
+            // accidentally fail when they have not opted into policy enforcement.
+            var authOpts = sp.GetService<IOptions<AuthorizationOptions>>();
+            if (authOpts is not null && authOpts.Value.RequireExplicitGuard &&
+                effectiveGuard is AllowAllAspectGuard)
+                throw new InvalidOperationException(
+                    "Forge Authorization: 'Forge:Authorization:RequireExplicitGuard' is true " +
+                    "but no explicit IAspectGuard has been registered — " +
+                    "AllowAllAspectGuard permits every operation unconditionally. " +
+                    "Either supply a real guard via AddForgeAuthorization(yourGuard) " +
+                    "or set 'Forge:Authorization:RequireExplicitGuard' to false " +
+                    "in your environment configuration (e.g. appsettings.Development.json).");
 
             return new GuardedTransactionalStore(inner, effectiveGuard);
         });

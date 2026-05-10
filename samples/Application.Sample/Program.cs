@@ -130,6 +130,16 @@ aspectStore.RegisterCapabilityAspect(new CapabilityAspect
     CommandAspectIri = "urn:forge:aspects:demo-command-v1",
 });
 
+// Permissive greeting demo aspect: registered so that callers can supply the IRI
+// (X-Forge-Capability-AspectIri: urn:forge:aspects:demo-v1) without triggering an
+// AspectNotFoundException. All three slots (command/response/event) are null, so
+// the dispatcher performs no SHACL validation — this is intentional for the
+// 01-greeting chapter demo which focuses on header passthrough, not shape enforcement.
+aspectStore.RegisterCapabilityAspect(new CapabilityAspect
+{
+    Iri = "urn:forge:aspects:demo-v1",
+});
+
 // ── 9. Book entity operation aspects ─────────────────────────────────────────
 // Demonstrates IOperationAspect validation on Book entity endpoints via
 // EntityTransaction and MapOperations(). See sample ADR-0004, Aspects ADR-0010.

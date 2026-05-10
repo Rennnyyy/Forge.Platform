@@ -19,4 +19,17 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <!--
+    The sample entity types (Artist, Album, Label, Track, FeaturedArtist) are defined
+    once in Entity.Tests.Fixtures.Core. They are linked here rather than copied so there
+    is a single source-of-truth file. The Roslyn generators (Entity.Generators and
+    Operations.Generators) still emit their partial-class extensions per-project, which
+    is correct: Core gets the identity properties only; this project additionally gets the
+    active-record CRUD stubs (.CreateAsync(), .ReadAsync(), etc.).
+    See adr/0015-entity-tests-fixtures-split.md.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Entity.Tests.Fixtures.Core\Sample\*.cs" LinkBase="Sample" />
+  </ItemGroup>
+
 </Project>

@@ -22,6 +22,13 @@ public sealed partial class GraphDbEntityStore : ISparqlQueryStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sparql);
 
+        // Strip the aspect-filter placeholder in case it reached the raw backend without being
+        // resolved by AspectEnforcingEntityStore. This happens when the store is used directly
+        // (integration tests, sample app) without the aspect decorator in the DI chain.
+        const string placeholder = "##aspect:filter##";
+        if (sparql.Contains(placeholder, StringComparison.Ordinal))
+            sparql = sparql.Replace(placeholder, string.Empty, StringComparison.Ordinal);
+
         using var req = new HttpRequestMessage(HttpMethod.Post, _gdb.QueryEndpoint)
         {
             Content = new StringContent(sparql, Encoding.UTF8, "application/sparql-query"),

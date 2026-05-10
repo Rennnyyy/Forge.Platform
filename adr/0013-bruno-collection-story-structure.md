@@ -95,3 +95,8 @@ This closes the gap where `data-records/` previously had no automated test cover
 - CI scripts that pinned `demo/` or `books/` must update to use the new chapter paths.
 - Adding a request inside an existing chapter automatically extends the coverage of
   its corresponding `[SkippableFact]`.
+
+> *Adjustment: The chapter table in § "Chapter layout" above is superseded by
+> [ADR-0016](0016-bruno-chapter-expansion.md), which documents the full 13-chapter
+> inventory as of the current codebase. All structural conventions (naming, seq fields,
+> `[SkippableFact]` approach) remain unchanged.*

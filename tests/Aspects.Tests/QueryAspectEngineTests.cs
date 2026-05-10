@@ -6,6 +6,7 @@ using Forge.Aspects.Query;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
+using Forge.Repository.Transaction;
 using Forge.Sparql;
 using Forge.Entity.Tests.Fixtures;
 using Forge.Entity.Tests.Fixtures.Sample;
@@ -348,6 +349,32 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // QA-18 (Fix #8): InjectFilterDynamic injects at placeholder, handles nested braces
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void InjectFilterDynamic_injects_at_placeholder_not_last_brace_with_nested_braces()
+    {
+        var engine = new QueryAspectEngine(new ShapeCache());
+        const string filter = "FILTER(?ok = true)";
+        var aspect = new InlineTtlQueryAspect("nested-test", filter, null);
+
+        // Nested OPTIONAL braces: LastIndexOf('}') (InjectFilter approach) would target
+        // the inner OPTIONAL closing brace, breaking the SPARQL. InjectFilterDynamic must
+        // target the ##aspect:filter## placeholder, which is outside OPTIONAL.
+        const string query =
+            "SELECT DISTINCT ?s WHERE { OPTIONAL { ?s <urn:foo> ?x } ##aspect:filter## }";
+
+        var result = engine.InjectFilterDynamic(query, aspect);
+
+        result.ShouldContain(filter);
+        result.ShouldNotContain(IQueryAspectEngine.FilterPlaceholder);
+        // Filter must appear outside the OPTIONAL block (after its closing brace).
+        result.ShouldBe(
+            $"SELECT DISTINCT ?s WHERE {{ OPTIONAL {{ ?s <urn:foo> ?x }} {filter} }}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // QA-14: LINQ Query<T>() works through the aspect decorator
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -396,5 +423,70 @@ public sealed class QueryAspectEngineTests : IClassFixture<EntityOptionsFixture>
 
         results.Count.ShouldBe(2);
         results.Select(a => a.Name).ShouldBe(new[] { "Aria", "Cleo" }, ignoreOrder: true);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // QA-16 (Fix #5): TransactionalStore reads are subject to QueryAspectScope
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task TransactionalStore_LoadAsync_applies_query_aspect_from_scope()
+    {
+        // Arrange: deny-all aspect registered; entity pre-seeded via the underlying IEntityStore.
+        var denyAspect = new InlineTtlQueryAspect("deny-txstore-reads", "FILTER(false)", null);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(denyAspect));
+
+        var store = sp.GetRequiredService<IEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
+
+        var artist = MakeArtist("Handel", "de");
+        await store.SaveAsync(artist, WriteMode.Create);
+
+        // Without scope — transactional reads should be unrestricted.
+        var unrestricted = await txStore.LoadAsync<Artist>(artist.Iri);
+        unrestricted.ShouldNotBeNull();
+
+        // With deny scope — reads via ITransactionalEntityStore must now be blocked.
+        using var _ = QueryAspectScope.Use(denyAspect.Iri);
+        await Should.ThrowAsync<QueryAspectViolationException>(
+            () => txStore.LoadAsync<Artist>(artist.Iri).AsTask());
+    }
+
+    [Fact]
+    public async Task TransactionalStore_QueryByTypeAsync_applies_query_aspect_from_scope()
+    {
+        // Arrange: shape that rejects non-US artists.
+        var shapeTtl = @"
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix artist: <https://forge-it.net/predicates/artist/> .
+
+<urn:shape:country-must-be-us-tx>
+    a sh:NodeShape ;
+    sh:targetClass <https://forge-it.net/types/artists> ;
+    sh:property [
+        sh:path artist:country ;
+        sh:pattern ""^us$"" ;
+        sh:message ""Only US artists."" ;
+    ] .
+";
+        var shapeAspect = new InlineTtlQueryAspect("us-only-shape-tx", null, shapeTtl);
+        await using var sp = BuildProvider(s => s.AddQueryAspect(shapeAspect));
+
+        var store = sp.GetRequiredService<IEntityStore>();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
+
+        // Save a conforming entity and a non-conforming one.
+        await store.SaveAsync(MakeArtist("Aria", "us"), WriteMode.Create);
+        await store.SaveAsync(MakeArtist("Bjorn", "se"), WriteMode.Create);
+
+        // WithOUT scope — no validation, both visible.
+        var all = await txStore.QueryByTypeAsync<Artist>().ToListAsync();
+        all.Count.ShouldBe(2);
+
+        // With shape-restricted scope — non-conforming aggregate triggers violation
+        // (aggregate shape validates the full result set).
+        using var _ = QueryAspectScope.Use(shapeAspect.Iri);
+        await Should.ThrowAsync<QueryAspectViolationException>(
+            () => txStore.QueryByTypeAsync<Artist>().ToListAsync().AsTask());
     }
 }

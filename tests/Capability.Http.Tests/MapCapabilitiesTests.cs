@@ -187,7 +187,7 @@ public sealed class MapCapabilitiesTests
         // Use a real store that returns a CapabilityAspect when queried by the IRI.
         var store = Substitute.For<IAspectStore>();
         var capAspect = new CapabilityAspect { Iri = aspectIri };
-        store.TryResolveCapabilityAspect(aspectIri).Returns(capAspect);
+        store.ResolveCapabilityAspect(aspectIri).Returns(capAspect);
 
         var engine = Substitute.For<IMessageAspectEngine>();
 
@@ -213,7 +213,7 @@ public sealed class MapCapabilitiesTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         // The store must have been queried with the forwarded IRI.
-        store.Received(1).TryResolveCapabilityAspect(aspectIri);
+        store.Received(1).ResolveCapabilityAspect(aspectIri);
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -283,7 +283,7 @@ public sealed class MapCapabilitiesTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         // No aspect IRI → store was never asked to resolve a capability aspect.
-        store.DidNotReceive().TryResolveCapabilityAspect(Arg.Any<string>());
+        store.DidNotReceive().ResolveCapabilityAspect(Arg.Any<string>());
     }
 
     // ────────────────────────────────────────────────────────────────────

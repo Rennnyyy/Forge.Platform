@@ -99,13 +99,19 @@ internal sealed class AspectEnforcingEntityStore : IEntityStore, ISparqlQuerySto
 
         var aspect = ResolveCurrentQueryAspect();
         if (aspect is null)
-            return sparql.ExecuteSelectAsync(sparqlQuery, cancellationToken);
+        {
+            // Strip the placeholder emitted by SparqlEmitter before forwarding to the raw
+            // SPARQL engine; without an active scope there is no filter to inject.
+            var clean = sparqlQuery.Replace(
+                IQueryAspectEngine.FilterPlaceholder, string.Empty, StringComparison.Ordinal);
+            return sparql.ExecuteSelectAsync(clean, cancellationToken);
+        }
 
         // The LINQ emitter uses ?s for the entity subject. Substitute ?entityIri → ?s
         // in the FilterWhere fragment so authors can write ?entityIri consistently
         // across both the per-entity access-gate path and the LINQ path.
         var linqAspect = AdaptFilterForLinq(aspect);
-        var query = _engine.InjectFilter(sparqlQuery, linqAspect);
+        var query = _engine.InjectFilterDynamic(sparqlQuery, linqAspect);
         return sparql.ExecuteSelectAsync(query, cancellationToken);
     }
 
