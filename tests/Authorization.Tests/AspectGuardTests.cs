@@ -927,3 +927,80 @@ public sealed class AddForgeAuthorizationTests
         Should.NotThrow(() => sp.GetRequiredService<ITransactionalEntityStore>());
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test set 9 — GuardedTransactionalStore: DropGraphOperation authorization
+// ─────────────────────────────────────────────────────────────────────────────
+
+[Collection("EntityOptions")]
+public sealed class GuardedTransactionalStoreDropGraphTests : IClassFixture<EntityOptionsFixture>
+{
+    private static (InMemoryEntityStore inner, GuardedTransactionalStore guarded) BuildStores()
+    {
+        var registry = new RdfMapperRegistry();
+        var options = new EntityRepositoryOptions();
+        var inner = new InMemoryEntityStore(registry, Microsoft.Extensions.Options.Options.Create(options));
+        var guarded = new GuardedTransactionalStore(inner, AllowAllAspectGuard.Instance);
+        return (inner, guarded);
+    }
+
+    // ── Test 9.1 — DropGraph passes through AllowAll guard and removes entity ─
+
+    [Fact]
+    public async Task DropGraph_with_AllowAll_guard_removes_entity_from_inner_store()
+    {
+        var (inner, guarded) = BuildStores();
+
+        var artist = new Artist { Name = "Drop Guard Test", Country = "us" };
+        await guarded.ExecuteTransactionAsync([new CreateOperation<Artist>(artist)]);
+        (await inner.LoadAsync<Artist>(artist.Iri)).ShouldNotBeNull();
+
+        await guarded.ExecuteTransactionAsync([new DropGraphOperation(artist.Iri)]);
+
+        (await inner.LoadAsync<Artist>(artist.Iri)).ShouldBeNull();
+    }
+
+    // ── Test 9.2 — DropGraph passes guard with NoOp aspect token ──────────────
+
+    [Fact]
+    public async Task DropGraph_passes_noop_aspect_token_to_guard()
+    {
+        string? capturedAspect = null;
+
+        var mockGuard = Substitute.For<IAspectGuard>();
+        mockGuard
+            .AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                capturedAspect = callInfo.ArgAt<string>(1);
+                return ValueTask.CompletedTask;
+            });
+
+        var mockInner = Substitute.For<ITransactionalEntityStore>();
+        var guarded = new GuardedTransactionalStore(mockInner, mockGuard);
+
+        await guarded.ExecuteTransactionAsync([new DropGraphOperation("https://forge-it.net/branches/x")]);
+
+        capturedAspect.ShouldBe(Aspect.NoOpIri);
+    }
+
+    // ── Test 9.3 — denying guard blocks DropGraph before inner store is called ─
+
+    [Fact]
+    public async Task DropGraph_does_not_reach_inner_when_guard_denies()
+    {
+        var mockGuard = Substitute.For<IAspectGuard>();
+        mockGuard
+            .AuthorizeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException(new UnauthorizedAccessException("denied")));
+
+        var mockInner = Substitute.For<ITransactionalEntityStore>();
+        var guarded = new GuardedTransactionalStore(mockInner, mockGuard);
+
+        await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => guarded.ExecuteTransactionAsync([new DropGraphOperation("https://forge-it.net/branches/x")]).AsTask());
+
+        await mockInner.DidNotReceive()
+            .ExecuteTransactionAsync(Arg.Any<IReadOnlyList<TransactionOperation>>(), Arg.Any<CancellationToken>());
+    }
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Branches - read (GET ?iri=)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/branches?iri={{branchIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.name: eq feature-demo
+  res.body.description: contains Demo branch
+}

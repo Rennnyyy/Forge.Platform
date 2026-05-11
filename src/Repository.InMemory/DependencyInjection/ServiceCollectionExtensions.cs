@@ -1,7 +1,10 @@
 using Forge.Entity;
 using Forge.Repository.DependencyInjection;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Forge.Repository.InMemory.DependencyInjection;
 
@@ -22,6 +25,12 @@ public static class ServiceCollectionExtensions
             ForgeEntityRepositoryBuilder.BackendStoreKey,
             (sp, _) => sp.GetRequiredService<InMemoryEntityStore>());
         builder.Services.TryAddSingleton<IEntityStore>(sp => sp.GetRequiredService<InMemoryEntityStore>());
+        builder.Services.TryAddSingleton<EntityStoreFactory>(sp =>
+        {
+            var registry = sp.GetRequiredService<IRdfMapperRegistry>();
+            return (EntityStoreFactory)((opts) =>
+                new InMemoryEntityStore(registry, new OptionsWrapper<EntityRepositoryOptions>(opts)));
+        });
         return builder;
     }
 }

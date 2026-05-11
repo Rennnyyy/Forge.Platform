@@ -1,8 +1,12 @@
 using Forge.Entity;
+using Forge.Repository;
 using Forge.Repository.DependencyInjection;
+using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Forge.Repository.GraphDb.DependencyInjection;
 
@@ -31,6 +35,18 @@ public static class ServiceCollectionExtensions
             ForgeEntityRepositoryBuilder.BackendStoreKey,
             (sp, _) => sp.GetRequiredService<GraphDbEntityStore>());
         builder.Services.TryAddSingleton<IEntityStore>(sp => sp.GetRequiredService<GraphDbEntityStore>());
+        builder.Services.TryAddSingleton<EntityStoreFactory>(sp =>
+        {
+            var registry = sp.GetRequiredService<IRdfMapperRegistry>();
+            var gdbOpts = sp.GetRequiredService<IOptions<GraphDbOptions>>();
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            return (EntityStoreFactory)((opts) =>
+            {
+                var http = httpClientFactory.CreateClient(nameof(GraphDbEntityStore));
+                return new GraphDbEntityStore(http, registry,
+                    new OptionsWrapper<EntityRepositoryOptions>(opts), gdbOpts);
+            });
+        });
         return builder;
     }
 }

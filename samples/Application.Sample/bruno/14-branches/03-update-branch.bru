@@ -1,0 +1,26 @@
+meta {
+  name: Branches - update description (PUT ?iri=)
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/branches?iri={{branchIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "description": "Updated description - work in progress"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

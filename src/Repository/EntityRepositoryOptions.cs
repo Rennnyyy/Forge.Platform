@@ -14,8 +14,19 @@ public sealed class EntityRepositoryOptions
 
     /// <summary>
     /// Optional named-graph IRI. When set, all reads and writes are scoped to this graph.
+    /// Used for fixed-graph stores (e.g. the management graph store in <c>Forge.Branch</c>)
+    /// that bypass <see cref="BranchScope"/> entirely. For branch-aware stores, use
+    /// <see cref="DefaultBranchIri"/> instead.
     /// </summary>
     public string? NamedGraph { get; set; }
+
+    /// <summary>
+    /// The named-graph IRI used when no <see cref="BranchScope"/> is active.
+    /// Store implementations return <c>BranchScope.Current ?? DefaultBranchIri</c> from
+    /// their <c>NamedGraph</c> property. Required for branch-aware stores; must be a
+    /// non-empty IRI string. See Repository ADR-0002.
+    /// </summary>
+    public string DefaultBranchIri { get; set; } = string.Empty;
 
     /// <summary>
     /// Base IRI used to construct the per-type IRI emitted as <c>rdf:type</c> on every entity.

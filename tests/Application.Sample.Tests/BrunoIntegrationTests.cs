@@ -353,6 +353,35 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 14 — Branches: verifies the full branch lifecycle via <c>MapBranches()</c>
+    /// endpoints and the branch-scoped entity store:
+    /// <list type="bullet">
+    ///   <item>POST/GET/PUT/GET(list)/DELETE on <c>api/branches</c></item>
+    ///   <item>POST/GET(list)/GET(read) on <c>api/entities/books</c> with
+    ///         <c>X-Forge-BranchIri</c> header (branch-scoped write and read)</item>
+    ///   <item>GET <c>api/entities/books</c> without header (default-branch isolation check)</item>
+    /// </list>
+    /// See Branch ADR-0001 and Branch.Http ADR-0001.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_14_branches_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "14-branches");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

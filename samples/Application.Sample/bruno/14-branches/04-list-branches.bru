@@ -1,0 +1,16 @@
+meta {
+  name: Branches - list (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/branches
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}

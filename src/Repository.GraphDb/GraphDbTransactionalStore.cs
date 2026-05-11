@@ -95,6 +95,11 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
     {
         switch (op)
         {
+            case DropGraphOperation drop:
+                var dropSparql = $"DROP SILENT GRAPH <{Escape(drop.GraphIri)}>";
+                await TxUpdateAsync(txUrl, dropSparql, ct).ConfigureAwait(false);
+                break;
+
             case DeleteOperation del:
                 var deleteSparql = BuildDeleteSparql(del.Iri);
                 await TxUpdateAsync(txUrl, deleteSparql, ct).ConfigureAwait(false);
@@ -109,8 +114,8 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
                 if (write.Mode == WriteMode.Create)
                 {
                     // Guard: fail (and rollback) if the IRI already exists.
-                    var askSparql = NamedGraphWrap(_repoOptions.NamedGraph,
-                        $"ASK {{ <{Escape(write.Entity.Iri)}> ?p ?o }}");
+                    var askSparql = NamedGraphWrap(NamedGraph,
+                        $"ASK WHERE {{ <{Escape(write.Entity.Iri)}> ?p ?o }}");
                     if (await TxAskAsync(txUrl, askSparql, ct).ConfigureAwait(false))
                         throw new InvalidOperationException(
                             $"Entity '{write.Entity.Iri}' already exists; WriteMode is Create.");
@@ -121,7 +126,7 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
                     await TxUpdateAsync(txUrl, replaceSparql, ct).ConfigureAwait(false);
                 }
 
-                var insertSparql = BuildInsertDataSparql(sink, _repoOptions.NamedGraph);
+                var insertSparql = BuildInsertDataSparql(sink, NamedGraph);
                 await TxUpdateAsync(txUrl, insertSparql, ct).ConfigureAwait(false);
                 break;
 
@@ -138,18 +143,18 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
         var sb = new StringBuilder();
         // Delete direct triples on the subject.
         sb.Append("DELETE WHERE { ");
-        if (_repoOptions.NamedGraph is not null)
-            sb.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+        if (NamedGraph is not null)
+            sb.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
         sb.Append('<').Append(Escape(iri)).Append("> ?p ?o ");
-        if (_repoOptions.NamedGraph is not null) sb.Append("} ");
+        if (NamedGraph is not null) sb.Append("} ");
         sb.Append("} ; ");
         // Delete blank-node closures rooted at the subject (rdf:List heads).
         sb.Append("DELETE { ?bn ?p2 ?o2 } WHERE { ");
-        if (_repoOptions.NamedGraph is not null)
-            sb.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+        if (NamedGraph is not null)
+            sb.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
         sb.Append('<').Append(Escape(iri))
           .Append("> (<urn:forge:any>|!<urn:forge:any>)+ ?bn . FILTER(isBlank(?bn)) . ?bn ?p2 ?o2 ");
-        if (_repoOptions.NamedGraph is not null) sb.Append("} ");
+        if (NamedGraph is not null) sb.Append("} ");
         sb.Append('}');
         return sb.ToString();
     }

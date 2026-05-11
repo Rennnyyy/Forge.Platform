@@ -50,10 +50,15 @@ public sealed partial class InMemoryEntityStore : ITransactionalEntityStore
 
     private void ApplyOperation(TransactionOperation op)
     {
+        var graph = CurrentGraph;
         switch (op)
         {
+            case DropGraphOperation drop:
+                DropCurrentGraph();
+                break;
+
             case DeleteOperation del:
-                var delSubj = _graph.CreateUriNode(UriFactory.Create(del.Iri));
+                var delSubj = graph.CreateUriNode(UriFactory.Create(del.Iri));
                 DeleteSubjectClosure(delSubj);
                 break;
 
@@ -63,16 +68,16 @@ public sealed partial class InMemoryEntityStore : ITransactionalEntityStore
                 var sink = new CollectingTripleSink();
                 mapper.ProjectEntity(write.Entity, sink, typeIri);
 
-                var subj = _graph.CreateUriNode(UriFactory.Create(write.Entity.Iri));
+                var subj = graph.CreateUriNode(UriFactory.Create(write.Entity.Iri));
                 if (write.Mode == WriteMode.Replace)
                     DeleteSubjectClosure(subj);
-                else if (_graph.GetTriplesWithSubject(subj).Any())
+                else if (graph.GetTriplesWithSubject(subj).Any())
                     throw new InvalidOperationException(
                         $"Entity '{write.Entity.Iri}' already exists; WriteMode is Create.");
 
                 var blankCache = new Dictionary<string, IBlankNode>(StringComparer.Ordinal);
                 foreach (var triple in sink.Triples)
-                    _graph.Assert(ToDotNetRdfTriple(triple, blankCache));
+                    graph.Assert(ToDotNetRdfTriple(triple, blankCache));
                 break;
 
             default:
@@ -90,11 +95,15 @@ public sealed partial class InMemoryEntityStore : ITransactionalEntityStore
     private Dictionary<INode, List<Triple>> TakeSnapshot(IReadOnlyList<TransactionOperation> operations)
     {
         var result = new Dictionary<INode, List<Triple>>(new FastNodeComparer());
+        var graph = CurrentGraph;
         foreach (var op in operations)
         {
-            var subj = _graph.CreateUriNode(UriFactory.Create(op.EntityIri));
+            if (op is DropGraphOperation)
+                continue;
+
+            var subj = graph.CreateUriNode(UriFactory.Create(op.EntityIri));
             if (!result.ContainsKey(subj))
-                result[subj] = _graph.GetTriplesWithSubject(subj).ToList();
+                result[subj] = graph.GetTriplesWithSubject(subj).ToList();
         }
         return result;
     }
@@ -106,11 +115,12 @@ public sealed partial class InMemoryEntityStore : ITransactionalEntityStore
     /// </summary>
     private void RestoreSnapshot(Dictionary<INode, List<Triple>> snapshot)
     {
+        var graph = CurrentGraph;
         foreach (var (subj, originalTriples) in snapshot)
         {
             DeleteSubjectClosure(subj);
             foreach (var t in originalTriples)
-                _graph.Assert(t);
+                graph.Assert(t);
         }
     }
 }

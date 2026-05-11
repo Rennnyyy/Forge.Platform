@@ -18,6 +18,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Aspects.Abstractions\Forge.Aspects.Abstractions.csproj" />
     <ProjectReference Include="..\Execution\Forge.Execution.csproj" />
+    <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
+    <ProjectReference Include="..\Branch\Forge.Branch.csproj" />
   </ItemGroup>
 
 </Project>

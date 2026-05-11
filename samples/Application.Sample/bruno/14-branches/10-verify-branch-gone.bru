@@ -1,0 +1,15 @@
+meta {
+  name: Branches - verify branch gone after delete (GET ?iri= - 404)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/branches?iri={{branchIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

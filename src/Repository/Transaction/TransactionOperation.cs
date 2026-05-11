@@ -94,3 +94,35 @@ public sealed class DeleteOperation : TransactionOperation
     /// <inheritdoc/>
     public override string EntityIri => Iri;
 }
+
+/// <summary>
+/// Drops the named graph identified by <see cref="GraphIri"/> from the RDF store,
+/// removing all triples within it. Used by <c>Forge.Branch</c> to cascade-delete a
+/// branch's data graph when the branch entity itself is deleted in the same transaction.
+/// See Repository ADR-0003.
+/// </summary>
+/// <remarks>
+/// <see cref="TransactionOperation.AspectIri"/> defaults to <see cref="Aspect.NoOpIri"/>;
+/// SHACL validation does not apply to a graph-drop. The Aspects engine skips
+/// <see cref="DropGraphOperation"/> instances at validation time.
+/// </remarks>
+public sealed class DropGraphOperation : TransactionOperation
+{
+    /// <summary>Initializes a drop-graph operation for the given named graph.</summary>
+    /// <param name="graphIri">The IRI of the named graph to drop. Must not be null or whitespace.</param>
+    public DropGraphOperation(string graphIri)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(graphIri);
+        GraphIri = graphIri;
+    }
+
+    /// <summary>The IRI of the named graph to drop.</summary>
+    public string GraphIri { get; }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// For a <see cref="DropGraphOperation"/> the "entity IRI" is the graph IRI itself —
+    /// the graph as a whole is the target, not a specific subject within it.
+    /// </remarks>
+    public override string EntityIri => GraphIri;
+}

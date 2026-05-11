@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Forge.Branch.Http</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Forge.Branch.Http.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Branch entity, management store key, BranchProtectionViolationException -->
+    <ProjectReference Include="..\Branch\Forge.Branch.csproj" />
+    <!-- ExecutionEndpointHelper, ExecutionError -->
+    <ProjectReference Include="..\Execution.Http\Forge.Execution.Http.csproj" />
+    <!-- IEntityStore, ITransactionalEntityStore, EntityTransaction, EntityRepository<T> -->
+    <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -28,6 +28,7 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 - `EntityRepository.cs` — default `IEntityRepository<T>` implementation.
 - `EntityRepositoryOptions.cs` — configuration options for the repository.
 - `WriteMode.cs` — enum controlling create vs. replace semantics.
+- `BranchScope.cs` — ambient `AsyncLocal<string?>` carrying the active branch IRI; see Repository ADR-0002.
 
 ### `Rdf/` (`Forge.Repository.Rdf`)
 
@@ -50,4 +51,4 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 
 - `ITransactionalEntityStore.cs`
 - `EntityTransaction.cs`
-- `TransactionOperation.cs`
+- `TransactionOperation.cs` — includes `EntityWriteOperation`, `CreateOperation<T>`, `UpdateOperation<T>`, `DeleteOperation`, and `DropGraphOperation` (see Repository ADR-0003).

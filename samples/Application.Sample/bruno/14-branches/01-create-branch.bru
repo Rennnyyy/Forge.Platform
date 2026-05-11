@@ -1,0 +1,31 @@
+meta {
+  name: Branches - create (POST)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/branches
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "feature-demo",
+    "description": "Demo branch created by the Bruno collection"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("branchIri", res.body.iri);
+}

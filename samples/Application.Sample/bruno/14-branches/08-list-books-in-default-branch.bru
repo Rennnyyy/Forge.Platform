@@ -1,0 +1,17 @@
+meta {
+  name: Branches - list books in default branch (isolation check)
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+  res.body.items.length: eq 0
+}

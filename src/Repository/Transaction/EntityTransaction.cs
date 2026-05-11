@@ -93,6 +93,21 @@ public sealed class EntityTransaction : IAsyncDisposable
     }
 
     /// <summary>
+    /// Enqueues a <see cref="DropGraphOperation"/> that drops the entire named graph
+    /// identified by <paramref name="graphIri"/> as part of this transaction.
+    /// Intended for atomic cascade-delete of a branch data graph alongside its
+    /// <c>Branch</c> entity. See Repository ADR-0003.
+    /// </summary>
+    /// <param name="graphIri">The IRI of the named graph to drop. Must not be null or whitespace.</param>
+    public EntityTransaction DropGraph(string graphIri)
+    {
+        ThrowIfFinished();
+        ArgumentException.ThrowIfNullOrWhiteSpace(graphIri);
+        _operations.Add(new DropGraphOperation(graphIri));
+        return this;
+    }
+
+    /// <summary>
     /// Atomically applies all enqueued operations to the store. Throws
     /// <see cref="InvalidOperationException"/> if the transaction has already been committed.
     /// </summary>

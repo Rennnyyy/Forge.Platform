@@ -1,0 +1,22 @@
+meta {
+  name: Branches - read book in branch (GET ?iri=)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{bookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{branchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.isbn: eq 978-0-13-468599-1
+  res.body.title: contains Philosophy
+}

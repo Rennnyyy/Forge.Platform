@@ -1,0 +1,20 @@
+meta {
+  name: Branches - list books in branch (GET)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{branchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}

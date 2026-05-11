@@ -33,7 +33,7 @@ public sealed partial class InMemoryEntityStore : ISparqlQueryStore
         var parser = new SparqlQueryParser();
         var parsed = parser.ParseFromString(sparql);
 
-        var dataset = new InMemoryDataset(_graph);
+        var dataset = new InMemoryDataset(CurrentGraph);
         var processor = new LeviathanQueryProcessor(dataset);
         var raw = processor.ProcessQuery(parsed);
 

@@ -4,9 +4,12 @@ using Forge.Aspects.Abstractions;
 using Forge.Aspects.DependencyInjection;
 using Forge.Aspects.Message;
 using Forge.Aspects.Operation;
+using Forge.Branch.DependencyInjection;
+using Forge.Branch.Http;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
+using Forge.Execution.Http.DependencyInjection;
 using Forge.Operations;
 using Forge.Operations.Http;
 using Forge.Operations.Http.DependencyInjection;
@@ -53,6 +56,16 @@ else
 // ── 3. In-memory catalog store (used by the hand-written demo handlers) ───────
 builder.Services.AddSingleton<ItemStore>();
 
+// ── 3b. Branch infrastructure ─────────────────────────────────────────────────
+// Registers the management-graph store (keyed "forge.branch.management"), populates
+// BranchDefault.BranchIri from Forge:Branch:DefaultBranchIri, and starts the hosted
+// service that upserts the default branch entity on first boot.
+builder.Services.AddForgeBranch(builder.Configuration);
+
+// Registers HeaderBranchIriProvider (reads X-Forge-BranchIri request header) and
+// binds BranchOptions. UseBranchScope() below activates the middleware.
+builder.Services.AddBranchHttp(builder.Configuration);
+
 // ── 4. Capability handlers ────────────────────────────────────────────────────
 // Discovers hand-written capability handlers (GreetHandler, CreateItemHandler,
 // UpdateItemHandler, PatchItemHandler, TriggerFaultHandler, AspectDemoHandler) by
@@ -71,6 +84,12 @@ builder.Services.AddCapabilityHttp();
 builder.Services.AddOperationEndpointsHttpFromAssemblyContaining<Book>();
 
 var app = builder.Build();
+
+// ── 6b. Branch scope middleware ───────────────────────────────────────────────
+// Reads X-Forge-BranchIri request header and activates BranchScope.Current for
+// all downstream handlers. Must be registered before MapCapabilities/MapOperations.
+// Echoes the effective IRI in X-Forge-Effective-BranchIri response header.
+app.UseBranchScope();
 
 // ── 7. Capability endpoints ───────────────────────────────────────────────────
 // Auto-registers all endpoints derived from [Capability] on each handler.
@@ -96,6 +115,21 @@ app.MapCapabilities();
 // Same pattern for api/entities/data-records and api/entities/artists.
 // The optional X-Forge-Operation-AspectIri header activates IOperationAspect validation.
 app.MapOperations();
+
+// ── 8b. Branch management endpoints ──────────────────────────────────────────
+// Maps five REST endpoints for Branch CRUD under api/branches.
+// Uses the keyed management store ("forge.branch.management") so all ops target
+// the management named graph. Delete atomically drops the branch's named graph.
+//
+//   POST   api/branches               — Create branch
+//   GET    api/branches               — List all branches
+//   GET    api/branches?iri=…         — Read a specific branch
+//   PUT    api/branches?iri=…         — Update branch (description)
+//   DELETE api/branches?iri=…         — Delete branch + drop its named graph
+//
+// Branch-scoped data (e.g. books) is read/written via api/entities/books with
+// the X-Forge-BranchIri header — no additional endpoints are needed.
+app.MapBranches();
 
 // ── 8. Capability aspect registration ────────────────────────────────────────
 // Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore

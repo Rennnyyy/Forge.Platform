@@ -1,0 +1,35 @@
+meta {
+  name: Branches - create book in branch (POST)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{branchIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-13-468599-1",
+    "title": "A Philosophy of Software Design",
+    "author": "John Ousterhout",
+    "publishedYear": 2018,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("bookIri", res.body.iri);
+}

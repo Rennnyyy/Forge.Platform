@@ -38,6 +38,9 @@
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
     <!-- Ontotext GraphDB HTTP backend (selected via Forge:EntityRepository:Backend = GraphDb) -->
     <ProjectReference Include="..\..\src\Repository.GraphDb\Forge.Repository.GraphDb.csproj" />
+    <!-- Branch.Http: MapBranches(), BranchEndpointRouteBuilderExtensions.
+         Transitively pulls in Branch (entity + DI) and Execution.Http (BranchScopeMiddleware). -->
+    <ProjectReference Include="..\..\src\Branch.Http\Forge.Branch.Http.csproj" />
   </ItemGroup>
 
 </Project>

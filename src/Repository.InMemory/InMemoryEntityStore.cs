@@ -17,11 +17,12 @@ namespace Forge.Repository.InMemory;
 /// </summary>
 public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoader
 {
-    private readonly Graph _graph;
+    private readonly Graph _defaultGraph;
+    private readonly Dictionary<string, Graph> _graphs = new(StringComparer.Ordinal);
     private readonly IRdfMapperRegistry _registry;
     private readonly EntityRepositoryOptions _options;
 
-    public string? NamedGraph => _options.NamedGraph;
+    public string? NamedGraph => _options.NamedGraph ?? BranchScope.Current ?? _options.DefaultBranchIri;
 
     public InMemoryEntityStore(IRdfMapperRegistry registry, IOptions<EntityRepositoryOptions> options)
         : this(new Graph(), registry, options.Value) { }
@@ -31,13 +32,51 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(options);
-        _graph = graph;
+        _defaultGraph = graph;
         _registry = registry;
         _options = options;
+
+        if (options.NamedGraph is not null)
+            _graphs[options.NamedGraph] = _defaultGraph;
+        else if (!string.IsNullOrWhiteSpace(options.DefaultBranchIri))
+            _graphs[options.DefaultBranchIri] = _defaultGraph;
     }
 
     /// <summary>The underlying dotNetRDF graph (for tests and Turtle import).</summary>
-    public Graph Graph => _graph;
+    public Graph Graph => CurrentGraph;
+
+    private Graph CurrentGraph
+    {
+        get
+        {
+            if (_options.NamedGraph is not null)
+                return _defaultGraph;
+
+            var graphIri = BranchScope.Current ?? _options.DefaultBranchIri;
+            if (_graphs.TryGetValue(graphIri, out var graph))
+                return graph;
+
+            graph = new Graph();
+            _graphs[graphIri] = graph;
+            return graph;
+        }
+    }
+
+    private void DropCurrentGraph()
+    {
+        if (_options.NamedGraph is not null)
+        {
+            _defaultGraph.Clear();
+            return;
+        }
+
+        var graphIri = BranchScope.Current ?? _options.DefaultBranchIri;
+        if (_graphs.TryGetValue(graphIri, out var graph))
+        {
+            graph.Clear();
+            _graphs.Remove(graphIri);
+        }
+    }
 
     // ------------------------------------------------------------------ Load
 
@@ -51,7 +90,8 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var subj = _graph.CreateUriNode(UriFactory.Create(iri));
+        var graph = CurrentGraph;
+        var subj = graph.CreateUriNode(UriFactory.Create(iri));
         var subjectGraph = BuildSubjectClosure(subj, iri);
         if (subjectGraph.Count == 0) return null;
 
@@ -63,6 +103,7 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
     /// following blank-node objects (for <c>rdf:List</c> traversal).</summary>
     private RdfGraph BuildSubjectClosure(INode subject, string subjectIri)
     {
+        var graph = CurrentGraph;
         var result = new RdfGraph(subjectIri);
         var seen = new HashSet<INode>(new FastNodeComparer());
         var queue = new Queue<INode>();
@@ -72,7 +113,7 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         {
             var node = queue.Dequeue();
             if (!seen.Add(node)) continue;
-            foreach (var t in _graph.GetTriplesWithSubject(node))
+            foreach (var t in graph.GetTriplesWithSubject(node))
             {
                 result.Add(ToTriple(t));
                 if (t.Object is IBlankNode || (t.Object is IUriNode && t.Object.NodeType == NodeType.Uri))
@@ -110,27 +151,29 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         ArgumentNullException.ThrowIfNull(entity);
         cancellationToken.ThrowIfCancellationRequested();
 
+        var graph = CurrentGraph;
         var mapper = _registry.For<T>();
         var typeIri = mapper.ResolveTypeIri(_options);
         var sink = new CollectingTripleSink();
         mapper.Project(entity, sink, typeIri);
 
-        var subj = _graph.CreateUriNode(UriFactory.Create(entity.Iri));
+        var subj = graph.CreateUriNode(UriFactory.Create(entity.Iri));
         if (mode == WriteMode.Replace)
             DeleteSubjectClosure(subj);
-        else if (mode == WriteMode.Create && _graph.GetTriplesWithSubject(subj).Any())
+        else if (mode == WriteMode.Create && graph.GetTriplesWithSubject(subj).Any())
             throw new InvalidOperationException(
                 $"Entity '{entity.Iri}' already exists and WriteMode is Create.");
 
         var blankCache = new Dictionary<string, IBlankNode>(StringComparer.Ordinal);
         foreach (var triple in sink.Triples)
-            _graph.Assert(ToDotNetRdfTriple(triple, blankCache));
+            graph.Assert(ToDotNetRdfTriple(triple, blankCache));
 
         return default;
     }
 
     private void DeleteSubjectClosure(INode subject)
     {
+        var graph = CurrentGraph;
         var seen = new HashSet<INode>(new FastNodeComparer());
         var queue = new Queue<INode>();
         queue.Enqueue(subject);
@@ -139,13 +182,13 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         {
             var node = queue.Dequeue();
             if (!seen.Add(node)) continue;
-            foreach (var t in _graph.GetTriplesWithSubject(node))
+            foreach (var t in graph.GetTriplesWithSubject(node))
             {
                 toRemove.Add(t);
                 if (t.Object is IBlankNode) queue.Enqueue(t.Object);
             }
         }
-        foreach (var t in toRemove) _graph.Retract(t);
+        foreach (var t in toRemove) graph.Retract(t);
     }
 
     private Triple ToDotNetRdfTriple(RdfTriple triple, Dictionary<string, IBlankNode> blanks)
@@ -158,17 +201,18 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
 
     private INode ToNode(RdfTerm term, Dictionary<string, IBlankNode> blanks)
     {
+        var graph = CurrentGraph;
         return term.Kind switch
         {
-            RdfTermKind.Iri => _graph.CreateUriNode(UriFactory.Create(term.Value)),
+            RdfTermKind.Iri => graph.CreateUriNode(UriFactory.Create(term.Value)),
             RdfTermKind.BlankNode => blanks.TryGetValue(term.Value, out var b)
                 ? b
-                : (blanks[term.Value] = _graph.CreateBlankNode(term.Value)),
+                : (blanks[term.Value] = graph.CreateBlankNode(term.Value)),
             RdfTermKind.Literal when term.Language is not null =>
-                _graph.CreateLiteralNode(term.Value, term.Language!),
+                graph.CreateLiteralNode(term.Value, term.Language!),
             RdfTermKind.Literal when term.DatatypeIri is not null =>
-                _graph.CreateLiteralNode(term.Value, UriFactory.Create(term.DatatypeIri!)),
-            RdfTermKind.Literal => _graph.CreateLiteralNode(term.Value),
+                graph.CreateLiteralNode(term.Value, UriFactory.Create(term.DatatypeIri!)),
+            RdfTermKind.Literal => graph.CreateLiteralNode(term.Value),
             _ => throw new NotSupportedException($"Unsupported term kind: {term.Kind}"),
         };
     }
@@ -179,7 +223,8 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iri);
         cancellationToken.ThrowIfCancellationRequested();
-        var subj = _graph.CreateUriNode(UriFactory.Create(iri));
+        var graph = CurrentGraph;
+        var subj = graph.CreateUriNode(UriFactory.Create(iri));
         DeleteSubjectClosure(subj);
         return default;
     }
@@ -190,12 +235,13 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
+        var graph = CurrentGraph;
         var mapper = _registry.For<T>();
         var typeIri = mapper.ResolveTypeIri(_options);
-        var rdfType = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Type));
-        var typeNode = _graph.CreateUriNode(UriFactory.Create(typeIri));
+        var rdfType = graph.CreateUriNode(UriFactory.Create(RdfVocab.Type));
+        var typeNode = graph.CreateUriNode(UriFactory.Create(typeIri));
 
-        var subjects = _graph
+        var subjects = graph
             .GetTriplesWithPredicateObject(rdfType, typeNode)
             .Select(t => t.Subject)
             .OfType<IUriNode>()
@@ -223,9 +269,10 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var predNode = _graph.CreateUriNode(UriFactory.Create(predicate));
+        var graph = CurrentGraph;
+        var predNode = graph.CreateUriNode(UriFactory.Create(predicate));
 
-        foreach (var triple in _graph.GetTriplesWithPredicate(predNode))
+        foreach (var triple in graph.GetTriplesWithPredicate(predNode))
         {
             if (triple.Subject is not IUriNode ownerUri) continue;
             if (ListOrDirectContains(triple.Object, targetIri))
@@ -246,8 +293,9 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         where T : class, IEntity
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var predNode = _graph.CreateUriNode(UriFactory.Create(predicate));
-        foreach (var triple in _graph.GetTriplesWithPredicate(predNode))
+        var graph = CurrentGraph;
+        var predNode = graph.CreateUriNode(UriFactory.Create(predicate));
+        foreach (var triple in graph.GetTriplesWithPredicate(predNode))
         {
             if (triple.Subject is not IUriNode ownerUri) continue;
             if (ListOrDirectContains(triple.Object, targetIri))
@@ -262,9 +310,10 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
     /// </summary>
     private bool ListOrDirectContains(INode head, string targetIri)
     {
-        var rdfFirst = _graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
-        var rdfRest = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
-        var rdfNil = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
+        var graph = CurrentGraph;
+        var rdfFirst = graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
+        var rdfRest = graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
+        var rdfNil = graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
 
         // Direct IRI match.
         if (head is IUriNode u && u.Uri.AbsoluteUri == targetIri) return true;
@@ -273,9 +322,9 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         var current = head;
         while (current is IBlankNode)
         {
-            var first = _graph.GetTriplesWithSubjectPredicate(current, rdfFirst).FirstOrDefault()?.Object;
+            var first = graph.GetTriplesWithSubjectPredicate(current, rdfFirst).FirstOrDefault()?.Object;
             if (first is IUriNode fu && fu.Uri.AbsoluteUri == targetIri) return true;
-            var rest = _graph.GetTriplesWithSubjectPredicate(current, rdfRest).FirstOrDefault()?.Object;
+            var rest = graph.GetTriplesWithSubjectPredicate(current, rdfRest).FirstOrDefault()?.Object;
             if (rest is null || (rest is IUriNode ru && ru.Equals(rdfNil))) break;
             current = rest;
         }
@@ -292,24 +341,25 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
             ? predicate
             : PredicateLookup<T>(predicate);
 
-        var subj = _graph.CreateUriNode(UriFactory.Create(ownerIri));
-        var pred = _graph.CreateUriNode(UriFactory.Create(resolved));
-        var first = _graph.GetTriplesWithSubjectPredicate(subj, pred).FirstOrDefault();
+        var graph = CurrentGraph;
+        var subj = graph.CreateUriNode(UriFactory.Create(ownerIri));
+        var pred = graph.CreateUriNode(UriFactory.Create(resolved));
+        var first = graph.GetTriplesWithSubjectPredicate(subj, pred).FirstOrDefault();
         if (first is null) yield break;
 
         // Try rdf:List traversal; if the object is a non-list IRI, return the direct triples.
         var head = first.Object;
         if (head is IBlankNode)
         {
-            var rdfFirst = _graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
-            var rdfRest = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
-            var rdfNil = _graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
+            var rdfFirst = graph.CreateUriNode(UriFactory.Create(RdfVocab.First));
+            var rdfRest = graph.CreateUriNode(UriFactory.Create(RdfVocab.Rest));
+            var rdfNil = graph.CreateUriNode(UriFactory.Create(RdfVocab.Nil));
             while (head is IBlankNode bn && !bn.Equals(rdfNil))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var memberT = _graph.GetTriplesWithSubjectPredicate(bn, rdfFirst).FirstOrDefault();
+                var memberT = graph.GetTriplesWithSubjectPredicate(bn, rdfFirst).FirstOrDefault();
                 if (memberT?.Object is IUriNode m) yield return m.Uri.AbsoluteUri;
-                var nextT = _graph.GetTriplesWithSubjectPredicate(bn, rdfRest).FirstOrDefault();
+                var nextT = graph.GetTriplesWithSubjectPredicate(bn, rdfRest).FirstOrDefault();
                 head = nextT?.Object!;
                 if (head is IUriNode ru && ru.Uri.AbsoluteUri == RdfVocab.Nil) yield break;
                 if (head is null) yield break;
@@ -318,7 +368,7 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         else
         {
             // Multi-triple membership (non-list) — return all object IRIs.
-            foreach (var t in _graph.GetTriplesWithSubjectPredicate(subj, pred))
+            foreach (var t in graph.GetTriplesWithSubjectPredicate(subj, pred))
                 if (t.Object is IUriNode u) yield return u.Uri.AbsoluteUri;
         }
     }
@@ -339,7 +389,7 @@ public sealed partial class InMemoryEntityStore : IEntityStore, IInverseRefLoade
         ArgumentNullException.ThrowIfNull(turtle);
         var parser = new TurtleParser();
         using var reader = new StringReader(turtle);
-        parser.Load(_graph, reader);
+        parser.Load(CurrentGraph, reader);
         return this;
     }
 

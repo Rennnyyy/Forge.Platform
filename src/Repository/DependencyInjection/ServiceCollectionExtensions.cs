@@ -1,5 +1,6 @@
 using Forge.Entity;
 using Forge.Repository.Mapping;
+using Forge.Repository.Transaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -57,6 +58,15 @@ public static class ServiceCollectionExtensions
         return builder;
     }
 }
+
+/// <summary>
+/// Factory delegate that backends (<c>UseInMemory</c>, <c>UseGraphDb</c>) register so that
+/// <c>Forge.Branch.AddForgeBranch()</c> can create the management graph store without knowing
+/// the concrete backend type. The delegate receives the desired <see cref="EntityRepositoryOptions"/>
+/// (typically with <c>NamedGraph</c> set to the management graph IRI) and returns a fully
+/// functional, independently configured transactional store.
+/// </summary>
+public delegate ITransactionalEntityStore EntityStoreFactory(EntityRepositoryOptions options);
 
 /// <summary>
 /// Fluent builder returned by <see cref="ServiceCollectionExtensions.AddForgeEntityRepository"/>.

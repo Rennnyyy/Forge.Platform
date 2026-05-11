@@ -195,4 +195,86 @@ public sealed class GraphDbTransactionTests
         loaded.ShouldNotBeNull();
         loaded!.Name.ShouldBe("Ambient Artist");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 7. DropGraph: removes named graph / subject-closure triples
+    // ════════════════════════════════════════════════════════════════════════
+
+    // Helper: store that writes into (and reads from) a specific named graph,
+    // so that DROP GRAPH <branchIri> correctly removes those triples.
+    private GraphDbEntityStore BuildBranchStore(string branchIri)
+    {
+        var registry = new RdfMapperRegistry();
+        var repoOpts = Options.Create(new EntityRepositoryOptions { NamedGraph = branchIri });
+        var gdbOpts = Options.Create(new GraphDbOptions
+        {
+            BaseUrl = _fx.BaseUrl,
+            RepositoryId = _fx.RepositoryId,
+            Timeout = TimeSpan.FromSeconds(30),
+        });
+        return new GraphDbEntityStore(new HttpClient(), registry, repoOpts, gdbOpts);
+    }
+
+    [SkippableFact]
+    public async Task DropGraph_removes_all_triples_for_graph_iri()
+    {
+        Skip.If(!_fx.Available, SkipMessage);
+        await _fx.ClearAsync();
+
+        const string branchIri = "https://forge-it.net/branches/feature-X";
+        await using var store = BuildBranchStore(branchIri);
+        var repo = new EntityRepository<Artist>(store);
+
+        // Entity is stored inside GRAPH <branchIri>.
+        var artist = new Artist { Name = "Aria Nova", Country = "no" };
+        await store.SaveAsync(artist, WriteMode.Create);
+        (await repo.FindAsync(artist.Iri)).ShouldNotBeNull();
+
+        // DROP GRAPH <branchIri> removes all triples in that named graph.
+        await using var tx = new EntityTransaction((ITransactionalEntityStore)store);
+        await tx.DropGraph(branchIri).CommitAsync();
+
+        (await repo.FindAsync(artist.Iri)).ShouldBeNull();
+    }
+
+    [SkippableFact]
+    public async Task DropGraph_on_absent_iri_is_idempotent()
+    {
+        Skip.If(!_fx.Available, SkipMessage);
+        await _fx.ClearAsync();
+        await using var store = BuildStore();
+
+        const string absentIri = "https://forge-it.net/branches/absent";
+        await using var tx = new EntityTransaction((ITransactionalEntityStore)store);
+
+        // DROP SILENT should not throw even when the graph does not exist.
+        await tx.DropGraph(absentIri).CommitAsync();
+    }
+
+    [SkippableFact]
+    public async Task DropGraph_chains_with_Create_in_same_transaction()
+    {
+        Skip.If(!_fx.Available, SkipMessage);
+        await _fx.ClearAsync();
+
+        const string branchIri = "https://forge-it.net/branches/feature-X";
+        await using var store = BuildBranchStore(branchIri);
+        var repo = new EntityRepository<Artist>(store);
+
+        // Seed existing entity into GRAPH <branchIri>.
+        var existing = new Artist { Name = "Kai Storm", Country = "us" };
+        await store.SaveAsync(existing, WriteMode.Create);
+
+        var incoming = new Artist { Name = "Aria Nova", Country = "no" };
+
+        // Drop the graph and create a fresh entity in it — atomically.
+        await using var tx = new EntityTransaction((ITransactionalEntityStore)store);
+        await tx
+            .DropGraph(branchIri)
+            .Create(incoming)
+            .CommitAsync();
+
+        (await repo.FindAsync(existing.Iri)).ShouldBeNull();
+        (await repo.FindAsync(incoming.Iri)).ShouldNotBeNull();
+    }
 }

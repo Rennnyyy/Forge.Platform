@@ -1,0 +1,21 @@
+meta {
+  name: Branches - verify branch data wiped after delete (cascade check)
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{branchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+  res.body.items.length: eq 0
+}

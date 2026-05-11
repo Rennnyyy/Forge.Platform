@@ -26,7 +26,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
     private readonly EntityRepositoryOptions _repoOptions;
     private readonly GraphDbOptions _gdb;
 
-    public string? NamedGraph => _repoOptions.NamedGraph;
+    public string? NamedGraph => _repoOptions.NamedGraph ?? BranchScope.Current ?? _repoOptions.DefaultBranchIri;
 
     public GraphDbEntityStore(
         HttpClient http,
@@ -58,7 +58,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         ValidateAbsoluteIri(iri);
 
         // CONSTRUCT a closure of the subject's reachable graph (follows blank nodes / rdf:Lists).
-        var sparql = NamedGraphWrap(_repoOptions.NamedGraph,
+        var sparql = NamedGraphWrap(NamedGraph,
             $"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ <{Escape(iri)}> (<urn:forge:any>|!<urn:forge:any>)* ?s . ?s ?p ?o . }}");
 
         var graph = await ConstructAsync(sparql, cancellationToken).ConfigureAwait(false);
@@ -85,8 +85,8 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         if (mode == WriteMode.Create)
         {
             // Guard: throw if the IRI is already present in the graph.
-            var askSparql = NamedGraphWrap(_repoOptions.NamedGraph,
-                $"ASK {{ <{Escape(entity.Iri)}> ?p ?o }}");
+            var askSparql = NamedGraphWrap(NamedGraph,
+                $"ASK WHERE {{ <{Escape(entity.Iri)}> ?p ?o }}");
             if (await AskAsync(askSparql, cancellationToken).ConfigureAwait(false))
                 throw new InvalidOperationException(
                     $"An entity with IRI '{entity.Iri}' already exists; WriteMode is Create.");
@@ -96,26 +96,26 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         {
             // Direct triples on the subject.
             sb.Append("DELETE WHERE { ");
-            if (_repoOptions.NamedGraph is not null)
-                sb.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+            if (NamedGraph is not null)
+                sb.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
             sb.Append("<").Append(Escape(entity.Iri)).Append("> ?p ?o ");
-            if (_repoOptions.NamedGraph is not null) sb.Append("} ");
+            if (NamedGraph is not null) sb.Append("} ");
             sb.Append("} ; ");
             // Blank-node closures rooted at the subject (rdf:List heads).
             // Property paths are not allowed in DELETE WHERE templates — use DELETE {} WHERE {}.
             sb.Append("DELETE { ?bn ?p2 ?o2 } WHERE { ");
-            if (_repoOptions.NamedGraph is not null)
-                sb.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+            if (NamedGraph is not null)
+                sb.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
             sb.Append("<").Append(Escape(entity.Iri)).Append("> (<urn:forge:any>|!<urn:forge:any>)+ ?bn . FILTER(isBlank(?bn)) . ?bn ?p2 ?o2 ");
-            if (_repoOptions.NamedGraph is not null) sb.Append("} ");
+            if (NamedGraph is not null) sb.Append("} ");
             sb.Append("} ; ");
         }
 
         sb.Append("INSERT DATA { ");
-        if (_repoOptions.NamedGraph is not null)
-            sb.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+        if (NamedGraph is not null)
+            sb.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
         foreach (var t in sink.Triples) AppendTriple(sb, t);
-        if (_repoOptions.NamedGraph is not null) sb.Append("} ");
+        if (NamedGraph is not null) sb.Append("} ");
         sb.Append("}");
 
         await UpdateAsync(sb.ToString(), cancellationToken).ConfigureAwait(false);
@@ -130,10 +130,10 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         var sparql = new StringBuilder();
         // Direct triples.
         sparql.Append("DELETE WHERE { ");
-        if (_repoOptions.NamedGraph is not null)
-            sparql.Append("GRAPH <").Append(Escape(_repoOptions.NamedGraph)).Append("> { ");
+        if (NamedGraph is not null)
+            sparql.Append("GRAPH <").Append(Escape(NamedGraph)).Append("> { ");
         sparql.Append("<").Append(Escape(iri)).Append("> ?p ?o ");
-        if (_repoOptions.NamedGraph is not null) sparql.Append("} ");
+        if (NamedGraph is not null) sparql.Append("} ");
         sparql.Append("} ; ");
         // Blank-node closures — property paths require DELETE {} WHERE {} form.
         sparql.Append("DELETE { ?bn ?p2 ?o2 } WHERE { ");
@@ -153,7 +153,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
     {
         var mapper = _registry.For<T>();
         var typeIri = mapper.ResolveTypeIri(_repoOptions);
-        var sparql = NamedGraphWrap(_repoOptions.NamedGraph,
+        var sparql = NamedGraphWrap(NamedGraph,
             $"SELECT DISTINCT ?s WHERE {{ ?s a <{Escape(typeIri)}> }}");
         var iris = await SelectIrisAsync(sparql, "s", cancellationToken).ConfigureAwait(false);
         foreach (var iri in iris)
@@ -177,7 +177,7 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : class, IEntity
     {
-        var sparql = NamedGraphWrap(_repoOptions.NamedGraph, $@"
+        var sparql = NamedGraphWrap(NamedGraph, $@"
 SELECT ?owner WHERE {{
   {{ ?owner <{Escape(predicate)}> <{Escape(targetIri)}> }}
   UNION
@@ -194,7 +194,7 @@ SELECT ?owner WHERE {{
         string predicate,
         CancellationToken cancellationToken = default)
     {
-        var sparql = NamedGraphWrap(_repoOptions.NamedGraph, $@"
+        var sparql = NamedGraphWrap(NamedGraph, $@"
 SELECT ?owner WHERE {{
   {{
     ?owner <{Escape(predicate)}> <{Escape(targetIri)}> .

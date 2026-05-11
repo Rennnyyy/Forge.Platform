@@ -187,4 +187,56 @@ public sealed class AspectEnforcingTransactionalStoreRollbackTests : IClassFixtu
         (await rawStore.LoadAsync<Artist>(artistB.Iri)).ShouldBeNull();
         (await rawStore.LoadAsync<Artist>(artistC.Iri)).ShouldBeNull();
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DropGraph_is_allowed_through_without_aspect_validation()
+    {
+        // DropGraphOperation carries Aspect.NoOpIri, so the engine fast-paths.
+        await using var sp = BuildProvider();
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
+        var rawStore = sp.GetRequiredService<IEntityStore>();
+
+        // Seed via raw store so the aspect enforcer is not involved.
+        var artist = MakeArtist("Drop Test");
+        await rawStore.SaveAsync(artist, WriteMode.Create);
+        (await rawStore.LoadAsync<Artist>(artist.Iri)).ShouldNotBeNull();
+
+        await using var tx = new EntityTransaction(txStore);
+        await tx.DropGraph(artist.Iri).CommitAsync();
+
+        (await rawStore.LoadAsync<Artist>(artist.Iri)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task DropGraph_followed_by_failing_Create_DropGraph_is_not_rolled_back()
+    {
+        // DropGraphOperation carries Aspect.NoOpIri so no snapshot can be captured
+        // (entity type is unknown at the Aspects layer). If a later operation fails
+        // aspect validation, the DropGraph is NOT rolled back — it is an unconditional
+        // destructive operation. Callers who need atomicity must handle this at the
+        // backend transaction level (e.g. GraphDB's server-side transaction).
+        const string aspectIri = "https://forge-it.net/aspects/test/rollback-drop";
+        var reject = MakeRejectAllAspect(aspectIri);
+
+        await using var sp = BuildProvider(s => s.AddOperationAspect(reject));
+        var txStore = sp.GetRequiredService<ITransactionalEntityStore>();
+        var rawStore = sp.GetRequiredService<IEntityStore>();
+
+        var existing = MakeArtist("Existing");
+        await rawStore.SaveAsync(existing, WriteMode.Create);
+
+        var incoming = MakeArtist("Incoming");
+
+        await using var tx = new EntityTransaction(txStore);
+        tx.DropGraph(existing.Iri).Create(incoming, aspectIri);
+
+        await Should.ThrowAsync<AspectViolationException>(() => tx.CommitAsync().AsTask());
+
+        // DropGraph was applied and is NOT rolled back (no snapshot possible).
+        (await rawStore.LoadAsync<Artist>(existing.Iri)).ShouldBeNull();
+        // The failing Create was not applied.
+        (await rawStore.LoadAsync<Artist>(incoming.Iri)).ShouldBeNull();
+    }
 }
