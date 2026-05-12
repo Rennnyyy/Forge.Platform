@@ -26,7 +26,8 @@ public sealed partial class GraphDbEntityStore : IEntityStore, IInverseRefLoader
     private readonly EntityRepositoryOptions _repoOptions;
     private readonly GraphDbOptions _gdb;
 
-    public string? NamedGraph => _repoOptions.NamedGraph ?? BranchScope.Current ?? _repoOptions.DefaultBranchIri;
+    public string? NamedGraph => _repoOptions.NamedGraph ?? BranchScope.Current
+        ?? (string.IsNullOrEmpty(_repoOptions.DefaultBranchIri) ? null : _repoOptions.DefaultBranchIri);
 
     public GraphDbEntityStore(
         HttpClient http,
@@ -315,8 +316,18 @@ SELECT ?member WHERE {{
 
     // ------------------------------------------------------------------ Helpers
 
-    private static string NamedGraphWrap(string? graph, string sparql) =>
-        graph is null ? sparql : sparql.Replace("WHERE {", $"WHERE {{ GRAPH <{Escape(graph)}> {{").TrimEnd('}') + " } }";
+    private static string NamedGraphWrap(string? graph, string sparql)
+    {
+        if (graph is null) return sparql;
+        var wrapped = sparql.Replace("WHERE {", $"WHERE {{ GRAPH <{Escape(graph)}> {{");
+        // Find the last '}' and replace it with '} }' to close both the GRAPH block and the
+        // WHERE block. Using LastIndexOf instead of TrimEnd correctly handles queries whose
+        // SPARQL solution modifiers (LIMIT, OFFSET, ORDER BY) appear after the final '}'.
+        var last = wrapped.LastIndexOf('}');
+        return last < 0
+            ? wrapped + " } }"
+            : wrapped[..last] + "} }" + wrapped[(last + 1)..];
+    }
 
     /// <summary>
     /// Escapes a caller-supplied IRI before interpolation into a SPARQL angle-bracket IRI literal.

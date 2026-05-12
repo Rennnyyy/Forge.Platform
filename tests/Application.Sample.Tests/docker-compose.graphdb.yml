@@ -1,0 +1,29 @@
+# Local GraphDB instance used by Forge.Application.Sample.Tests (Bruno/GraphDB backend variant).
+# Bring up (Podman):  podman compose -f docker-compose.graphdb.yml up -d
+# Bring up (Docker):  docker compose -f docker-compose.graphdb.yml up -d
+# Tear down:          {podman|docker} compose -f docker-compose.graphdb.yml down -v
+#
+# This compose uses port 7201 (not 7200) so that running the full solution test suite
+# does not conflict with the Repository.GraphDb.Tests container on port 7200.
+# The fixture (BrunoGraphDbFixture) targets http://localhost:7201 by default and creates a
+# repository named "forge-sample-tests" on first run. Override with FORGE_GRAPHDB_URL.
+# Override the container CLI with FORGE_CONTAINER_CLI=podman|docker.
+
+services:
+  graphdb:
+    image: ontotext/graphdb:10.7.3
+    container_name: forge-graphdb-sample
+    ports:
+      - "7201:7200"
+    environment:
+      GDB_HEAP_SIZE: 512m
+    volumes:
+      - graphdb-data:/opt/graphdb/home
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7200/rest/repositories"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  graphdb-data:

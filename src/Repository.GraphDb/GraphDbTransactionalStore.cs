@@ -1,4 +1,5 @@
 using Forge.Entity;
+using System.Collections.Generic;
 using System.Net.Http.Headers;
 using System.Text;
 using Forge.Repository;
@@ -98,6 +99,29 @@ public sealed partial class GraphDbEntityStore : ITransactionalEntityStore
             case DropGraphOperation drop:
                 var dropSparql = $"DROP SILENT GRAPH <{Escape(drop.GraphIri)}>";
                 await TxUpdateAsync(txUrl, dropSparql, ct).ConfigureAwait(false);
+                break;
+
+            case SeedGraphOperation seed:
+                // 1. Verify every entity IRI exists in the source graph before writing anything.
+                var missingIris = new List<string>();
+                foreach (var entityIri in seed.EntityIris)
+                {
+                    var existsSparql = $"ASK WHERE {{ GRAPH <{Escape(seed.SourceGraphIri)}> {{ <{Escape(entityIri)}> ?p ?o }} }}";
+                    if (!await TxAskAsync(txUrl, existsSparql, ct).ConfigureAwait(false))
+                        missingIris.Add(entityIri);
+                }
+                if (missingIris.Count > 0)
+                    throw new SeedOperationMissingEntityException(seed.SourceGraphIri, missingIris);
+
+                // 2. Copy the subject-closure (direct triples + blank-node chains) for each entity.
+                foreach (var entityIri in seed.EntityIris)
+                {
+                    var copySparql =
+                        $"INSERT {{ GRAPH <{Escape(seed.TargetGraphIri)}> {{ ?s ?p ?o }} }} " +
+                        $"WHERE {{ GRAPH <{Escape(seed.SourceGraphIri)}> {{ " +
+                        $"<{Escape(entityIri)}> (<urn:forge:any>|!<urn:forge:any>)* ?s . ?s ?p ?o . }} }}";
+                    await TxUpdateAsync(txUrl, copySparql, ct).ConfigureAwait(false);
+                }
                 break;
 
             case DeleteOperation del:

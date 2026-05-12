@@ -28,4 +28,9 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <!-- GraphDB compose file used by BrunoGraphDbFixture. See ADR-0018. -->
+  <ItemGroup>
+    <None Update="docker-compose.graphdb.yml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
