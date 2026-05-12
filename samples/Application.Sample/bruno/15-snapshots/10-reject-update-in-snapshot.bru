@@ -1,0 +1,31 @@
+meta {
+  name: Snapshots - reject update in snapshot (PUT → 422 SNAPSHOT_IMMUTABLE)
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{frozenBookIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{snapshotIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-13-110362-7",
+    "title": "The C Programming Language (tampered)",
+    "author": "Brian W. Kernighan, Dennis M. Ritchie",
+    "publishedYear": 1988,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq SNAPSHOT_IMMUTABLE
+}

@@ -51,4 +51,5 @@ Applied per [root ADR-0010](../../../adr/0010-slice-folder-structure.md).
 
 - `ITransactionalEntityStore.cs`
 - `EntityTransaction.cs`
-- `TransactionOperation.cs` — includes `EntityWriteOperation`, `CreateOperation<T>`, `UpdateOperation<T>`, `DeleteOperation`, and `DropGraphOperation` (see Repository ADR-0003).
+- `TransactionOperation.cs` — includes `EntityWriteOperation`, `CreateOperation<T>`, `UpdateOperation<T>`, `DeleteOperation`, `DropGraphOperation` (see Repository ADR-0003), and `SeedGraphOperation` (see Repository ADR-0004).
+- `SeedOperationMissingEntityException.cs` — thrown when a `SeedGraphOperation` cannot locate one or more requested entity IRIs in the source graph (see Repository ADR-0004).

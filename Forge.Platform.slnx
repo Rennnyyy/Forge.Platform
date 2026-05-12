@@ -51,6 +51,9 @@
   <Folder Name="/src/Branch/">
     <Project Path="src/Branch/Forge.Branch.csproj" />
   </Folder>
+  <Folder Name="/src/Branch.Http/">
+    <Project Path="src/Branch.Http/Forge.Branch.Http.csproj" />
+  </Folder>
   <Folder Name="/src/Operations.Http/">
     <Project Path="src/Operations.Http/Forge.Operations.Http.csproj" />
   </Folder>
@@ -77,5 +80,6 @@
     <Project Path="tests/Execution.Http.Tests/Forge.Execution.Http.Tests.csproj" />
     <Project Path="tests/Operations.Http.Tests/Forge.Operations.Http.Tests.csproj" />
     <Project Path="tests/Branch.Tests/Forge.Branch.Tests.csproj" />
+    <Project Path="tests/Branch.Http.Tests/Forge.Branch.Http.Tests.csproj" />
   </Folder>
 </Solution>

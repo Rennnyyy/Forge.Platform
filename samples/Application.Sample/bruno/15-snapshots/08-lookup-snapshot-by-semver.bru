@@ -1,0 +1,19 @@
+meta {
+  name: Snapshots - read snapshot by IRI (GET /api/snapshots?iri={{snapshotIri}})
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/snapshots?iri={{snapshotIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq v1.0.0
+  res.body.semVerMajor: eq 1
+  res.body.semVerMinor: eq 0
+  res.body.semVerPatch: eq 0
+}

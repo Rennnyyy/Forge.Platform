@@ -1,0 +1,15 @@
+meta {
+  name: Snapshots - cleanup delete source branch (DELETE)
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{sourceBranchIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

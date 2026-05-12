@@ -95,7 +95,7 @@ public sealed class TransactionTests : IClassFixture<EntityOptionsFixture>
         tx.Create(newArtist)    // would succeed …
           .Create(duplicateAria); // … but this duplicate Create must fail + rollback
 
-        await Should.ThrowAsync<InvalidOperationException>(() => tx.CommitAsync().AsTask());
+        await Should.ThrowAsync<EntityAlreadyExistsException>(() => tx.CommitAsync().AsTask());
 
         // newArtist must NOT have been persisted (rollback occurred).
         var shouldBeNull = await repo.FindAsync(newArtist.Iri);

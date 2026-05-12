@@ -4,8 +4,11 @@ using Forge.Aspects.Abstractions;
 using Forge.Aspects.DependencyInjection;
 using Forge.Aspects.Message;
 using Forge.Aspects.Operation;
+using Forge.Branch;
 using Forge.Branch.DependencyInjection;
+using Microsoft.AspNetCore.Http;
 using Forge.Branch.Http;
+using Forge.Execution;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
@@ -91,6 +94,20 @@ var app = builder.Build();
 // Echoes the effective IRI in X-Forge-Effective-BranchIri response header.
 app.UseBranchScope();
 
+// ── 6c. Snapshot immutability guard (HTTP translation) ───────────────────────
+// Translates SnapshotImmutabilityViolationException into 422 Unprocessable Entity
+// so that any attempt to write into a frozen snapshot graph returns a structured
+// error instead of an unhandled 500. Must be placed before endpoint registrations.
+app.Use(async (ctx, next) =>
+{
+    try { await next(ctx); }
+    catch (SnapshotImmutabilityViolationException ex)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+        await ctx.Response.WriteAsJsonAsync(new ExecutionError("SNAPSHOT_IMMUTABLE", ex.Message));
+    }
+});
+
 // ── 7. Capability endpoints ───────────────────────────────────────────────────
 // Auto-registers all endpoints derived from [Capability] on each handler.
 // All capability handlers are routed under api/capabilities/:
@@ -130,6 +147,14 @@ app.MapOperations();
 // Branch-scoped data (e.g. books) is read/written via api/entities/books with
 // the X-Forge-BranchIri header — no additional endpoints are needed.
 app.MapBranches();
+
+// ── 8b2. Snapshot management endpoints ───────────────────────────────────────
+// Maps two REST endpoints for Snapshot CRUD under api/snapshots.
+// Snapshot listing/lookup is served by MapBranches() via ?type=snapshot and ?semver=.
+//
+//   POST   api/snapshots       — Create and seed a new snapshot
+//   DELETE api/snapshots/{name} — Drop snapshot entity + named graph
+app.MapSnapshots();
 
 // ── 8. Capability aspect registration ────────────────────────────────────────
 // Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore

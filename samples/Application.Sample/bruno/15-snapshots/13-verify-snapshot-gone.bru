@@ -1,0 +1,16 @@
+meta {
+  name: Snapshots - verify snapshot gone after drop (GET /api/snapshots?iri={{snapshotIri}} → 404)
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/snapshots?iri={{snapshotIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq NOT_FOUND
+}

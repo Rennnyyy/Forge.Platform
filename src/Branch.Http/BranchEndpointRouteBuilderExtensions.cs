@@ -2,12 +2,14 @@ using BranchEntity = Forge.Branch.Branch;
 using Forge.Branch;
 using Forge.Execution;
 using Forge.Execution.Http;
+using Forge.Operations.Http;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using SnapshotEntity = Forge.Branch.Snapshot;
 
 namespace Forge.Branch.Http;
 
@@ -18,25 +20,34 @@ namespace Forge.Branch.Http;
 /// <param name="Description">Optional description.</param>
 internal sealed record CreateBranchRequest(string Name, string? Description);
 
+// ── Snapshot request / response models ───────────────────────────────────────
+
+/// <summary>
+/// Request body for <c>POST /api/snapshots</c>.
+/// </summary>
+/// <param name="Name">Slug that forms the snapshot IRI, e.g. <c>"v1.0.0"</c>.</param>
+/// <param name="Description">Optional description.</param>
+/// <param name="SnapshotAt">Logical freeze time. Defaults to <c>UtcNow</c> when omitted.</param>
+/// <param name="SourceGraphIri">Named graph whose entity triples are copied into the new snapshot graph.</param>
+/// <param name="EntityIris">Explicit list of entity IRIs to include from <paramref name="SourceGraphIri"/>.</param>
+/// <param name="SemVerMajor">Optional semantic version major.</param>
+/// <param name="SemVerMinor">Optional semantic version minor.</param>
+/// <param name="SemVerPatch">Optional semantic version patch.</param>
+/// <param name="SemVerPreRelease">Optional pre-release label, e.g. <c>"alpha.1"</c>.</param>
+internal sealed record CreateSnapshotRequest(
+    string Name,
+    string? Description,
+    DateTimeOffset? SnapshotAt,
+    string SourceGraphIri,
+    IReadOnlyList<string> EntityIris,
+    int? SemVerMajor = null,
+    int? SemVerMinor = null,
+    int? SemVerPatch = null,
+    string? SemVerPreRelease = null);
+
 /// <summary>Request body for updating a branch. Only mutable fields are accepted.</summary>
 /// <param name="Description">Updated description. Pass <see langword="null"/> to clear it.</param>
 internal sealed record UpdateBranchRequest(string? Description);
-
-// ── Response types ────────────────────────────────────────────────────────────
-
-/// <summary>Returned after a successful branch creation.</summary>
-/// <param name="Iri">The IRI of the newly created branch (also its named graph IRI).</param>
-public sealed record BranchCreatedResponse(string Iri);
-
-/// <summary>Returned after a successful branch update.</summary>
-/// <param name="Iri">The IRI of the updated branch.</param>
-public sealed record BranchUpdatedResponse(string Iri);
-
-/// <summary>Returned after a successful branch deletion.</summary>
-public sealed record BranchDeletedResponse();
-
-/// <summary>Returned by the list endpoint.</summary>
-public sealed record BranchListResponse(IReadOnlyList<BranchEntity> Items);
 
 // ── MapBranches() ─────────────────────────────────────────────────────────────
 
@@ -85,17 +96,18 @@ public static class BranchEndpointRouteBuilderExtensions
                 tx.Create(branch);
                 await tx.CommitAsync(ct);
 
-                return Results.Ok(new BranchCreatedResponse(branch.Iri));
+                return Results.Ok(new OperationCreatedResponse(branch.Iri));
             });
         });
 
-        // ── GET api/branches          — List  ─────────────────────────────────
-        // ── GET api/branches?iri=…   — Read  ─────────────────────────────────
+        // ── GET api/branches               — List mutable branches ────────────
+        // ── GET api/branches?iri=…         — Read a single Branch by IRI ─────
         app.MapGet(BasePath, async (
             string? iri,
             [FromKeyedServices(ManagementStoreKey)] IEntityStore managementStore,
             CancellationToken ct) =>
         {
+            // ── ?iri=… — read a single branch ────────────────────────────────────
             var repo = new EntityRepository<BranchEntity>(managementStore);
 
             if (!string.IsNullOrEmpty(iri))
@@ -112,11 +124,12 @@ public static class BranchEndpointRouteBuilderExtensions
                 return Results.Ok(branch);
             }
 
+            // ── bare list — mutable branches only ────────────────────────────────
             var items = new List<BranchEntity>();
             await foreach (var b in repo.QueryAllAsync(ct))
                 items.Add(b);
 
-            return Results.Ok(new BranchListResponse(items));
+            return Results.Ok(new OperationListResponse<BranchEntity>(items));
         });
 
         // ── PUT api/branches?iri=… — Update ──────────────────────────────────
@@ -144,7 +157,7 @@ public static class BranchEndpointRouteBuilderExtensions
                 tx.Update(branch);
                 await tx.CommitAsync(ct);
 
-                return Results.Ok(new BranchUpdatedResponse(branch.Iri));
+                return Results.Ok(new OperationUpdatedResponse(branch.Iri));
             });
         });
 
@@ -186,7 +199,137 @@ public static class BranchEndpointRouteBuilderExtensions
                     new ExecutionError("BRANCH_PROTECTED", ex.Message));
             }
 
-            return Results.Ok(new BranchDeletedResponse());
+            return Results.Ok(new OperationDeletedResponse());
+        });
+
+        return app;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Maps REST endpoints for Snapshot entity management:
+    /// <list type="table">
+    ///   <listheader><term>Verb + Route</term><description>Operation</description></listheader>
+    ///   <item><term>POST   api/snapshots</term><description>Create and seed a new snapshot</description></item>
+    ///   <item><term>GET    api/snapshots</term><description>List all snapshots</description></item>
+    ///   <item><term>GET    api/snapshots?iri=…</term><description>Read a single snapshot by IRI</description></item>
+    ///   <item><term>DELETE api/snapshots?iri=…</term><description>Delete snapshot + drop its named graph</description></item>
+    /// </list>
+    /// See Branch ADR-0002 and ADR-0003.
+    /// </summary>
+    public static IEndpointRouteBuilder MapSnapshots(this IEndpointRouteBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        const string SnapshotPath = "api/snapshots";
+
+        // ── POST api/snapshots — Create and seed ──────────────────────────────────
+        app.MapPost(SnapshotPath, async (
+            CreateSnapshotRequest body,
+            BranchSeedingService seedingService,
+            CancellationToken ct) =>
+        {
+            return await ExecutionEndpointHelper.InvokeAsync(async () =>
+            {
+                if (string.IsNullOrWhiteSpace(body.Name))
+                    return Results.BadRequest(new ExecutionError("INVALID_NAME",
+                        "Name must not be null or whitespace."));
+
+                if (body.EntityIris is null || body.EntityIris.Count == 0)
+                    return Results.BadRequest(new ExecutionError("INVALID_ENTITY_IRIS",
+                        "EntityIris must contain at least one IRI."));
+
+                if (string.IsNullOrWhiteSpace(body.SourceGraphIri))
+                    return Results.BadRequest(new ExecutionError("INVALID_SOURCE_GRAPH_IRI",
+                        "SourceGraphIri must not be null or whitespace."));
+
+                var snapshot = new SnapshotEntity
+                {
+                    Name = body.Name,
+                    Description = body.Description,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    SnapshotAt = body.SnapshotAt ?? DateTimeOffset.UtcNow,
+                    SemVerMajor = body.SemVerMajor,
+                    SemVerMinor = body.SemVerMinor,
+                    SemVerPatch = body.SemVerPatch,
+                    SemVerPreRelease = body.SemVerPreRelease,
+                };
+
+                try
+                {
+                    await seedingService.CreateSnapshotAsync(
+                        snapshot, body.SourceGraphIri, body.EntityIris, ct);
+                }
+                catch (SnapshotVersionConflictException ex)
+                {
+                    return Results.Conflict(
+                        new ExecutionError("SNAPSHOT_VERSION_CONFLICT", ex.Message));
+                }
+                catch (SeedOperationMissingEntityException ex)
+                {
+                    return Results.UnprocessableEntity(
+                        new ExecutionError("SEED_MISSING_ENTITIES", ex.Message));
+                }
+
+                return Results.Created($"/api/snapshots/{body.Name}",
+                    new OperationCreatedResponse(snapshot.Iri));
+            });
+        });
+
+        // ── GET api/snapshots       ───────────────── List all snapshots ────────────
+        // ── GET api/snapshots?iri=… ──────────── Read a single snapshot by IRI ───
+        app.MapGet(SnapshotPath, async (
+            string? iri,
+            [FromKeyedServices(ManagementStoreKey)] IEntityStore managementStore,
+            CancellationToken ct) =>
+        {
+            var snapshotRepo = new EntityRepository<SnapshotEntity>(managementStore);
+
+            // ── ?iri=… — read a single snapshot by IRI ─────────────────────
+            if (!string.IsNullOrEmpty(iri))
+            {
+                if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                    return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                        $"The value '{iri}' is not a valid absolute IRI."));
+
+                var snapshot = await snapshotRepo.FindAsync(iri, ct);
+                if (snapshot is null)
+                    return Results.NotFound(new ExecutionError("NOT_FOUND",
+                        $"No snapshot with IRI '{iri}' was found."));
+
+                return Results.Ok(snapshot);
+            }
+
+            // ── bare list — all snapshots ─────────────────────────────────
+            var items = new List<SnapshotEntity>();
+            await foreach (var s in snapshotRepo.QueryAllAsync(ct))
+                items.Add(s);
+
+            return Results.Ok(new OperationListResponse<SnapshotEntity>(items));
+        });
+
+        // ── DELETE api/snapshots?iri=… — Delete ──────────────────────────────────
+        // Delegates to BranchSeedingService.DeleteSnapshotAsync which issues the paired
+        // Delete+DropGraph and refreshes the frozen-set guard atomically.
+        app.MapDelete(SnapshotPath, async (
+            string iri,
+            BranchSeedingService seedingService,
+            [FromKeyedServices(ManagementStoreKey)] IEntityStore managementStore,
+            CancellationToken ct) =>
+        {
+            if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                    $"The value '{iri}' is not a valid absolute IRI."));
+
+            var repo = new EntityRepository<SnapshotEntity>(managementStore);
+            var snapshot = await repo.FindAsync(iri, ct);
+            if (snapshot is null)
+                return Results.NotFound(new ExecutionError("NOT_FOUND",
+                    $"No snapshot with IRI '{iri}' was found."));
+
+            await seedingService.DeleteSnapshotAsync(snapshot, ct);
+
+            return Results.Ok(new OperationDeletedResponse());
         });
 
         return app;

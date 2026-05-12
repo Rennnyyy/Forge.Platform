@@ -20,6 +20,10 @@ body:json {
   }
 }
 
+vars:pre-request {
+  branchIri: https://forge-it.net/branches/feature-demo
+}
+
 assert {
   res.status: eq 200
   res.body.iri: isDefined

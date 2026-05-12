@@ -1,7 +1,10 @@
 using Forge.Branch;
+using Forge.Execution;
 using Forge.Repository;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using BranchEntity = Forge.Branch.Branch;
 
 namespace Forge.Execution.Http;
 
@@ -21,11 +24,13 @@ internal sealed class BranchScopeMiddleware
     private readonly RequestDelegate _next;
     private readonly IBranchIriProvider _provider;
     private readonly string _defaultBranchIri;
+    private readonly IEntityStore _managementStore;
 
     public BranchScopeMiddleware(
         RequestDelegate next,
         IBranchIriProvider provider,
-        IOptions<BranchOptions> options)
+        IOptions<BranchOptions> options,
+        IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(provider);
@@ -33,6 +38,7 @@ internal sealed class BranchScopeMiddleware
         _next = next;
         _provider = provider;
         _defaultBranchIri = options.Value.DefaultBranchIri;
+        _managementStore = services.GetRequiredKeyedService<IEntityStore>("forge.branch.management");
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -55,6 +61,25 @@ internal sealed class BranchScopeMiddleware
 
         using (BranchScope.Use(effectiveBranchIri))
         {
+            // Validate that a non-default branch IRI actually corresponds to a known
+            // branch or snapshot in the management graph. An unknown IRI would silently
+            // create an orphan data graph; reject it early with 404 instead.
+            if (!string.Equals(effectiveBranchIri, _defaultBranchIri, StringComparison.Ordinal))
+            {
+                var branch = await _managementStore
+                    .LoadAsync<BranchEntity>(effectiveBranchIri, context.RequestAborted)
+                    .ConfigureAwait(false);
+                if (branch is null)
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    await context.Response.WriteAsJsonAsync(
+                        new ExecutionError("BRANCH_NOT_FOUND",
+                            $"No branch or snapshot with IRI '{effectiveBranchIri}' was found."),
+                        context.RequestAborted).ConfigureAwait(false);
+                    return;
+                }
+            }
+
             context.Response.OnStarting(() =>
             {
                 context.Response.Headers[EffectiveBranchIriResponseHeader] = effectiveBranchIri;

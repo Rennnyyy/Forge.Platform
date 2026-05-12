@@ -1,4 +1,5 @@
 using Forge.Branch;
+using Forge.Entity;
 using Forge.Execution.Http;
 using Forge.Execution.Http.DependencyInjection;
 using Forge.Repository;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Shouldly;
+using BranchEntity = Forge.Branch.Branch;
 
 namespace Forge.Execution.Http.Tests;
 
@@ -27,9 +29,11 @@ public sealed class BranchScopeMiddlewareTests
     private static IHost BuildHost(
         IBranchIriProvider? provider = null,
         string defaultBranch = DefaultBranchIri,
-        Action<HttpContext>? handler = null)
+        Action<HttpContext>? handler = null,
+        IEnumerable<string>? knownBranchIris = null)
     {
         var effectiveProvider = provider ?? new HeaderBranchIriProvider();
+        var knownSet = knownBranchIris?.ToHashSet() ?? [];
         return new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -38,6 +42,9 @@ public sealed class BranchScopeMiddlewareTests
                 {
                     services.AddSingleton<IBranchIriProvider>(effectiveProvider);
                     services.Configure<BranchOptions>(o => o.DefaultBranchIri = defaultBranch);
+                    services.AddKeyedSingleton<IEntityStore>(
+                        "forge.branch.management",
+                        new StubManagementStore(knownSet));
                 });
                 web.Configure(app =>
                 {
@@ -62,7 +69,9 @@ public sealed class BranchScopeMiddlewareTests
         const string branchIri = "https://forge-it.net/branches/feature-X";
         string? capturedScope = null;
 
-        using var host = BuildHost(handler: ctx => { capturedScope = BranchScope.Current; });
+        using var host = BuildHost(
+            handler: ctx => { capturedScope = BranchScope.Current; },
+            knownBranchIris: [branchIri]);
         await host.StartAsync();
         var client = host.GetTestClient();
 
@@ -156,7 +165,30 @@ public sealed class BranchScopeMiddlewareTests
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // 5. AddBranchHttp DI extension wires HeaderBranchIriProvider + BranchOptions
+    // 6. Unknown branch IRI → 404 + pipeline short-circuits
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task Unknown_branch_IRI_header_returns_404()
+    {
+        bool handlerInvoked = false;
+
+        // No branch IRIs are registered in the management store stub.
+        using var host = BuildHost(handler: _ => { handlerInvoked = true; });
+        await host.StartAsync();
+        var client = host.GetTestClient();
+
+        var req = new HttpRequestMessage(HttpMethod.Get, "/");
+        req.Headers.Add(HeaderBranchIriProvider.BranchIriRequestHeader,
+            "https://forge-it.net/branches/does-not-exist");
+        var response = await client.SendAsync(req);
+
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NotFound);
+        handlerInvoked.ShouldBeFalse();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // AddBranchHttp DI extension wires HeaderBranchIriProvider + BranchOptions
     // ════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -230,4 +262,38 @@ public sealed class BranchScopeMiddlewareTests
         Should.Throw<ArgumentNullException>(() =>
             ExecutionHttpApplicationBuilderExtensions.UseBranchScope(null!));
     }
+}
+
+/// <summary>
+/// Stub <see cref="IEntityStore"/> for <see cref="BranchScopeMiddlewareTests"/>.
+/// Returns a placeholder <see cref="Branch"/> for any IRI that was registered as known;
+/// null otherwise. All mutation/query operations are unsupported.
+/// </summary>
+file sealed class StubManagementStore(IReadOnlySet<string> knownIris) : IEntityStore
+{
+    public string? NamedGraph => null;
+
+    public ValueTask<T?> LoadAsync<T>(string iri, CancellationToken cancellationToken = default)
+        where T : class, IEntity
+    {
+        if (knownIris.Contains(iri))
+            return ValueTask.FromResult((T?)(object)new BranchEntity { Name = "stub" });
+        return ValueTask.FromResult<T?>(null);
+    }
+
+    public ValueTask SaveAsync<T>(T entity, WriteMode mode = WriteMode.Replace,
+        CancellationToken cancellationToken = default)
+        where T : class, IEntity => throw new NotSupportedException();
+
+    public ValueTask DeleteAsync(string iri, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    public IAsyncEnumerable<T> QueryByTypeAsync<T>(CancellationToken cancellationToken = default)
+        where T : class, IEntity => throw new NotSupportedException();
+
+    public IAsyncEnumerable<string> LoadCollectionIrisAsync<T>(
+        string ownerIri, string predicate, CancellationToken cancellationToken = default)
+        where T : class, IEntity => throw new NotSupportedException();
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

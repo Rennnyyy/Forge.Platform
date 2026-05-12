@@ -126,3 +126,59 @@ public sealed class DropGraphOperation : TransactionOperation
     /// </remarks>
     public override string EntityIri => GraphIri;
 }
+
+/// <summary>
+/// Copies the triples for a specific set of entity IRIs from <see cref="SourceGraphIri"/>
+/// into <see cref="TargetGraphIri"/> as part of an atomic transaction.
+/// The copy is point-in-time: source graph state is snapshotted at
+/// <see cref="ITransactionalEntityStore.ExecuteTransactionAsync"/> time.
+/// If any IRI in <see cref="EntityIris"/> does not exist in the source graph,
+/// the entire transaction is aborted and a
+/// <see cref="SeedOperationMissingEntityException"/> is thrown.
+/// See Repository ADR-0004.
+/// </summary>
+/// <remarks>
+/// <see cref="TransactionOperation.AspectIri"/> defaults to <see cref="Aspect.NoOpIri"/>;
+/// SHACL validation does not apply to a graph-seed. The Aspects engine skips
+/// <see cref="SeedGraphOperation"/> instances at validation time.
+/// </remarks>
+public sealed class SeedGraphOperation : TransactionOperation
+{
+    /// <summary>
+    /// Initializes a seed-graph operation.
+    /// </summary>
+    /// <param name="sourceGraphIri">IRI of the named graph to read triples from.</param>
+    /// <param name="targetGraphIri">IRI of the named graph to write triples into.</param>
+    /// <param name="entityIris">The explicit set of entity IRIs whose triples are copied.</param>
+    public SeedGraphOperation(
+        string sourceGraphIri,
+        string targetGraphIri,
+        IReadOnlyList<string> entityIris)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceGraphIri);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetGraphIri);
+        ArgumentNullException.ThrowIfNull(entityIris);
+        if (entityIris.Count == 0)
+            throw new ArgumentException("Entity IRI list must not be empty.", nameof(entityIris));
+
+        SourceGraphIri = sourceGraphIri;
+        TargetGraphIri = targetGraphIri;
+        EntityIris = entityIris;
+    }
+
+    /// <summary>The IRI of the named graph to read triples from.</summary>
+    public string SourceGraphIri { get; }
+
+    /// <summary>The IRI of the named graph to write triples into.</summary>
+    public string TargetGraphIri { get; }
+
+    /// <summary>The explicit set of entity IRIs whose triples are copied.</summary>
+    public IReadOnlyList<string> EntityIris { get; }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// For a <see cref="SeedGraphOperation"/> the "entity IRI" is the target graph IRI —
+    /// the graph as a whole is the target.
+    /// </remarks>
+    public override string EntityIri => TargetGraphIri;
+}

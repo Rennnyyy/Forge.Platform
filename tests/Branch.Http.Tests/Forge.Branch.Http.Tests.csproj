@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Branch.Http\Forge.Branch.Http.csproj" />
+    <ProjectReference Include="..\..\src\Branch\Forge.Branch.csproj" />
+    <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
+    <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\Execution.Http\Forge.Execution.Http.csproj" />
+    <ProjectReference Include="..\..\src\Operations.Http\Forge.Operations.Http.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+meta {
+  name: Snapshots - reject delete in snapshot (DELETE → 422 SNAPSHOT_IMMUTABLE)
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/books?iri={{frozenBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{snapshotIri}}
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq SNAPSHOT_IMMUTABLE
+}

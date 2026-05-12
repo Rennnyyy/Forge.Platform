@@ -61,10 +61,12 @@ public static class BranchServiceCollectionExtensions
         // Uses EntityStoreFactory (registered by UseInMemory / UseGraphDb) to create a
         // store instance with NamedGraph = ManagementGraphIri, permanently bypassing
         // BranchScope for all management-graph operations.
-        // The raw store is then wrapped with BranchGuardedTransactionalStore to enforce
-        // the branch protection invariants (no delete of default branch, no drop of
-        // management graph).
-        services.AddKeyedSingleton<ITransactionalEntityStore>(
+        // The raw store is wrapped with BranchGuardedTransactionalStore (blocks default-
+        // branch delete and management-graph drop), then with
+        // SnapshotGuardedTransactionalStore (blocks writes to frozen snapshot graphs).
+        // The SnapshotGuardedTransactionalStore is also registered as a keyed singleton so
+        // SnapshotStartupService and BranchSeedingService can call InvalidateFrozenSetAsync().
+        services.AddKeyedSingleton<SnapshotGuardedTransactionalStore>(
             "forge.branch.management",
             (sp, _) =>
             {
@@ -74,19 +76,58 @@ public static class BranchServiceCollectionExtensions
                 {
                     NamedGraph = branchOpts.ManagementGraphIri,
                 });
-                return new BranchGuardedTransactionalStore(
+                ITransactionalEntityStore branchGuarded = new BranchGuardedTransactionalStore(
                     raw,
                     branchOpts.DefaultBranchIri,
                     branchOpts.ManagementGraphIri);
+                return new SnapshotGuardedTransactionalStore(branchGuarded);
             });
+
+        services.AddKeyedSingleton<ITransactionalEntityStore>(
+            "forge.branch.management",
+            (sp, _) => sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>("forge.branch.management"));
 
         // Also expose as keyed IEntityStore (for IEntityRepository<Branch> resolution).
         services.AddKeyedSingleton<IEntityStore>(
             "forge.branch.management",
             (sp, _) => sp.GetRequiredKeyedService<ITransactionalEntityStore>("forge.branch.management"));
 
-        // ── 5. Startup upsert ─────────────────────────────────────────────────
+        // Expose ISnapshotFrozenSetInvalidator so BranchSeedingService can call
+        // InvalidateFrozenSetAsync() without depending on the internal concrete type.
+        services.AddKeyedSingleton<ISnapshotFrozenSetInvalidator>(
+            "forge.branch.management",
+            (sp, _) => sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>("forge.branch.management"));
+
+        // ── 5. Application services ───────────────────────────────────────────
+        services.AddScoped<BranchSeedingService>();
+
+        // ── 6. Startup services ───────────────────────────────────────────────
         services.AddHostedService<DefaultBranchStartupService>();
+        services.AddHostedService<SnapshotStartupService>();
+
+        // ── 7. Wrap the unkeyed data store with the snapshot immutability guard ─
+        // Capture whatever ITransactionalEntityStore is currently the unkeyed registration
+        // (after aspects + authorization decorators have already been applied) and replace
+        // it with DataSnapshotGuardedTransactionalStore so that entity writes into frozen
+        // snapshot named graphs are rejected at the store level, regardless of caller.
+        // Same pattern used by AddForgeAuthorizationHttp (Authorization ADR-0002).
+        var existingDataDescriptor = services
+            .LastOrDefault(d => d.ServiceType == typeof(ITransactionalEntityStore) && d.ServiceKey is null);
+
+        services.AddSingleton<ITransactionalEntityStore>(sp =>
+        {
+            ITransactionalEntityStore inner = existingDataDescriptor switch
+            {
+                { ImplementationInstance: ITransactionalEntityStore inst } => inst,
+                { ImplementationFactory: { } f } => (ITransactionalEntityStore)f(sp),
+                { ImplementationType: { } t } => (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(sp, t),
+                _ => sp.GetRequiredKeyedService<ITransactionalEntityStore>(
+                    ForgeEntityRepositoryBuilder.AspectsTxKey),
+            };
+            var guard = sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>(
+                "forge.branch.management");
+            return new DataSnapshotGuardedTransactionalStore(inner, guard);
+        });
 
         return services;
     }

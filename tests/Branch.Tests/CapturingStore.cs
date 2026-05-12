@@ -8,11 +8,14 @@ namespace Forge.Branch.Tests;
 /// Test double for <see cref="ITransactionalEntityStore"/> that records method invocations.
 /// All write operations succeed silently; reads return null/empty.
 /// </summary>
-internal sealed class CapturingStore : ITransactionalEntityStore
+internal class CapturingStore : ITransactionalEntityStore
 {
     public bool ExecuteTransactionCalled { get; private set; }
     public bool DeleteAsyncCalled { get; private set; }
     public string? NamedGraphValue { get; set; }
+
+    /// <summary>All operations batches submitted via <see cref="ExecuteTransactionAsync"/>.</summary>
+    public List<IReadOnlyList<TransactionOperation>> CapturedOperations { get; } = new();
 
     public string? NamedGraph => NamedGraphValue;
 
@@ -21,6 +24,7 @@ internal sealed class CapturingStore : ITransactionalEntityStore
         CancellationToken cancellationToken = default)
     {
         ExecuteTransactionCalled = true;
+        CapturedOperations.Add(operations);
         return default;
     }
 
@@ -38,7 +42,7 @@ internal sealed class CapturingStore : ITransactionalEntityStore
         return default;
     }
 
-    public IAsyncEnumerable<T> QueryByTypeAsync<T>(CancellationToken cancellationToken = default)
+    public virtual IAsyncEnumerable<T> QueryByTypeAsync<T>(CancellationToken cancellationToken = default)
         where T : class, IEntity
         => AsyncEnumerable.Empty<T>();
 

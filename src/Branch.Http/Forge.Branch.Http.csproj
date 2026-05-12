@@ -18,6 +18,8 @@
     <ProjectReference Include="..\Branch\Forge.Branch.csproj" />
     <!-- ExecutionEndpointHelper, ExecutionError -->
     <ProjectReference Include="..\Execution.Http\Forge.Execution.Http.csproj" />
+    <!-- OperationCreatedResponse, OperationUpdatedResponse, OperationDeletedResponse, OperationListResponse<T> -->
+    <ProjectReference Include="..\Operations.Http\Forge.Operations.Http.csproj" />
     <!-- IEntityStore, ITransactionalEntityStore, EntityTransaction, EntityRepository<T> -->
     <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
   </ItemGroup>

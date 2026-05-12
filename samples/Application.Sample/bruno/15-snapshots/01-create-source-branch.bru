@@ -1,5 +1,5 @@
 meta {
-  name: Branches - create (POST)
+  name: Snapshots - create source branch (POST)
   type: http
   seq: 1
 }
@@ -16,8 +16,8 @@ headers {
 
 body:json {
   {
-    "name": "feature-demos",
-    "description": "Demo branch created by the Bruno collection"
+    "name": "snapshot-source",
+    "description": "Branch to be captured as an immutable snapshot"
   }
 }
 
@@ -27,5 +27,5 @@ assert {
 }
 
 script:post-response {
-  bru.setVar("branchIri", res.body.iri);
+  bru.setVar("sourceBranchIri", res.body.iri);
 }

@@ -1,0 +1,22 @@
+meta {
+  name: Snapshots - read seeded book from snapshot (GET)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{frozenBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{snapshotIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.isbn: eq 978-0-13-110362-7
+  res.body.title: contains C Programming Language
+}

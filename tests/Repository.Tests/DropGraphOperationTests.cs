@@ -197,7 +197,7 @@ public sealed class DropGraphOperationTests : IClassFixture<EntityOptionsFixture
         await using var tx = new EntityTransaction((ITransactionalEntityStore)store);
         tx.DropGraph(existing.Iri).Create(dup1).Create(dup2);
 
-        await Should.ThrowAsync<InvalidOperationException>(async () => await tx.CommitAsync());
+        await Should.ThrowAsync<EntityAlreadyExistsException>(async () => await tx.CommitAsync());
 
         // Rollback must restore the original entity.
         (await repo.FindAsync(existing.Iri)).ShouldNotBeNull();

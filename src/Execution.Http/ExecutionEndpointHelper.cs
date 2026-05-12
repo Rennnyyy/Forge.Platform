@@ -1,4 +1,6 @@
 using Forge.Aspects.Abstractions;
+using Forge.Execution;
+using Forge.Repository;
 using Microsoft.AspNetCore.Http;
 
 namespace Forge.Execution.Http;
@@ -18,6 +20,7 @@ public static class ExecutionEndpointHelper
     /// <list type="bullet">
     ///   <item><see cref="MessageAspectViolationException"/> → <c>SHACL_VIOLATION</c></item>
     ///   <item><see cref="AspectException"/> → <c>ENTITY_SHACL_VIOLATION</c> (for any aspect violation, including <c>AspectViolationException</c>)</item>
+    ///   <item><see cref="EntityAlreadyExistsException"/> → <c>ENTITY_ALREADY_EXISTS</c> (409 Conflict)</item>
     /// </list>
     /// </summary>
     public static async ValueTask<IResult> InvokeAsync(Func<ValueTask<IResult>> handler)
@@ -36,6 +39,11 @@ public static class ExecutionEndpointHelper
         {
             return Results.UnprocessableEntity(
                 new ExecutionError("ENTITY_SHACL_VIOLATION", ex.Message));
+        }
+        catch (EntityAlreadyExistsException ex)
+        {
+            return Results.Conflict(
+                new ExecutionError("ENTITY_ALREADY_EXISTS", ex.Message));
         }
     }
 }

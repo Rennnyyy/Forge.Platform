@@ -108,6 +108,27 @@ public sealed class EntityTransaction : IAsyncDisposable
     }
 
     /// <summary>
+    /// Enqueues a <see cref="SeedGraphOperation"/> that copies the triples for
+    /// <paramref name="entityIris"/> from <paramref name="sourceGraphIri"/> into
+    /// <paramref name="targetGraphIri"/> as part of this transaction.
+    /// The copy is point-in-time. If any IRI in <paramref name="entityIris"/> does not
+    /// exist in the source graph the entire transaction is aborted with a
+    /// <see cref="SeedOperationMissingEntityException"/>. See Repository ADR-0004.
+    /// </summary>
+    /// <param name="sourceGraphIri">IRI of the named graph to read triples from.</param>
+    /// <param name="targetGraphIri">IRI of the named graph to write triples into.</param>
+    /// <param name="entityIris">Explicit set of entity IRIs to copy. Must not be null or empty.</param>
+    public EntityTransaction SeedFrom(
+        string sourceGraphIri,
+        string targetGraphIri,
+        IReadOnlyList<string> entityIris)
+    {
+        ThrowIfFinished();
+        _operations.Add(new SeedGraphOperation(sourceGraphIri, targetGraphIri, entityIris));
+        return this;
+    }
+
+    /// <summary>
     /// Atomically applies all enqueued operations to the store. Throws
     /// <see cref="InvalidOperationException"/> if the transaction has already been committed.
     /// </summary>

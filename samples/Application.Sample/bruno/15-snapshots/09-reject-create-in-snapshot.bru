@@ -1,0 +1,31 @@
+meta {
+  name: Snapshots - reject create in snapshot (POST → 422 SNAPSHOT_IMMUTABLE)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{snapshotIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-201-63361-0",
+    "title": "Design Patterns",
+    "author": "Gang of Four",
+    "publishedYear": 1994,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq SNAPSHOT_IMMUTABLE
+}

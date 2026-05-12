@@ -10,9 +10,13 @@ get {
   auth: none
 }
 
+vars:pre-request {
+  branchIri: https://forge-it.net/branches/feature-demo
+}
+
 assert {
   res.status: eq 200
   res.body.iri: isDefined
-  res.body.name: eq feature-demo
+  res.body.name: eq feature-demos
   res.body.description: contains Demo branch
 }

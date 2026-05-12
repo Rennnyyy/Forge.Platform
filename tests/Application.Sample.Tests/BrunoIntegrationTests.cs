@@ -382,6 +382,43 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Runs chapter 15 — Snapshot management: full lifecycle from branch seeding through
+    /// snapshot creation, immutability enforcement (CUD rejected with 422), semver lookup,
+    /// drop, and source-branch cleanup.
+    /// <list type="bullet">
+    ///   <item>POST <c>api/branches</c> — create source branch</item>
+    ///   <item>POST/GET <c>api/entities/books</c> — seed a book entity into the source branch</item>
+    ///   <item>POST <c>api/snapshots</c> — create &amp; seed snapshot at semver 1.0.0</item>
+    ///   <item>GET <c>api/entities/books</c> with snapshot IRI header — read frozen data</item>
+    ///   <item>GET <c>api/branches</c> — list all mutable branches</item>
+    ///   <item>GET <c>api/branches?type=snapshot</c> — list snapshots only</item>
+    ///   <item>GET <c>api/branches?semver=1.0.0</c> — lookup snapshot by semver</item>
+    ///   <item>POST/PUT/DELETE <c>api/entities/books</c> with snapshot IRI header — rejected 422 SNAPSHOT_IMMUTABLE</item>
+    ///   <item>DELETE <c>api/snapshots/v1.0.0</c> — drop snapshot (204)</item>
+    ///   <item>GET <c>api/branches?semver=1.0.0</c> — verify gone (404)</item>
+    ///   <item>DELETE <c>api/branches</c> — cleanup source branch</item>
+    /// </list>
+    /// See Branch ADR-0002 and ADR-0003.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_15_snapshots_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "15-snapshots");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

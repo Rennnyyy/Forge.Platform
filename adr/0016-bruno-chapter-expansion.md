@@ -1,4 +1,4 @@
-# 0016 — Bruno collection expanded to 13 chapters
+# 0016 — Bruno collection expanded to 14 chapters
 
 - **Status**: accepted; amends [0013](0013-bruno-collection-story-structure.md)
 - **Date**: 2026-05-04
@@ -34,6 +34,8 @@ The complete chapter inventory, including the nine chapters added after ADR-0013
 | 11 | `11-recordings/` | Generated CRUD for `Recording` (music domain entity) |
 | 12 | `12-studios/` | Generated CRUD for `Studio` (music domain entity) |
 | 13 | `13-featured-artists/` | Generated CRUD for `FeaturedArtist` (many-to-many relationship entity) |
+| 14 | `14-branches/` | Branch CRUD; branch-scoped entity writes; data isolation and cascade delete |
+| 15 | `15-snapshots/` | Snapshot creation + seeding; immutability guard (CUD rejected); semver lookup; drop |
 
 ### Integration test alignment
 
@@ -54,6 +56,8 @@ Each chapter maps to one `[SkippableFact]` in `BrunoIntegrationTests.cs`:
 | `Bruno_11_recordings_requests_all_pass` | `11-recordings/` |
 | `Bruno_12_studios_requests_all_pass` | `12-studios/` |
 | `Bruno_13_featured_artists_requests_all_pass` | `13-featured-artists/` |
+| `Bruno_14_branches_requests_all_pass` | `14-branches/` |
+| `Bruno_15_snapshots_requests_all_pass` | `15-snapshots/` |
 
 ## Amendment to ADR-0013
 
