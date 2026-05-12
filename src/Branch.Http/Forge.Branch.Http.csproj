@@ -14,14 +14,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Branch entity, management store key, BranchProtectionViolationException -->
+    <!-- Branch entity, management store key, BranchProtectionViolationException, SnapshotGuardedTransactionalStore -->
     <ProjectReference Include="..\Branch\Forge.Branch.csproj" />
-    <!-- ExecutionEndpointHelper, ExecutionError -->
+    <!-- ExecutionEndpointHelper, ExecutionError, HeaderExecutionAspectIriProvider, IExecutionAspectIriProvider -->
     <ProjectReference Include="..\Execution.Http\Forge.Execution.Http.csproj" />
     <!-- OperationCreatedResponse, OperationUpdatedResponse, OperationDeletedResponse, OperationListResponse<T> -->
+    <!-- OperationEndpointsHttpServiceCollectionExtensions.AspectIriHeader -->
     <ProjectReference Include="..\Operations.Http\Forge.Operations.Http.csproj" />
     <!-- IEntityStore, ITransactionalEntityStore, EntityTransaction, EntityRepository<T> -->
     <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
+    <!-- AddForgeAspectsForKeyedStore, ISparqlQueryStore, Aspect.NoOpIri -->
+    <ProjectReference Include="..\Aspects\Forge.Aspects.csproj" />
   </ItemGroup>
 
 </Project>

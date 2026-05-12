@@ -1,0 +1,19 @@
+meta {
+  name: Branch aspect demo - cleanup delete free branch (no aspect) → 200
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{branchFreeIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  branchFreeIri: https://forge-it.net/branches/aspect-demo-free
+}
+
+assert {
+  res.status: eq 200
+}

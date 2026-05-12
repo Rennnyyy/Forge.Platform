@@ -1,0 +1,32 @@
+meta {
+  name: Branch aspect demo - create branch with valid description → 200
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/branches
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:branch-write-v1
+}
+
+body:json {
+  {
+    "name": "aspect-demo",
+    "description": "Active development branch for aspect demo"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("branchAspectIri", res.body.iri);
+}

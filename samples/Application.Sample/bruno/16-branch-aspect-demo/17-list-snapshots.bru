@@ -1,0 +1,16 @@
+meta {
+  name: Snapshot aspect demo - list all snapshots (GET)
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/snapshots
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}

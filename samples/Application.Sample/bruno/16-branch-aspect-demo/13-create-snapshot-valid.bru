@@ -1,0 +1,37 @@
+meta {
+  name: Snapshot aspect demo - create snapshot with valid semVer (major=2) → 201
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/snapshots
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:snapshot-write-v1
+}
+
+body:json {
+  {
+    "name": "aspect-demo-v2.0.0",
+    "description": "Stable release snapshot for aspect demo",
+    "sourceGraphIri": "https://forge-it.net/branches/aspect-demo-source",
+    "entityIris": [],
+    "semVerMajor": 2,
+    "semVerMinor": 0,
+    "semVerPatch": 0
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("snapValidIri", res.body.iri);
+}

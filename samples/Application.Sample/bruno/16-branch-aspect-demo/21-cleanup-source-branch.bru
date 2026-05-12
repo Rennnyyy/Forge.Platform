@@ -1,0 +1,19 @@
+meta {
+  name: Snapshot aspect demo - cleanup delete source branch → 200
+  type: http
+  seq: 21
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{snapSourceIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  snapSourceIri: https://forge-it.net/branches/aspect-demo-source
+}
+
+assert {
+  res.status: eq 200
+}

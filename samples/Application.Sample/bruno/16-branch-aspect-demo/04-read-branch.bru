@@ -1,0 +1,22 @@
+meta {
+  name: Branch aspect demo - read branch by IRI (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/branches?iri={{branchAspectIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  branchAspectIri: https://forge-it.net/branches/aspect-demo
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.name: eq aspect-demo
+  res.body.description: contains Active development
+}

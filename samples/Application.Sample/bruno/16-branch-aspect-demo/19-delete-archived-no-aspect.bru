@@ -1,0 +1,19 @@
+meta {
+  name: Snapshot aspect demo - delete archived snapshot without aspect (cleanup) → 200
+  type: http
+  seq: 19
+}
+
+delete {
+  url: {{baseUrl}}/api/snapshots?iri={{snapArchivedIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  snapArchivedIri: https://forge-it.net/branches/aspect-demo-archived
+}
+
+assert {
+  res.status: eq 200
+}

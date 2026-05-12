@@ -1,0 +1,24 @@
+meta {
+  name: Snapshot aspect demo - delete archived snapshot with aspect → 422
+  type: http
+  seq: 18
+}
+
+delete {
+  url: {{baseUrl}}/api/snapshots?iri={{snapArchivedIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:snapshot-delete-v1
+}
+
+vars:pre-request {
+  snapArchivedIri: https://forge-it.net/branches/aspect-demo-archived
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

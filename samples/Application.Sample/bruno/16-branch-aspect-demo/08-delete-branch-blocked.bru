@@ -1,0 +1,24 @@
+meta {
+  name: Branch aspect demo - delete branch with protected description → 422
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{branchAspectIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:branch-delete-v1
+}
+
+vars:pre-request {
+  branchAspectIri: https://forge-it.net/branches/aspect-demo
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

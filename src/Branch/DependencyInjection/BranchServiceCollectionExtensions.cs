@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-
 namespace Forge.Branch.DependencyInjection;
 
 /// <summary>DI extensions for the Branch slice. See Branch ADR-0001.</summary>
@@ -61,6 +60,23 @@ public static class BranchServiceCollectionExtensions
         // Uses EntityStoreFactory (registered by UseInMemory / UseGraphDb) to create a
         // store instance with NamedGraph = ManagementGraphIri, permanently bypassing
         // BranchScope for all management-graph operations.
+        //
+        // The raw (unguarded) backend is exposed under "forge.branch.management.raw" so
+        // AddForgeAspectsForKeyedStore() (called by AddForgeBranchHttp) can obtain an
+        // ISparqlQueryStore for the Context pass without going through the guard decorators.
+        // See root ADR-0019 (Option β for SPARQL resolution).
+        services.AddKeyedSingleton<ITransactionalEntityStore>(
+            "forge.branch.management.raw",
+            (sp, _) =>
+            {
+                var branchOpts = sp.GetRequiredService<IOptions<BranchOptions>>().Value;
+                var factory = sp.GetRequiredService<EntityStoreFactory>();
+                return factory(new EntityRepositoryOptions
+                {
+                    NamedGraph = branchOpts.ManagementGraphIri,
+                });
+            });
+
         // The raw store is wrapped with BranchGuardedTransactionalStore (blocks default-
         // branch delete and management-graph drop), then with
         // SnapshotGuardedTransactionalStore (blocks writes to frozen snapshot graphs).
@@ -71,11 +87,7 @@ public static class BranchServiceCollectionExtensions
             (sp, _) =>
             {
                 var branchOpts = sp.GetRequiredService<IOptions<BranchOptions>>().Value;
-                var factory = sp.GetRequiredService<EntityStoreFactory>();
-                ITransactionalEntityStore raw = factory(new EntityRepositoryOptions
-                {
-                    NamedGraph = branchOpts.ManagementGraphIri,
-                });
+                var raw = sp.GetRequiredKeyedService<ITransactionalEntityStore>("forge.branch.management.raw");
                 ITransactionalEntityStore branchGuarded = new BranchGuardedTransactionalStore(
                     raw,
                     branchOpts.DefaultBranchIri,
@@ -87,16 +99,23 @@ public static class BranchServiceCollectionExtensions
             "forge.branch.management",
             (sp, _) => sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>("forge.branch.management"));
 
-        // Also expose as keyed IEntityStore (for IEntityRepository<Branch> resolution).
+        // Expose as keyed IEntityStore using the concrete guarded store directly so reads
+        // are always served by the guarded chain, independent of any subsequent wrapping
+        // of the ITransactionalEntityStore slot (e.g. by AddForgeAspectsForKeyedStore).
         services.AddKeyedSingleton<IEntityStore>(
             "forge.branch.management",
-            (sp, _) => sp.GetRequiredKeyedService<ITransactionalEntityStore>("forge.branch.management"));
+            (sp, _) => sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>("forge.branch.management"));
 
         // Expose ISnapshotFrozenSetInvalidator so BranchSeedingService can call
         // InvalidateFrozenSetAsync() without depending on the internal concrete type.
         services.AddKeyedSingleton<ISnapshotFrozenSetInvalidator>(
             "forge.branch.management",
             (sp, _) => sp.GetRequiredKeyedService<SnapshotGuardedTransactionalStore>("forge.branch.management"));
+
+        // Marker consumed by ManagedEntityAspectValidationService (Forge.Aspects) to verify
+        // that AddForgeAspectsForKeyedStore has been called for this store when aspects are
+        // active. See root ADR-0019.
+        services.AddSingleton(new ManagedEntityStoreKeyRegistration("forge.branch.management"));
 
         // ── 5. Application services ───────────────────────────────────────────
         services.AddScoped<BranchSeedingService>();

@@ -9,6 +9,7 @@ using Forge.Repository.Mapping;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Forge.Aspects.DependencyInjection;
@@ -138,6 +139,93 @@ public static class AspectsServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Inserts an <see cref="AspectEnforcingTransactionalStore"/> decorator on a specified keyed
+    /// <see cref="ITransactionalEntityStore"/>, satisfying obligation 2 of root ADR-0019.
+    /// </summary>
+    /// <param name="services">The DI service collection.</param>
+    /// <param name="storeKey">
+    /// The keyed-service key of the managed-entity store to decorate
+    /// (e.g. <c>"forge.branch.management"</c>).
+    /// </param>
+    /// <param name="sparqlStoreResolver">
+    /// Factory that resolves the raw backend <see cref="ISparqlQueryStore"/> (before any
+    /// guard decorators). Used by the Context pass of the aspect engine. Typically resolves
+    /// the raw backend registered under <c>"&lt;storeKey&gt;.raw"</c>.
+    /// </param>
+    /// <remarks>
+    /// The existing <see cref="ITransactionalEntityStore"/> registration for
+    /// <paramref name="storeKey"/> is captured at extension-method call time and used as the
+    /// inner store for the wrapper. Adding a new keyed singleton under the same key is
+    /// intentional: .NET DI returns the last registration for
+    /// <c>GetRequiredKeyedService&lt;T&gt;(key)</c>, so the aspect wrapper transparently
+    /// replaces the previous head of the chain for all callers.
+    /// </remarks>
+    public static IServiceCollection AddForgeAspectsForKeyedStore(
+        this IServiceCollection services,
+        string storeKey,
+        Func<IServiceProvider, ISparqlQueryStore> sparqlStoreResolver)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeKey);
+        ArgumentNullException.ThrowIfNull(sparqlStoreResolver);
+
+        // Capture the CURRENT last ITransactionalEntityStore descriptor for storeKey at
+        // registration time (closure capture). This descriptor is the pre-decoration chain —
+        // calling its factory at resolution time gives us the guarded-chain singleton without
+        // any circularity, because the new registration below is added AFTER this capture.
+        var existingDesc = services.LastOrDefault(
+            d => d.ServiceType == typeof(ITransactionalEntityStore)
+              && Equals(d.ServiceKey, storeKey))
+            ?? throw new InvalidOperationException(
+                $"AddForgeAspectsForKeyedStore() found no ITransactionalEntityStore registered " +
+                $"for key '{storeKey}'. Call the entity-layer DI helper (e.g. AddForgeBranch()) " +
+                $"before calling AddForgeAspectsForKeyedStore(). See root ADR-0019.");
+
+        // Add a new ITransactionalEntityStore registration under storeKey. Because DI returns
+        // the last registration for GetRequiredKeyedService, this becomes the new default
+        // while the captured descriptor still resolves the original guarded chain.
+        services.AddKeyedSingleton<ITransactionalEntityStore>(storeKey, (sp, _) =>
+        {
+            var pending = sp.GetRequiredService<PendingAspectRegistrations>();
+            pending.Execute(sp);
+
+            // Resolve the inner (guarded chain) singleton via the captured descriptor.
+            var inner = ResolveFromKeyedDescriptor(existingDesc, sp, storeKey);
+            var queryStore = sparqlStoreResolver(sp);
+            var engine = sp.GetRequiredService<IOperationAspectEngine>();
+
+            // Use the inner store for reads — no query-aspect filtering on management stores
+            // (the management store is a privileged internal surface, not a user-facing query API).
+            return new AspectEnforcingTransactionalStore(inner, queryStore, engine, inner);
+        });
+
+        // Enforcement marker — checked at startup by ManagedEntityAspectValidationService.
+        services.AddSingleton(new AspectEnforcedKeyedStoreRegistration(storeKey));
+
+        // Validation service — registered once (TryAdd) whenever AddForgeAspectsForKeyedStore
+        // is called. Requires IAspectStore to be resolvable (i.e. AddForgeAspects() was called).
+        services.TryAddSingleton<PendingAspectRegistrations>();
+        services.TryAddSingleton<ManagedEntityAspectValidationService>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHostedService, ManagedEntityAspectValidationService>(
+                sp => sp.GetRequiredService<ManagedEntityAspectValidationService>()));
+
+        return services;
+    }
+
+    private static ITransactionalEntityStore ResolveFromKeyedDescriptor(
+        ServiceDescriptor d, IServiceProvider sp, object key) => d switch
+    {
+        { ImplementationInstance: ITransactionalEntityStore inst } => inst,
+        { KeyedImplementationFactory: { } f } => (ITransactionalEntityStore)f(sp, key),
+        { KeyedImplementationInstance: { } i } => (ITransactionalEntityStore)i,
+        { KeyedImplementationType: { } t } =>
+            (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(sp, t),
+        _ => throw new InvalidOperationException(
+            $"Unexpected ITransactionalEntityStore service descriptor shape for key '{key}'.")
+    };
 
     private static IEntityStore ResolveFromDescriptor(ServiceDescriptor d, IServiceProvider sp) => d switch
     {

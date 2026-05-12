@@ -1,0 +1,23 @@
+meta {
+  name: Snapshot aspect demo - delete valid snapshot with aspect → 200
+  type: http
+  seq: 20
+}
+
+delete {
+  url: {{baseUrl}}/api/snapshots?iri={{snapValidIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:snapshot-delete-v1
+}
+
+vars:pre-request {
+  snapValidIri: https://forge-it.net/branches/aspect-demo-v2.0.0
+}
+
+assert {
+  res.status: eq 200
+}

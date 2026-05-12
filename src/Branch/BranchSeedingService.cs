@@ -45,6 +45,11 @@ public sealed class BranchSeedingService
     /// <param name="branch">The branch entity to create. Must have a valid <see cref="Branch.Name"/>.</param>
     /// <param name="sourceGraphIri">The named graph to copy entity triples from.</param>
     /// <param name="entityIris">The explicit list of entity IRIs to include in the new graph.</param>
+    /// <param name="aspectIri">
+    /// IRI of the <c>IOperationAspect</c> to apply to the management write transaction.
+    /// Pass <c>"https://forge-it.net/aspects/noop"</c> (or <see cref="Forge.Aspects.Abstractions.Aspect.NoOpIri"/>)
+    /// for no validation. See root ADR-0019.
+    /// </param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The created branch entity (same instance as <paramref name="branch"/>).</returns>
     /// <exception cref="SeedOperationMissingEntityException">
@@ -55,6 +60,7 @@ public sealed class BranchSeedingService
         Branch branch,
         string sourceGraphIri,
         IReadOnlyList<string> entityIris,
+        string aspectIri = "https://forge-it.net/aspects/noop",
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(branch);
@@ -70,7 +76,7 @@ public sealed class BranchSeedingService
 
         // 2. Create the management entity.
         await using var mgmtTx = new EntityTransaction(_managementStore);
-        mgmtTx.Create(branch);
+        mgmtTx.Create(branch, aspectIri);
         await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return branch;
@@ -85,6 +91,11 @@ public sealed class BranchSeedingService
     /// <param name="snapshot">The snapshot entity to create.</param>
     /// <param name="sourceGraphIri">The named graph to copy entity triples from.</param>
     /// <param name="entityIris">The explicit list of entity IRIs to include in the snapshot graph.</param>
+    /// <param name="aspectIri">
+    /// IRI of the <c>IOperationAspect</c> to apply to the management write transaction.
+    /// Pass <c>"https://forge-it.net/aspects/noop"</c> (or <see cref="Forge.Aspects.Abstractions.Aspect.NoOpIri"/>)
+    /// for no validation. See root ADR-0019.
+    /// </param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The created snapshot entity (same instance as <paramref name="snapshot"/>).</returns>
     /// <exception cref="SnapshotVersionConflictException">
@@ -98,6 +109,7 @@ public sealed class BranchSeedingService
         Snapshot snapshot,
         string sourceGraphIri,
         IReadOnlyList<string> entityIris,
+        string aspectIri = "https://forge-it.net/aspects/noop",
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -117,7 +129,7 @@ public sealed class BranchSeedingService
 
         // 3. Create the management entity.
         await using var mgmtTx = new EntityTransaction(_managementStore);
-        mgmtTx.Create(snapshot);
+        mgmtTx.Create(snapshot, aspectIri);
         await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         // 4. Refresh frozen set so the immutability guard is immediately aware.
@@ -133,16 +145,22 @@ public sealed class BranchSeedingService
     /// and refreshes the frozen-set guard so the deleted IRI is no longer considered frozen.
     /// </summary>
     /// <param name="snapshot">The snapshot entity to delete.</param>
+    /// <param name="aspectIri">
+    /// IRI of the <c>IOperationAspect</c> to apply to the management delete transaction.
+    /// Pass <c>"https://forge-it.net/aspects/noop"</c> (or <see cref="Forge.Aspects.Abstractions.Aspect.NoOpIri"/>)
+    /// for no validation. See root ADR-0019.
+    /// </param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async Task DeleteSnapshotAsync(
         Snapshot snapshot,
+        string aspectIri = "https://forge-it.net/aspects/noop",
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
         // 1. Delete the snapshot entity from the management graph.
         await using var mgmtTx = new EntityTransaction(_managementStore);
-        mgmtTx.Delete(snapshot.Iri);
+        mgmtTx.Delete<Snapshot>(snapshot.Iri, aspectIri);
         await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         // 2. Drop the snapshot's data graph (same two-store pattern as branch delete).

@@ -8,6 +8,7 @@ using Forge.Branch;
 using Forge.Branch.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Forge.Branch.Http;
+using Forge.Branch.Http.DependencyInjection;
 using Forge.Execution;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
@@ -63,7 +64,10 @@ builder.Services.AddSingleton<ItemStore>();
 // Registers the management-graph store (keyed "forge.branch.management"), populates
 // BranchDefault.BranchIri from Forge:Branch:DefaultBranchIri, and starts the hosted
 // service that upserts the default branch entity on first boot.
-builder.Services.AddForgeBranch(builder.Configuration);
+// AddForgeBranchHttp() also wires AspectEnforcingTransactionalStore onto the
+// management store so that X-Forge-Operation-AspectIri is enforced on branch/snapshot
+// CRUD. See root ADR-0019 and Branch.Http ADR-0001.
+builder.Services.AddForgeBranchHttp(builder.Configuration);
 
 // Registers HeaderBranchIriProvider (reads X-Forge-BranchIri request header) and
 // binds BranchOptions. UseBranchScope() below activates the middleware.
@@ -269,6 +273,89 @@ var bookUpdateStrictAspect = new InlineTtlOperationAspect(
         """);
 
 aspectStore.RegisterOperation(bookUpdateStrictAspect);
+
+// ── 11. Branch and Snapshot operation aspects ─────────────────────────────────
+// Demonstrates IOperationAspect validation on the Branch and Snapshot management
+// endpoints wired by AddForgeBranchHttp() + root ADR-0019.
+// See Bruno chapter 16 (16-branch-aspect-demo/).
+//
+// Active when the caller supplies the header:
+//   X-Forge-Operation-AspectIri: <iri>
+//
+// Branch aspects:
+//   branch-write-v1   : Local SHACL — description must be present and >= 5 characters.
+//                       Use with POST /api/branches and PUT /api/branches?iri=.
+//   branch-delete-v1  : Context SPARQL — rejects delete when description contains
+//                       the word "protected".
+//                       Use with DELETE /api/branches?iri=.
+//
+// Snapshot aspects:
+//   snapshot-write-v1  : Local SHACL — semVerMajor must be >= 1 (no 0.x snapshots).
+//                        Use with POST /api/snapshots.
+//   snapshot-delete-v1 : Context SPARQL — rejects delete when description contains
+//                        the word "archived".
+//                        Use with DELETE /api/snapshots?iri=.
+var branchWriteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:branch-write-v1",
+    localShapeTtl: """
+        @prefix sh:     <http://www.w3.org/ns/shacl#> .
+        @prefix branch: <https://forge-it.net/predicates/branch/> .
+
+        <urn:forge:aspects:shape:branch-write-shape>
+            a sh:NodeShape ;
+            sh:targetClass <https://forge-it.net/types/branches> ;
+            sh:property [
+                sh:path branch:description ;
+                sh:minCount 1 ;
+                sh:minLength 5 ;
+                sh:message "Branch must have a description of at least 5 characters." ;
+            ] .
+        """,
+    contextWhere: null);
+
+var branchDeleteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:branch-delete-v1",
+    localShapeTtl: null,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/branch/description> ?desc .
+        FILTER(CONTAINS(LCASE(str(?desc)), "protected"))
+        BIND(?entityIri AS ?focusNode)
+        BIND("Cannot delete a branch whose description contains 'protected'." AS ?message)
+        """);
+
+var snapshotWriteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:snapshot-write-v1",
+    localShapeTtl: """
+        @prefix sh:       <http://www.w3.org/ns/shacl#> .
+        @prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+        @prefix snapshot: <https://forge-it.net/predicates/snapshot/> .
+
+        <urn:forge:aspects:shape:snapshot-write-shape>
+            a sh:NodeShape ;
+            sh:targetClass <https://forge-it.net/types/branches/Snapshot> ;
+            sh:property [
+                sh:path snapshot:semVerMajor ;
+                sh:minCount 1 ;
+                sh:minInclusive "1"^^xsd:integer ;
+                sh:message "Snapshot semVerMajor must be at least 1 (no 0.x snapshots allowed)." ;
+            ] .
+        """,
+    contextWhere: null);
+
+var snapshotDeleteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:snapshot-delete-v1",
+    localShapeTtl: null,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/branch/description> ?desc .
+        FILTER(CONTAINS(LCASE(str(?desc)), "archived"))
+        BIND(?entityIri AS ?focusNode)
+        BIND("Cannot delete a snapshot marked as 'archived' in its description." AS ?message)
+        """);
+
+aspectStore.RegisterOperation(branchWriteAspect);
+aspectStore.RegisterOperation(branchDeleteAspect);
+aspectStore.RegisterOperation(snapshotWriteAspect);
+aspectStore.RegisterOperation(snapshotDeleteAspect);
 
 app.Run();
 

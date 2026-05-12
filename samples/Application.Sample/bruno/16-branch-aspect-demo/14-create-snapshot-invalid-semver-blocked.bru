@@ -1,0 +1,33 @@
+meta {
+  name: Snapshot aspect demo - create snapshot with semVer major=0 → 422
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/snapshots
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:snapshot-write-v1
+}
+
+body:json {
+  {
+    "name": "aspect-demo-v0.9.0",
+    "description": "Pre-release snapshot — semVer major is 0",
+    "sourceGraphIri": "https://forge-it.net/branches/aspect-demo-source",
+    "entityIris": [],
+    "semVerMajor": 0,
+    "semVerMinor": 9,
+    "semVerPatch": 0
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Branch aspect demo - delete branch after removing protection → 200
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{branchAspectIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:branch-delete-v1
+}
+
+vars:pre-request {
+  branchAspectIri: https://forge-it.net/branches/aspect-demo
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,8 +1,10 @@
 using BranchEntity = Forge.Branch.Branch;
+using Forge.Aspects.Abstractions;
 using Forge.Branch;
 using Forge.Execution;
 using Forge.Execution.Http;
 using Forge.Operations.Http;
+using Forge.Operations.Http.DependencyInjection;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 using Microsoft.AspNetCore.Builder;
@@ -77,14 +79,22 @@ public static class BranchEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        // Created once at registration time — not per-request — mirroring MapOperations(). See ADR-0002.
+        IExecutionAspectIriProvider aspectIriProvider =
+            new HeaderExecutionAspectIriProvider(
+                OperationEndpointsHttpServiceCollectionExtensions.AspectIriHeader);
+
         // ── POST api/branches — Create ────────────────────────────────────────
         app.MapPost(BasePath, async (
+            HttpContext ctx,
             CreateBranchRequest body,
             [FromKeyedServices(ManagementStoreKey)] ITransactionalEntityStore managementStore,
             CancellationToken ct) =>
         {
             return await ExecutionEndpointHelper.InvokeAsync(async () =>
             {
+                var aspectIri = await aspectIriProvider.GetAspectIriAsync(ctx, ct) ?? Aspect.NoOpIri;
+
                 var branch = new BranchEntity
                 {
                     Name = body.Name,
@@ -93,7 +103,7 @@ public static class BranchEndpointRouteBuilderExtensions
                 };
 
                 await using var tx = new EntityTransaction(managementStore);
-                tx.Create(branch);
+                tx.Create(branch, aspectIri);
                 await tx.CommitAsync(ct);
 
                 return Results.Ok(new OperationCreatedResponse(branch.Iri));
@@ -134,6 +144,7 @@ public static class BranchEndpointRouteBuilderExtensions
 
         // ── PUT api/branches?iri=… — Update ──────────────────────────────────
         app.MapPut(BasePath, async (
+            HttpContext ctx,
             string iri,
             UpdateBranchRequest body,
             [FromKeyedServices(ManagementStoreKey)] ITransactionalEntityStore managementStore,
@@ -141,6 +152,8 @@ public static class BranchEndpointRouteBuilderExtensions
         {
             return await ExecutionEndpointHelper.InvokeAsync(async () =>
             {
+                var aspectIri = await aspectIriProvider.GetAspectIriAsync(ctx, ct) ?? Aspect.NoOpIri;
+
                 if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
                     return Results.BadRequest(new ExecutionError("INVALID_IRI",
                         $"The value '{iri}' is not a valid absolute IRI."));
@@ -154,7 +167,7 @@ public static class BranchEndpointRouteBuilderExtensions
                 branch.Description = body.Description;
 
                 await using var tx = new EntityTransaction(managementStore);
-                tx.Update(branch);
+                tx.Update(branch, aspectIri);
                 await tx.CommitAsync(ct);
 
                 return Results.Ok(new OperationUpdatedResponse(branch.Iri));
@@ -166,40 +179,48 @@ public static class BranchEndpointRouteBuilderExtensions
         // branch-owned data graph so all branch data is cleaned up.
         // Blocked by BranchGuardedTransactionalStore when the target is the default branch
         // or the management graph itself; returns 422 in that case.
-        app.MapDelete(BasePath, async (
+        // ExecutionEndpointHelper translates AspectViolationException → 422 ENTITY_SHACL_VIOLATION
+        // (aspect enforcement on the management store — see root ADR-0019).
+        app.MapDelete(BasePath, (
+            HttpContext ctx,
             string iri,
             [FromKeyedServices(ManagementStoreKey)] ITransactionalEntityStore managementStore,
             ITransactionalEntityStore dataStore,
             CancellationToken ct) =>
         {
-            if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
-                return Results.BadRequest(new ExecutionError("INVALID_IRI",
-                    $"The value '{iri}' is not a valid absolute IRI."));
-
-            var repo = new EntityRepository<BranchEntity>(managementStore);
-            var branch = await repo.FindAsync(iri, ct);
-            if (branch is null)
-                return Results.NotFound(new ExecutionError("NOT_FOUND",
-                    $"No branch with IRI '{iri}' was found."));
-
-            try
+            return ExecutionEndpointHelper.InvokeAsync(async () =>
             {
-                await using var tx = new EntityTransaction(managementStore);
-                tx.Delete(branch.Iri);
-                await tx.CommitAsync(ct);
+                if (!Uri.TryCreate(iri, UriKind.Absolute, out _))
+                    return Results.BadRequest(new ExecutionError("INVALID_IRI",
+                        $"The value '{iri}' is not a valid absolute IRI."));
 
-                using var _ = BranchScope.Use(branch.Iri);
-                await using var dataTx = new EntityTransaction(dataStore);
-                dataTx.DropGraph(branch.Iri);
-                await dataTx.CommitAsync(ct);
-            }
-            catch (BranchProtectionViolationException ex)
-            {
-                return Results.UnprocessableEntity(
-                    new ExecutionError("BRANCH_PROTECTED", ex.Message));
-            }
+                var repo = new EntityRepository<BranchEntity>(managementStore);
+                var branch = await repo.FindAsync(iri, ct);
+                if (branch is null)
+                    return Results.NotFound(new ExecutionError("NOT_FOUND",
+                        $"No branch with IRI '{iri}' was found."));
 
-            return Results.Ok(new OperationDeletedResponse());
+                var aspectIri = await aspectIriProvider.GetAspectIriAsync(ctx, ct) ?? Aspect.NoOpIri;
+
+                try
+                {
+                    await using var tx = new EntityTransaction(managementStore);
+                    tx.Delete<BranchEntity>(branch.Iri, aspectIri);
+                    await tx.CommitAsync(ct);
+
+                    using var _ = BranchScope.Use(branch.Iri);
+                    await using var dataTx = new EntityTransaction(dataStore);
+                    dataTx.DropGraph(branch.Iri);
+                    await dataTx.CommitAsync(ct);
+                }
+                catch (BranchProtectionViolationException ex)
+                {
+                    return Results.UnprocessableEntity(
+                        new ExecutionError("BRANCH_PROTECTED", ex.Message));
+                }
+
+                return Results.Ok(new OperationDeletedResponse());
+            });
         });
 
         return app;
@@ -223,8 +244,14 @@ public static class BranchEndpointRouteBuilderExtensions
 
         const string SnapshotPath = "api/snapshots";
 
+        // Created once at registration time — not per-request — mirroring MapOperations(). See ADR-0002.
+        IExecutionAspectIriProvider aspectIriProvider =
+            new HeaderExecutionAspectIriProvider(
+                OperationEndpointsHttpServiceCollectionExtensions.AspectIriHeader);
+
         // ── POST api/snapshots — Create and seed ──────────────────────────────────
         app.MapPost(SnapshotPath, async (
+            HttpContext ctx,
             CreateSnapshotRequest body,
             BranchSeedingService seedingService,
             CancellationToken ct) =>
@@ -243,6 +270,8 @@ public static class BranchEndpointRouteBuilderExtensions
                     return Results.BadRequest(new ExecutionError("INVALID_SOURCE_GRAPH_IRI",
                         "SourceGraphIri must not be null or whitespace."));
 
+                var aspectIri = await aspectIriProvider.GetAspectIriAsync(ctx, ct) ?? Aspect.NoOpIri;
+
                 var snapshot = new SnapshotEntity
                 {
                     Name = body.Name,
@@ -258,7 +287,7 @@ public static class BranchEndpointRouteBuilderExtensions
                 try
                 {
                     await seedingService.CreateSnapshotAsync(
-                        snapshot, body.SourceGraphIri, body.EntityIris, ct);
+                        snapshot, body.SourceGraphIri, body.EntityIris, aspectIri, ct);
                 }
                 catch (SnapshotVersionConflictException ex)
                 {
@@ -312,6 +341,7 @@ public static class BranchEndpointRouteBuilderExtensions
         // Delegates to BranchSeedingService.DeleteSnapshotAsync which issues the paired
         // Delete+DropGraph and refreshes the frozen-set guard atomically.
         app.MapDelete(SnapshotPath, async (
+            HttpContext ctx,
             string iri,
             BranchSeedingService seedingService,
             [FromKeyedServices(ManagementStoreKey)] IEntityStore managementStore,
@@ -327,9 +357,13 @@ public static class BranchEndpointRouteBuilderExtensions
                 return Results.NotFound(new ExecutionError("NOT_FOUND",
                     $"No snapshot with IRI '{iri}' was found."));
 
-            await seedingService.DeleteSnapshotAsync(snapshot, ct);
+            var aspectIri = await aspectIriProvider.GetAspectIriAsync(ctx, ct) ?? Aspect.NoOpIri;
 
-            return Results.Ok(new OperationDeletedResponse());
+            return await ExecutionEndpointHelper.InvokeAsync(async () =>
+            {
+                await seedingService.DeleteSnapshotAsync(snapshot, aspectIri, ct);
+                return Results.Ok(new OperationDeletedResponse());
+            });
         });
 
         return app;

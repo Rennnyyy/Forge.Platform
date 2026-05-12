@@ -1,0 +1,24 @@
+meta {
+  name: Snapshot aspect demo - read snapshot by IRI (GET)
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/snapshots?iri={{snapValidIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  snapValidIri: https://forge-it.net/branches/aspect-demo-v2.0.0
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.name: eq aspect-demo-v2.0.0
+  res.body.semVerMajor: eq 2
+  res.body.semVerMinor: eq 0
+  res.body.semVerPatch: eq 0
+}

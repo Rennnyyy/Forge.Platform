@@ -1,0 +1,31 @@
+meta {
+  name: Snapshot aspect demo - create source branch (POST)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/branches
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "aspect-demo-source",
+    "description": "Source branch to be captured as aspect-demo snapshots"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("snapSourceIri", res.body.iri);
+}
