@@ -17,6 +17,6 @@ assert {
   res.body[2].entityIri: eq {{messagingBookIri}}
   res.body[2].typeName: eq Book
   res.body[2].operation: eq Deleted
-  res.body[2].topic: eq forge.entities.book.state
+  res.body[2].topic: eq forge.entities.book.history
   res.body[2].timestampUtc: isDefined
 }

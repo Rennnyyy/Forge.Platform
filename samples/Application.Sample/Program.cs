@@ -13,6 +13,8 @@ using Forge.Execution;
 using Forge.Capability.DependencyInjection;
 using Forge.Capability.Http;
 using Forge.Capability.Http.DependencyInjection;
+using Forge.Capability.Messaging;
+using Forge.Capability.Messaging.DependencyInjection;
 using Forge.Execution.Http.DependencyInjection;
 using Forge.Operations;
 using Forge.Operations.Http;
@@ -105,6 +107,13 @@ builder.Services.AddCapabilityHandlersFromAssemblyContaining<Book>();
 // Scans the handler registrations above and builds the endpoint metadata used
 // by MapCapabilities(). Must be called AFTER AddCapabilityHandlers…().
 builder.Services.AddCapabilityHttp();
+
+// ── 5b. Messaging transport (capability) ─────────────────────────────────────
+// Scans the same handler registrations and, for each handler carrying [Capability],
+// derives topic names (forge.capabilities.{identity}.commands / .replies) and wires
+// IAsyncCapabilityDispatcher, the command-pump, and the reply-pump automatically.
+// Mirrors the AddCapabilityHttp() auto-discovery pattern. See root ADR-0022.
+builder.Services.AddForgeCapabilityMessaging();
 
 // ── 6. HTTP transport (entity operations) ────────────────────────────────────
 // Scans the assembly for [Entity]+[OperationEndpoints] types (Book, DataRecord,
@@ -209,6 +218,43 @@ app.MapGet("/api/diagnostics/entity-events/latest", (EntityStateCache cache, str
         ? Results.Ok(entry)
         : Results.NotFound(new { code = "EVENT_NOT_FOUND", message = $"No events captured for IRI '{iri}'." });
 });
+
+// ── 8b4. Async capability dispatch endpoints ────────────────────────────────────
+// These endpoints sit ALONGSIDE the normal Capability.Http route for AsyncProcessHandler
+// (POST /api/capabilities/demo/async-process) and demonstrate the broker-mediated path.
+//
+// Fire-and-forget:
+//   POST /api/async-capability/fire           — publishes command, returns 202 immediately
+//
+// Request-reply (PublishAndWaitAsync):
+//   POST /api/async-capability/dispatch       — publishes command, awaits reply via
+//                                              PendingReplyRegistry + CapabilityReplyListener,
+//                                              returns the full ExecutionResult<AsyncProcessResponse>
+//
+// Both share the same AsyncProcessHandler; only the transport path differs.
+// See sample ADR-0011.
+app.MapPost("/api/async-capability/fire",
+    async (AsyncProcessCommand command,
+           IAsyncCapabilityDispatcher<AsyncProcessCommand, AsyncProcessResponse> dispatcher,
+           CancellationToken ct) =>
+    {
+        await dispatcher.PublishAsync(command, cancellationToken: ct);
+        return Results.Accepted();
+    });
+
+app.MapPost("/api/async-capability/dispatch",
+    async (AsyncProcessCommand command,
+           IAsyncCapabilityDispatcher<AsyncProcessCommand, AsyncProcessResponse> dispatcher,
+           CancellationToken ct) =>
+    {
+        var result = await dispatcher.PublishAndWaitAsync(command, cancellationToken: ct);
+        return result switch
+        {
+            ExecutionResult<AsyncProcessResponse>.Ok ok     => Results.Ok(ok.Response),
+            ExecutionResult<AsyncProcessResponse>.Fail fail => Results.UnprocessableEntity(fail.Error),
+            _                                               => Results.StatusCode(500),
+        };
+    });
 
 // ── 8. Capability aspect registration ────────────────────────────────────────
 // Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore

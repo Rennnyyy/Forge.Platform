@@ -468,6 +468,32 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 18 — Async capability messaging demo: verifies both the fire-and-forget path
+    /// (<c>POST /api/async-capability/fire</c> → 202 Accepted) and the request-reply path
+    /// (<c>POST /api/async-capability/dispatch</c> → 200 with <see cref="Forge.Capability.Messaging.CapabilityReplyEnvelope{T}"/>)
+    /// using <see cref="Forge.Capability.Messaging.IAsyncCapabilityDispatcher{TCommand,TResponse}"/>
+    /// over the in-memory broker.
+    /// See root ADR-0022 and sample ADR-0011.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_18_async_capability_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "18-async-capability-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

@@ -1,0 +1,32 @@
+meta {
+  name: Async Capability - request-reply dispatch (await response)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/async-capability/dispatch
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "input": "hello from request-reply"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result: contains hello from request-reply
+  res.body.correlationId: isDefined
+  res.body.processedAt: isDefined
+}
+
+script:post-response {
+  bru.setVar("asyncCorrelationId", res.body.correlationId);
+}

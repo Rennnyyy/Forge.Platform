@@ -47,6 +47,8 @@
     <ProjectReference Include="..\..\src\Messaging.InMemory\Forge.Messaging.InMemory.csproj" />
     <!-- Entity change event stream (EventEmittingTransactionalStore + emitters) -->
     <ProjectReference Include="..\..\src\Entity.Messaging\Forge.Entity.Messaging.csproj" />
+    <!-- Async capability command bus (IAsyncCapabilityDispatcher, CapabilityReplyListener) -->
+    <ProjectReference Include="..\..\src\Capability.Messaging\Forge.Capability.Messaging.csproj" />
   </ItemGroup>
 
 </Project>
