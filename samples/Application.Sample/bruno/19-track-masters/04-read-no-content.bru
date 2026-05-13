@@ -1,0 +1,20 @@
+meta {
+  name: TrackMasters - read before upload (objectKey is null)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.title: eq Aria Nova — Velvet Storm (Master Take 3)
+  res.body.format: eq WAV 24-bit 96kHz
+  res.body.objectKey: isNull
+  res.body.contentType: isNull
+}

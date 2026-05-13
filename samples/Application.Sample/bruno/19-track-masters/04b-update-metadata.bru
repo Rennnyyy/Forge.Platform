@@ -1,0 +1,35 @@
+meta {
+  name: TrackMasters - update metadata (PUT + aspect)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{trackMasterIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+}
+
+body:json {
+  {
+    "title": "Aria Nova — Velvet Storm (Master Take 3)",
+    "format": "WAV 24-bit 96kHz",
+    "engineerNotes": "Updated: approved final mix, no further edits required."
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+docs {
+  Verifies the PUT api/entities/track-masters?iri=... route owned by MapObjectOperations().
+  The aspect track-master-write-v1 enforces title minLength 1 on every write, including updates.
+  ObjectKey and ContentType remain null at this point — no blob has been uploaded yet.
+}

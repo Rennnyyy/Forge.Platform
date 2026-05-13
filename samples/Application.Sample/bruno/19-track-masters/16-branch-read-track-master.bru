@@ -1,0 +1,21 @@
+meta {
+  name: TrackMasters - read track master from branch (GET + X-Forge-BranchIri)
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{branchTrackMasterIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{remixBranchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+  res.body.title: eq "Aria Nova — Velvet Storm (Remix Candidate)"
+}

@@ -62,8 +62,25 @@ internal static class EntityEmitter
                 EmitEnumerationStaticInit(sb, m);
         }
 
+        if (m.IsObjectBearing)
+            EmitObjectBearingMembers(sb, m);
+
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    // ------------------------------------------------------- ObjectBearing
+
+    private static void EmitObjectBearingMembers(StringBuilder sb, EntityModel m)
+    {
+        sb.AppendLine("    [Predicate(\"objectKey\")]");
+        sb.AppendLine("    public string? ObjectKey { get; set; }");
+        sb.AppendLine();
+        sb.AppendLine("    [Predicate(\"contentType\")]");
+        sb.AppendLine("    public string? ContentType { get; set; }");
+        sb.AppendLine();
+        sb.Append("    public const string ForgeObjectStoreKey = \"").Append(m.ObjectStoreKey).AppendLine("\";");
+        sb.AppendLine();
     }
 
     // ---------------------------------------------------------------- Identity

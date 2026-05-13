@@ -559,4 +559,73 @@ public class EntityGeneratorTests
         var errors = result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
         errors.ShouldBeEmpty(string.Join("\n", errors.Select(e => e.ToString())));
     }
+
+    // ── [ObjectBearing] ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void ObjectBearing_emits_ObjectKey_ContentType_and_constant()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "docs")]
+            [Identity(IdentityGenerator.Random)]
+            [ObjectBearing("my-store")]
+            public partial class Document { }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldBeEmpty();
+        var (_, code) = result.EmittedFiles.Single(f => f.FileName.Contains("Document"));
+
+        code.ShouldContain("[Predicate(\"objectKey\")]");
+        code.ShouldContain("public string? ObjectKey { get; set; }");
+        code.ShouldContain("[Predicate(\"contentType\")]");
+        code.ShouldContain("public string? ContentType { get; set; }");
+        code.ShouldContain("public const string ForgeObjectStoreKey = \"my-store\";");
+    }
+
+    [Fact]
+    public void ObjectBearing_reports_FORGE0008_for_manual_ObjectKey()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "docs")]
+            [Identity(IdentityGenerator.Random)]
+            [ObjectBearing("my-store")]
+            public partial class Document
+            {
+                public string? ObjectKey { get; set; }
+            }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldContain(d => d.Id == "FORGE0008" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ObjectBearing_reports_FORGE0008_for_manual_ContentType()
+    {
+        var src = """
+            using Forge.Entity;
+            namespace Demo;
+
+            [Entity(Path = "docs")]
+            [Identity(IdentityGenerator.Random)]
+            [ObjectBearing("my-store")]
+            public partial class Document
+            {
+                public string? ContentType { get; set; }
+            }
+            """;
+
+        var result = GeneratorRunner.Run(src);
+
+        result.Diagnostics.ShouldContain(d => d.Id == "FORGE0008" && d.Severity == DiagnosticSeverity.Error);
+    }
 }

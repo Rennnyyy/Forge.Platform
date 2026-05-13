@@ -72,6 +72,15 @@
   <Folder Name="/src/Capability.Messaging/">
     <Project Path="src/Capability.Messaging/Forge.Capability.Messaging.csproj" />
   </Folder>
+  <Folder Name="/src/ObjectStorage.Abstractions/">
+    <Project Path="src/ObjectStorage.Abstractions/Forge.ObjectStorage.Abstractions.csproj" />
+  </Folder>
+  <Folder Name="/src/ObjectStorage.InMemory/">
+    <Project Path="src/ObjectStorage.InMemory/Forge.ObjectStorage.InMemory.csproj" />
+  </Folder>
+  <Folder Name="/src/ObjectStorage.Http/">
+    <Project Path="src/ObjectStorage.Http/Forge.ObjectStorage.Http.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Application.Sample/Forge.Application.Sample.csproj" />
   </Folder>
@@ -101,5 +110,8 @@
     <Project Path="tests/Messaging.Kafka.Tests/Forge.Messaging.Kafka.Tests.csproj" />
     <Project Path="tests/Entity.Messaging.Tests/Forge.Entity.Messaging.Tests.csproj" />
     <Project Path="tests/Capability.Messaging.Tests/Forge.Capability.Messaging.Tests.csproj" />
+    <Project Path="tests/ObjectStorage.Abstractions.Tests/Forge.ObjectStorage.Abstractions.Tests.csproj" />
+    <Project Path="tests/ObjectStorage.InMemory.Tests/Forge.ObjectStorage.InMemory.Tests.csproj" />
+    <Project Path="tests/ObjectStorage.Http.Tests/Forge.ObjectStorage.Http.Tests.csproj" />
   </Folder>
 </Solution>

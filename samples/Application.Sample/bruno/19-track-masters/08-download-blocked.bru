@@ -1,0 +1,38 @@
+meta {
+  name: TrackMasters - download blocked by gate aspect (→ 422)
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/objects/track-masters/content?iri={{restrictedTrackIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-download-gate-v1
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_ASPECT_VIOLATION
+  res.body.message: contains restricted
+}
+
+docs {
+  The track-master-download-gate-v1 aspect uses a contextWhere SPARQL clause to block
+  download when the entity's title contains the word "restricted" (case-insensitive):
+
+      ?entityIri <…/trackMaster/title> ?t .
+      FILTER(CONTAINS(LCASE(STR(?t)), "restricted"))
+      BIND(?entityIri AS ?focusNode)
+      BIND("Track master is flagged as restricted and cannot be downloaded." AS ?message)
+
+  The gate fires BEFORE the objectKey check — so the 422 is returned even when no binary
+  content has been uploaded yet. Only the contextWhere clause is evaluated on reads;
+  local SHACL is skipped because there is no entity payload to validate.
+
+  Passing X-Forge-Operation-AspectIri on GET /content is entirely opt-in.
+  Omitting the header lets all downloads through (implicit entity-load gate only).
+}

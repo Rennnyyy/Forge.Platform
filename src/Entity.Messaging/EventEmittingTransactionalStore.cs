@@ -128,28 +128,28 @@ internal sealed class EventEmittingTransactionalStore : ITransactionalEntityStor
         switch (op)
         {
             case EntityWriteOperation write:
-            {
-                var emitter = _registry.TryGet(write.Entity.GetType());
-                if (emitter is null) return;
+                {
+                    var emitter = _registry.TryGet(write.Entity.GetType());
+                    if (emitter is null) return;
 
-                var changeOp = write.Mode == WriteMode.Create
-                    ? EntityChangeOperation.Created
-                    : EntityChangeOperation.Updated;
+                    var changeOp = write.Mode == WriteMode.Create
+                        ? EntityChangeOperation.Created
+                        : EntityChangeOperation.Updated;
 
-                await emitter.EmitAsync(write.Entity, changeOp, namedGraph, correlation, cancellationToken)
-                             .ConfigureAwait(false);
-                break;
-            }
+                    await emitter.EmitAsync(write.Entity, changeOp, namedGraph, correlation, cancellationToken)
+                                 .ConfigureAwait(false);
+                    break;
+                }
 
             case DeleteOperation { EntityType: { } entityType } del:
-            {
-                var emitter = _registry.TryGet(entityType);
-                if (emitter is null) return;
+                {
+                    var emitter = _registry.TryGet(entityType);
+                    if (emitter is null) return;
 
-                await emitter.EmitDeleteAsync(del.Iri, namedGraph, correlation, cancellationToken)
-                             .ConfigureAwait(false);
-                break;
-            }
+                    await emitter.EmitDeleteAsync(del.Iri, namedGraph, correlation, cancellationToken)
+                                 .ConfigureAwait(false);
+                    break;
+                }
 
             // DeleteOperation with no EntityType: no emitter lookup possible — skip silently.
             default:

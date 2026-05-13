@@ -48,7 +48,9 @@ internal sealed record EntityModel(
     Location DeclarationLocation,
     bool IsPartial,
     string? BaseEntityTypeFqn,
-    string? BaseEntityTypeDisplayName)
+    string? BaseEntityTypeDisplayName,
+    bool IsObjectBearing = false,
+    string? ObjectStoreKey = null)
 {
     public bool IsEntitySubtype => BaseEntityTypeFqn is not null;
     public string FileName => Namespace.Length == 0 ? $"{TypeName}.g.cs" : $"{Namespace}.{TypeName}.g.cs";

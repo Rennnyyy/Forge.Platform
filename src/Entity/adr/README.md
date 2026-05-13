@@ -24,3 +24,5 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0016 — Entity type inheritance via explicit `[Entity]` on partial subclass](0016-entity-type-inheritance.md)
 - [0016 — `IsIdentitySealed` is excluded from JSON serialization](0016-jsonignore-isidentitysealed.md)
 - [0017 — Inverse single-ref loading via `IInverseRefLoader`](0017-inverse-ref-loading.md)
+- [0018 — Inverse collection hydration via `IInverseRefLoader`](0018-inverse-collection-loading.md)
+- [0019 — `[ObjectBearing]` attribute and auto-generated object metadata properties](0019-object-bearing-entity.md)

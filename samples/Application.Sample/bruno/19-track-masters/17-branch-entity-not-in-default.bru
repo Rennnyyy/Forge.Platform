@@ -1,0 +1,21 @@
+meta {
+  name: TrackMasters - branch entity not visible in default branch (404)
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{branchTrackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq NOT_FOUND
+}
+
+docs {
+  No X-Forge-BranchIri header — reads from the default (main) branch.
+  The remix candidate only exists in the branch, so it is not visible here.
+}

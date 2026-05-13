@@ -26,6 +26,9 @@ using Forge.Repository.GraphDb.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
 using Forge.Entity.Messaging.DependencyInjection;
 using Forge.Messaging.InMemory.DependencyInjection;
+using Forge.ObjectStorage.Http;
+using Forge.ObjectStorage.Http.DependencyInjection;
+using Forge.ObjectStorage.InMemory.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,6 +124,14 @@ builder.Services.AddForgeCapabilityMessaging();
 // MapOperations() wires the five REST endpoints per entity. See Operations.Http ADR-0001.
 builder.Services.AddOperationEndpointsHttpFromAssemblyContaining<Book>();
 
+// ── 6c. Object storage (in-memory) + HTTP layer ───────────────────────────────
+// Registers the in-memory IObjectStoreProvider (keyed store per StoreKey) and scans
+// the assembly for [ObjectBearing] types (TrackMaster). MapObjectOperations() wires
+// the eight-route REST contract per entity (metadata CRUD + binary upload/download).
+// See root ADR-0023 and ObjectStorage.Http ADR-0001.
+builder.Services.AddForgeObjectStorageInMemory();
+builder.Services.AddForgeObjectStorageHttpFromAssemblyContaining<TrackMaster>();
+
 var app = builder.Build();
 
 // ── 6b. Branch scope middleware ───────────────────────────────────────────────
@@ -167,6 +178,24 @@ app.MapCapabilities();
 // Same pattern for api/entities/data-records and api/entities/artists.
 // The optional X-Forge-Operation-AspectIri header activates IOperationAspect validation.
 app.MapOperations();
+
+// ── 8a2. Object-bearing entity endpoints ─────────────────────────────────────
+// MapObjectOperations() owns all eight routes for every [ObjectBearing] entity.
+// MapOperations() skips [ObjectBearing] types to avoid double-registration.
+//
+// TrackMaster routes:
+//
+//   POST   api/entities/track-masters              — Create metadata entity
+//   GET    api/entities/track-masters              — List metadata entities
+//   GET    api/entities/track-masters?iri=…        — Read single metadata entity
+//   PUT    api/entities/track-masters?iri=…        — Update metadata entity
+//   DELETE api/entities/track-masters?iri=…        — Delete entity + blob (combined)
+//   PUT    api/objects/track-masters/content?iri=… — Upload binary asset (upload saga)
+//   GET    api/objects/track-masters/content?iri=… — Download binary asset
+//   DELETE api/objects/track-masters/content?iri=… — Delete blob only; entity stays
+//
+// See ObjectStorage.Http ADR-0001 and root ADR-0019.
+app.MapObjectOperations();
 
 // ── 8b. Branch management endpoints ──────────────────────────────────────────
 // Maps five REST endpoints for Branch CRUD under api/branches.
@@ -250,9 +279,9 @@ app.MapPost("/api/async-capability/dispatch",
         var result = await dispatcher.PublishAndWaitAsync(command, cancellationToken: ct);
         return result switch
         {
-            ExecutionResult<AsyncProcessResponse>.Ok ok     => Results.Ok(ok.Response),
+            ExecutionResult<AsyncProcessResponse>.Ok ok => Results.Ok(ok.Response),
             ExecutionResult<AsyncProcessResponse>.Fail fail => Results.UnprocessableEntity(fail.Error),
-            _                                               => Results.StatusCode(500),
+            _ => Results.StatusCode(500),
         };
     });
 
@@ -452,6 +481,63 @@ aspectStore.RegisterOperation(branchWriteAspect);
 aspectStore.RegisterOperation(branchDeleteAspect);
 aspectStore.RegisterOperation(snapshotWriteAspect);
 aspectStore.RegisterOperation(snapshotDeleteAspect);
+
+// ── 12. TrackMaster operation aspects ─────────────────────────────────────────
+// Demonstrates IOperationAspect validation on the [ObjectBearing] TrackMaster entity
+// wired by MapObjectOperations(). See ObjectStorage.Http ADR-0001.
+//
+//   track-master-write-v1   : Local SHACL — title must be non-empty (minLength 1).
+//                             Use on POST Create and PUT content upload.
+//   track-master-lock-v1    : Context WHERE — rejects re-upload when the entity
+//                             already has a blob key in the store (objectKey is set).
+//                             Enforces single-master immutability: delete + recreate
+//                             to replace a master take.
+var trackMasterWriteAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:track-master-write-v1",
+    localShapeTtl: """
+        @prefix sh:  <http://www.w3.org/ns/shacl#> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix tm:  <https://forge-it.net/predicates/trackMaster/> .
+
+        <urn:forge:aspects:shape:track-master-write-shape>
+            a sh:NodeShape ;
+            sh:targetClass <https://forge-it.net/types/track-masters> ;
+            sh:property [
+                sh:path tm:title ;
+                sh:minCount 1 ;
+                sh:minLength 1 ;
+                sh:message "Track master title must not be empty." ;
+            ] .
+        """,
+    contextWhere: null);
+
+var trackMasterLockAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:track-master-lock-v1",
+    localShapeTtl: null,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/trackMaster/objectKey> ?existingKey .
+        BIND(?entityIri AS ?focusNode)
+        BIND("Master audio is already locked. Delete and recreate to replace it." AS ?message)
+        """);
+
+aspectStore.RegisterOperation(trackMasterWriteAspect);
+aspectStore.RegisterOperation(trackMasterLockAspect);
+
+// track-master-download-gate-v1 : Context WHERE — blocks GET /content when the entity's
+//                                  title contains the word "restricted" (case-insensitive).
+//                                  Demonstrates explicit download gating: pass the aspect IRI
+//                                  via X-Forge-Operation-AspectIri on GET /content to enforce it.
+var trackMasterDownloadGateAspect = new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:operation:track-master-download-gate-v1",
+    localShapeTtl: null,
+    contextWhere: """
+        ?entityIri <https://forge-it.net/predicates/trackMaster/title> ?t .
+        FILTER(CONTAINS(LCASE(STR(?t)), "restricted"))
+        BIND(?entityIri AS ?focusNode)
+        BIND("Track master is flagged as restricted and cannot be downloaded." AS ?message)
+        """);
+
+aspectStore.RegisterOperation(trackMasterDownloadGateAspect);
 
 app.Run();
 

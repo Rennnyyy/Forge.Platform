@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Forge.ObjectStorage.Http</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Forge.ObjectStorage.Http.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IObjectStore, IObjectStoreProvider, ObjectNotFoundException -->
+    <ProjectReference Include="..\ObjectStorage.Abstractions\Forge.ObjectStorage.Abstractions.csproj" />
+    <!-- OperationCreatedResponse, OperationUpdatedResponse, OperationDeletedResponse, OperationListResponse<T> -->
+    <!-- OperationEntityBinder (internal — InternalsVisibleTo granted by Operations.Http.csproj) -->
+    <!-- OperationEndpointsHttpServiceCollectionExtensions.AspectIriHeader -->
+    <!-- Transitive: EntityOperations (Forge.Operations), IEntity (Forge.Entity), EntityTransaction (Forge.Repository) -->
+    <ProjectReference Include="..\Operations.Http\Forge.Operations.Http.csproj" />
+    <!-- AspectException, Aspect.NoOpIri -->
+    <ProjectReference Include="..\Aspects.Abstractions\Forge.Aspects.Abstractions.csproj" />
+    <!-- ExecutionEndpointHelper, HeaderExecutionAspectIriProvider, IExecutionAspectIriProvider -->
+    <!-- Transitive: ExecutionError (Forge.Execution) -->
+    <ProjectReference Include="..\Execution.Http\Forge.Execution.Http.csproj" />
+  </ItemGroup>
+
+</Project>

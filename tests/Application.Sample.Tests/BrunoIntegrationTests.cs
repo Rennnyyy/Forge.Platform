@@ -494,6 +494,44 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 19 — Track masters: verifies the full <see cref="Forge.ObjectStorage.Http"/>
+    /// lifecycle for a <c>[ObjectBearing]</c> entity (<c>TrackMaster</c>):
+    /// <list type="bullet">
+    ///   <item>POST <c>api/objects/track-masters</c> — create metadata entity</item>
+    ///   <item>GET <c>api/objects/track-masters?iri=…</c> — read metadata</item>
+    ///   <item>GET <c>api/objects/track-masters</c> — list entities</item>
+    ///   <item>PUT <c>api/entities/track-masters?iri=…</c> — update metadata; aspect
+    ///         <c>track-master-write-v1</c> validates title is non-empty</item>
+    ///   <item>PUT <c>api/objects/track-masters/content?iri=…</c> — upload WAV via
+    ///         multipart form; aspect <c>track-master-write-v1</c> validates write access</item>
+    ///   <item>GET <c>api/objects/track-masters/content?iri=…</c> — download blob</item>
+    ///   <item>PUT <c>api/objects/track-masters/content?iri=…</c> (re-upload) — blocked by
+    ///         lock aspect <c>track-master-lock-v1</c> → 422 <c>ENTITY_SHACL_VIOLATION</c></item>
+    ///   <item>Branch-scoped upload/download — entity created and blob uploaded on a named
+    ///         branch; default branch remains clean</item>
+    ///   <item>DELETE <c>api/objects/track-masters?iri=…</c> — combined entity + blob delete</item>
+    /// </list>
+    /// See root ADR-0023, ObjectStorage.Http ADR-0001, and sample ADR-0011.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_19_track_masters_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "19-track-masters");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

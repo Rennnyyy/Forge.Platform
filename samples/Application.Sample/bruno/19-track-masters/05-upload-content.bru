@@ -1,0 +1,24 @@
+meta {
+  name: TrackMasters - upload content (PUT /content streaming + aspect)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/objects/track-masters/content?iri={{trackMasterIri}}
+  body: file
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+}
+
+body:file {
+  file: @file(assets/sample-track-master.wav) @contentType(audio/wav)
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

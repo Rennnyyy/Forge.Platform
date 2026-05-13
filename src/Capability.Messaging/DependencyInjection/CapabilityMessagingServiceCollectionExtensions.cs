@@ -124,8 +124,8 @@ public static class CapabilityMessagingServiceCollectionExtensions
                 d.ImplementationType is not null)
             .Select(d => new
             {
-                HandlerType  = d.ImplementationType!,
-                CommandType  = d.ServiceType.GetGenericArguments()[0],
+                HandlerType = d.ImplementationType!,
+                CommandType = d.ServiceType.GetGenericArguments()[0],
                 ResponseType = d.ServiceType.GetGenericArguments()[1],
             })
             .ToList();
@@ -136,9 +136,9 @@ public static class CapabilityMessagingServiceCollectionExtensions
             if (attr is null)
                 continue; // handlers without [Capability] are not exposed via messaging
 
-            var identity     = attr.Identity.Value;
+            var identity = attr.Identity.Value;
             var commandTopic = $"forge.capabilities.{identity}.commands";
-            var replyTopic   = $"forge.capabilities.{identity}.replies";
+            var replyTopic = $"forge.capabilities.{identity}.replies";
 
             WireHandlerMethod
                 .MakeGenericMethod(pair.CommandType, pair.ResponseType)
@@ -165,7 +165,7 @@ public static class CapabilityMessagingServiceCollectionExtensions
         services.AddForgeCapabilityMessaging<TCommand, TResponse>(opts =>
         {
             opts.CommandTopic = commandTopic;
-            opts.ReplyTopic   = replyTopic;
+            opts.ReplyTopic = replyTopic;
         });
         services.AddForgeCapabilityConsumer<TCommand, TResponse>();
         services.AddHostedService<CapabilityCommandPumpService<TCommand, TResponse>>();

@@ -1,0 +1,16 @@
+meta {
+  name: TrackMasters - download content (GET /content)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/objects/track-masters/content?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.headers["content-type"]: contains audio/wav
+}

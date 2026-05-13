@@ -1,0 +1,22 @@
+meta {
+  name: TrackMasters - delete entity (→ 200)
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  DELETE api/entities/track-masters removes the entity from the RDF store.
+  Blob cleanup (if any content was uploaded) should be done first via
+  DELETE api/objects/track-masters/content?iri= (step 11) to avoid orphaned blobs.
+  Step 13 confirms the entity is gone with a 404.
+}

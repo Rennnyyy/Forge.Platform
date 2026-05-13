@@ -1,0 +1,15 @@
+meta {
+  name: TrackMasters - delete remix branch (DROP named graph)
+  type: http
+  seq: 18
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{remixBranchIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,33 @@
+meta {
+  name: TrackMasters - create valid (POST + aspect)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/track-masters
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+}
+
+body:json {
+  {
+    "title": "Aria Nova — Velvet Storm (Master Take 3)",
+    "format": "WAV 24-bit 96kHz",
+    "engineerNotes": "Clean take, no artefacts, approved by producer."
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("trackMasterIri", res.body.iri);
+}

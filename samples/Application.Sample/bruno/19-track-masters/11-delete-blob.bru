@@ -1,0 +1,23 @@
+meta {
+  name: TrackMasters - delete blob (blob removed, entity stays)
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/objects/track-masters/content?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+docs {
+  DELETE api/objects/track-masters/content removes the blob from the object store
+  and clears the entity’s objectKey and contentType fields (entity stays in the RDF store).
+  A subsequent GET /content on this IRI will return 404 NO_CONTENT.
+  To remove the entity itself, use DELETE api/entities/track-masters?iri= (step 12).
+}

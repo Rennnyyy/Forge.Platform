@@ -1,0 +1,34 @@
+meta {
+  name: TrackMasters - create track master in branch (POST + X-Forge-BranchIri)
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/entities/track-masters
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+  X-Forge-BranchIri: {{remixBranchIri}}
+}
+
+body:json {
+  {
+    "title": "Aria Nova — Velvet Storm (Remix Candidate)",
+    "format": "WAV 24-bit 96kHz",
+    "engineerNotes": "Work-in-progress remix, branch-isolated from the released master."
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("branchTrackMasterIri", res.body.iri);
+}

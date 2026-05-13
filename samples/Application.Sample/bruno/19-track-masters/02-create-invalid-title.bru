@@ -1,0 +1,29 @@
+meta {
+  name: TrackMasters - create invalid title (empty → 422)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/entities/track-masters
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+}
+
+body:json {
+  {
+    "title": "",
+    "format": "MP3 320kbps",
+    "engineerNotes": "This should be rejected by the SHACL aspect."
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}

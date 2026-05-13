@@ -9,6 +9,14 @@
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>Forge.Operations.Http.Tests</_Parameter1>
     </AssemblyAttribute>
+    <!-- ObjectStorage.Http uses OperationEntityBinder to bind JSON bodies for [ObjectBearing] entities -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Forge.ObjectStorage.Http</_Parameter1>
+    </AssemblyAttribute>
+    <!-- ObjectStorage.Http.Tests registers OperationEndpointDescriptor directly to test the skip behaviour -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Forge.ObjectStorage.Http.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

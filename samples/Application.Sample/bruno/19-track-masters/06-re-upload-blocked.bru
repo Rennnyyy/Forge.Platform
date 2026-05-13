@@ -1,0 +1,34 @@
+meta {
+  name: TrackMasters - re-upload blocked by lock aspect (→ 422)
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/objects/track-masters/content?iri={{trackMasterIri}}
+  body: file
+  auth: none
+}
+
+headers {
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-lock-v1
+}
+
+body:file {
+  file: @file(assets/sample-track-master.wav) @contentType(audio/wav)
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq ENTITY_SHACL_VIOLATION
+}
+
+docs {
+  The lock aspect checks the current triple store state for the entity being updated.
+  Because objectKey was set in step 05, the context WHERE clause now binds:
+
+    ?entityIri <https://forge-it.net/predicates/trackMaster/objectKey> ?existingKey .
+
+  This fires a SHACL violation: "Master audio is already locked."
+  Delete + recreate the entity to replace the master take.
+}

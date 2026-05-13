@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Forge.Operations.Http;
 
@@ -64,8 +65,26 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
         var descriptors = app.ServiceProvider
             .GetServices<OperationEndpointDescriptor>();
 
+        var logger = app.ServiceProvider
+            .GetService<ILoggerFactory>()
+            ?.CreateLogger(nameof(OperationEndpointsEndpointRouteBuilderExtensions));
+
         foreach (var desc in descriptors)
         {
+            // ObjectBearing entities own all their routes (metadata + content) via
+            // MapObjectOperations(). Skip them here to prevent double-registration.
+            // See ObjectStorage.Http ADR-0001 and root ADR-0019.
+            var isObjectBearing = desc.EntityType
+                .GetCustomAttribute<ObjectBearingAttribute>() is not null;
+            if (isObjectBearing)
+            {
+                logger?.LogWarning(
+                    "MapOperations() is skipping {EntityType} because it carries [ObjectBearing]. " +
+                    "Its routes are owned by MapObjectOperations().",
+                    desc.EntityType.Name);
+                continue;
+            }
+
             var isEnumeration = desc.EntityType
                 .GetCustomAttribute<EnumerationAttribute>() is not null;
 

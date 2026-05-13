@@ -1,0 +1,23 @@
+meta {
+  name: TrackMasters - read after upload (objectKey is set)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.objectKey: isDefined
+  res.body.contentType: eq audio/wav
+}
+
+docs {
+  After a successful upload the entity's objectKey and contentType predicates
+  are committed to the RDF store by the saga (step 05).
+  The generator emits both properties automatically from [ObjectBearing].
+}

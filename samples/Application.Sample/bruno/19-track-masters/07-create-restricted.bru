@@ -1,0 +1,41 @@
+meta {
+  name: TrackMasters - create restricted (for download-gate demo)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/entities/track-masters
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-Operation-AspectIri: urn:forge:aspects:operation:track-master-write-v1
+}
+
+body:json {
+  {
+    "title": "[RESTRICTED] Session Rough Mix — Do Not Distribute",
+    "format": "WAV 24-bit 48kHz",
+    "engineerNotes": "Pending clearance."
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("restrictedTrackIri", res.body.iri);
+}
+
+docs {
+  Creates a second track master whose title contains the word "restricted".
+  The track-master-download-gate-v1 contextWhere aspect fires on this title
+  and will block GET /content even without any binary content uploaded.
+
+  The IRI is stored in {{restrictedTrackIri}} for use in step 08.
+}

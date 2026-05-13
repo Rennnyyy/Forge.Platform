@@ -1,0 +1,21 @@
+meta {
+  name: TrackMasters - verify entity deleted (→ 404)
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters?iri={{trackMasterIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}
+
+docs {
+  After a successful DELETE the entity is removed from the RDF store and the
+  backing blob is purged from the object store on a best-effort basis.
+  Reading by IRI returns 404 — confirm no orphaned metadata remains.
+}

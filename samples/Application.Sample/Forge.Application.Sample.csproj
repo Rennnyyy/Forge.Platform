@@ -49,6 +49,10 @@
     <ProjectReference Include="..\..\src\Entity.Messaging\Forge.Entity.Messaging.csproj" />
     <!-- Async capability command bus (IAsyncCapabilityDispatcher, CapabilityReplyListener) -->
     <ProjectReference Include="..\..\src\Capability.Messaging\Forge.Capability.Messaging.csproj" />
+    <!-- Object storage HTTP layer: MapObjectOperations(), AddForgeObjectStorageHttp() -->
+    <ProjectReference Include="..\..\src\ObjectStorage.Http\Forge.ObjectStorage.Http.csproj" />
+    <!-- In-memory IObjectStore implementation for demos and tests -->
+    <ProjectReference Include="..\..\src\ObjectStorage.InMemory\Forge.ObjectStorage.InMemory.csproj" />
   </ItemGroup>
 
 </Project>

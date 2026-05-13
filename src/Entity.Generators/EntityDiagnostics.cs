@@ -63,4 +63,12 @@ internal static class EntityDiagnostics
         category: "Forge.Entity",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ObjectBearingManualMember = new(
+        id: "FORGE0008",
+        title: "[ObjectBearing] entity must not manually declare generated members",
+        messageFormat: "[ObjectBearing] entity '{0}' must not manually declare '{1}'. This member is auto-generated.",
+        category: "Forge.Entity",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

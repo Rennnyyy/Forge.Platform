@@ -1,0 +1,17 @@
+meta {
+  name: TrackMasters - list (GET)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/entities/track-masters
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+  res.body.items[0].title: eq Aria Nova — Velvet Storm (Master Take 3)
+}

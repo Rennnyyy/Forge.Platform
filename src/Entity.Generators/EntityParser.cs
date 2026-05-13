@@ -14,6 +14,7 @@ internal static class EntityParser
     private const string OwningAttr = "Forge.Entity.OwningAttribute";
     private const string InverseAttr = "Forge.Entity.InverseAttribute";
     private const string EnumerationAttr = "Forge.Entity.EnumerationAttribute";
+    private const string ObjectBearingAttr = "Forge.Entity.ObjectBearingAttribute";
 
     public static EntityModel? TryParse(
         INamedTypeSymbol type,
@@ -106,6 +107,14 @@ internal static class EntityParser
 
         var isEnumeration = type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == EnumerationAttr);
 
+        var objectBearingAttrData = type.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == ObjectBearingAttr);
+        var isObjectBearing = objectBearingAttrData is not null;
+        var objectStoreKey = isObjectBearing
+            ? objectBearingAttrData!.ConstructorArguments.Length > 0
+                ? objectBearingAttrData.ConstructorArguments[0].Value as string
+                : null
+            : null;
+
         var identityParts = ImmutableArray.CreateBuilder<IdentityPartModel>();
         var references = ImmutableArray.CreateBuilder<RefModel>();
 
@@ -155,6 +164,15 @@ internal static class EntityParser
                         OwningPropertyName: null, IsLazy: isLazy));
                 }
                 continue;
+            }
+
+            // [ObjectBearing] generated members must not be manually declared.
+            if (isObjectBearing && (member.Name == "ObjectKey" || member.Name == "ContentType"))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    EntityDiagnostics.ObjectBearingManualMember,
+                    member.Locations.FirstOrDefault() ?? location,
+                    type.Name, member.Name));
             }
 
             // Inverse?
@@ -215,7 +233,9 @@ internal static class EntityParser
             DeclarationLocation: location,
             IsPartial: true,
             BaseEntityTypeFqn: baseEntityTypeFqn,
-            BaseEntityTypeDisplayName: baseEntityTypeDisplayName);
+            BaseEntityTypeDisplayName: baseEntityTypeDisplayName,
+            IsObjectBearing: isObjectBearing,
+            ObjectStoreKey: objectStoreKey);
     }
 
     /// <summary>Classify the property type as owning-single / owning-collection / inverse-single by shape.</summary>
