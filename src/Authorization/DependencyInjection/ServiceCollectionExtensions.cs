@@ -76,10 +76,13 @@ public static class AuthorizationServiceCollectionExtensions
             {
                 // No ITransactionalEntityStore was registered before AddForgeAuthorization() —
                 // resolve at provider-build time so that call order does not matter.
-                // Prefer the aspect-validating store (AddForgeAspects' keyed registration) so the
-                // decorator stack is always: Guard → AspectEnforcing → Backend.
+                // Prefer the outermost completed decorator so the stack is always:
+                //   Guard → EventEmitting → AspectEnforcing → Backend  (ADR-0021)
                 inner =
                     sp.GetKeyedService<ITransactionalEntityStore>(
+                        ForgeEntityRepositoryBuilder.EventsTxKey)
+                    // Entity events not used — prefer the aspect-validating store (ADR-0014).
+                    ?? sp.GetKeyedService<ITransactionalEntityStore>(
                         ForgeEntityRepositoryBuilder.AspectsTxKey)
                     // Aspects not used — fall back to the raw backend store directly.
                     ?? (sp.GetKeyedService<IEntityStore>(

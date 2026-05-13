@@ -57,6 +57,21 @@
   <Folder Name="/src/Operations.Http/">
     <Project Path="src/Operations.Http/Forge.Operations.Http.csproj" />
   </Folder>
+  <Folder Name="/src/Messaging.Abstractions/">
+    <Project Path="src/Messaging.Abstractions/Forge.Messaging.Abstractions.csproj" />
+  </Folder>
+  <Folder Name="/src/Messaging.InMemory/">
+    <Project Path="src/Messaging.InMemory/Forge.Messaging.InMemory.csproj" />
+  </Folder>
+  <Folder Name="/src/Messaging.Kafka/">
+    <Project Path="src/Messaging.Kafka/Forge.Messaging.Kafka.csproj" />
+  </Folder>
+  <Folder Name="/src/Entity.Messaging/">
+    <Project Path="src/Entity.Messaging/Forge.Entity.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/src/Capability.Messaging/">
+    <Project Path="src/Capability.Messaging/Forge.Capability.Messaging.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Application.Sample/Forge.Application.Sample.csproj" />
   </Folder>
@@ -81,5 +96,10 @@
     <Project Path="tests/Operations.Http.Tests/Forge.Operations.Http.Tests.csproj" />
     <Project Path="tests/Branch.Tests/Forge.Branch.Tests.csproj" />
     <Project Path="tests/Branch.Http.Tests/Forge.Branch.Http.Tests.csproj" />
+    <Project Path="tests/Messaging.Abstractions.Tests/Forge.Messaging.Abstractions.Tests.csproj" />
+    <Project Path="tests/Messaging.InMemory.Tests/Forge.Messaging.InMemory.Tests.csproj" />
+    <Project Path="tests/Messaging.Kafka.Tests/Forge.Messaging.Kafka.Tests.csproj" />
+    <Project Path="tests/Entity.Messaging.Tests/Forge.Entity.Messaging.Tests.csproj" />
+    <Project Path="tests/Capability.Messaging.Tests/Forge.Capability.Messaging.Tests.csproj" />
   </Folder>
 </Solution>

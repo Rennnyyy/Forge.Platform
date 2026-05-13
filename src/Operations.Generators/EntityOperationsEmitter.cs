@@ -47,7 +47,8 @@ internal static class EntityOperationsEmitter
         sb.AppendLine("    /// <summary>Delete this entity from the store by IRI.</summary>");
         sb.Append("    public ").Append(newMod).Append("global::System.Threading.Tasks.ValueTask DeleteAsync(")
           .AppendLine("global::System.Threading.CancellationToken cancellationToken = default)");
-        sb.Append("        => ").Append(Ops).Append(".DeleteAsync(Iri, cancellationToken);").AppendLine();
+        sb.Append("        => ").Append(Ops).Append(".DeleteAsync<").Append(typeName)
+          .Append(">(Iri, cancellationToken);").AppendLine();
         sb.AppendLine();
 
         // ── Static: Read ─────────────────────────────────────────────────────

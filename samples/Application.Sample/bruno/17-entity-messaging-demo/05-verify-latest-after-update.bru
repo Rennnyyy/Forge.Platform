@@ -1,0 +1,20 @@
+meta {
+  name: Entity Messaging - read latest state (Updated)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/diagnostics/entity-events/latest?iri={{messagingBookIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.entityIri: eq {{messagingBookIri}}
+  res.body.typeName: eq Book
+  res.body.operation: eq Updated
+  res.body.topic: eq forge.entities.book.state
+  res.body.timestampUtc: isDefined
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Entity Messaging - delete book
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/books?iri={{messagingBookIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

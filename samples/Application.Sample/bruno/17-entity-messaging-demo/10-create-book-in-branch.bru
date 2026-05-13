@@ -1,0 +1,35 @@
+meta {
+  name: Entity Messaging - create book in branch
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{messagingBranchIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-13-110362-7",
+    "title": "The C Programming Language",
+    "author": "Kernighan, Ritchie",
+    "publishedYear": 1978,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("branchBookIri", res.body.iri);
+}

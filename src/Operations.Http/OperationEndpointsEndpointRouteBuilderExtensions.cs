@@ -191,7 +191,7 @@ public static class OperationEndpointsEndpointRouteBuilderExtensions
                         $"The value '{iri}' is not a valid absolute IRI."));
 
                 await using var tx = EntityOperations.BeginTransaction();
-                tx.Delete(iri, aspectIri);
+                tx.Delete<T>(iri, aspectIri);
                 await tx.CommitAsync();
 
                 return Results.Ok(new OperationDeletedResponse());

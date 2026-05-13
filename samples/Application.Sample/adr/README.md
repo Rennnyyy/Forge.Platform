@@ -17,3 +17,4 @@ See [root ADR README](../../../adr/README.md) for format and rules.
 - [0007 — Wrong-IRI error demonstration for EntityRef and EntityRefCollection](0007-wrong-iri-error-demonstration.md) *(superseded by 0009)*
 - [0008 — Featured Artist entity: entity type inheritance demonstration](0008-featured-artist-inheritance-demo.md)
 - [0009 — Remove studio-relations capability; move bad-IRI checks to entity endpoint](0009-remove-studio-relations-capability.md)
+- [0010 — Entity messaging demo chapter (Bruno 17-entity-messaging-demo)](0010-entity-messaging-demo-chapter.md)

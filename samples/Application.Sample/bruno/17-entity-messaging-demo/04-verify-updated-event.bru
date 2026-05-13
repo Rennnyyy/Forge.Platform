@@ -1,0 +1,21 @@
+meta {
+  name: Entity Messaging - verify Updated event
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/diagnostics/entity-events?iri={{messagingBookIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].operation: eq Created
+  res.body[1].entityIri: eq {{messagingBookIri}}
+  res.body[1].typeName: eq Book
+  res.body[1].operation: eq Updated
+  res.body[1].topic: eq forge.entities.book.state
+  res.body[1].timestampUtc: isDefined
+}

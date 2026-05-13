@@ -96,6 +96,18 @@ public sealed class ForgeEntityRepositoryBuilder
     /// </summary>
     public const string AspectsTxKey = "forge.aspects.tx";
 
+    /// <summary>
+    /// Keyed-service key under which
+    /// <c>Forge.Entity.Messaging.DependencyInjection.EntityMessagingServiceCollectionExtensions.AddForgeEntityMessaging</c>
+    /// registers the <see cref="Forge.Repository.Transaction.ITransactionalEntityStore"/> that has
+    /// been wrapped with entity-change event emission.
+    /// <see cref="Forge.Authorization.DependencyInjection.AuthorizationServiceCollectionExtensions.AddForgeAuthorization"/>
+    /// resolves from this key (if present) so the guard remains the outermost decorator.
+    /// Full chain: Guard → EventEmitting → AspectEnforcing → Backend.
+    /// See root ADR-0021.
+    /// </summary>
+    public const string EventsTxKey = "forge.events.tx";
+
     public IServiceCollection Services { get; }
     public IConfiguration? Configuration { get; }
 

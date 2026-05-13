@@ -1,0 +1,24 @@
+meta {
+  name: Entity Messaging - verify Created event
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/diagnostics/entity-events?iri={{messagingBookIri}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  messagingBookIri: https://forge-it.net/books/978-0-13-110362-7
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].entityIri: eq {{messagingBookIri}}
+  res.body[0].typeName: eq Book
+  res.body[0].operation: eq Created
+  res.body[0].topic: eq forge.entities.book.state
+  res.body[0].timestampUtc: isDefined
+}

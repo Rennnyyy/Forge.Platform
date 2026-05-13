@@ -59,3 +59,6 @@ What this enables or forecloses. Follow-ups.
 - [0015 — Split entity test fixtures into Core and full-CRUD projects](0015-entity-tests-fixtures-split.md)
 - [0016 — Bruno collection expanded to 14 chapters](0016-bruno-chapter-expansion.md)
 - [0017 — Platform entity HTTP layers must use shared `Forge.Operations.Http` contracts](0017-platform-entity-http-must-use-shared-operation-contracts.md)
+- [0020 — Messaging abstractions slice (`Forge.Messaging.Abstractions`, `.Kafka`, `.InMemory`)](0020-messaging-abstractions-slice.md)
+- [0021 — Entity change event stream (history + compacted state topics via `Forge.EntityEvents`)](0021-entity-change-event-stream.md)
+- [0022 — Async capability and operations command bus (`Forge.Capability.Messaging`)](0022-async-capability-command-bus.md)

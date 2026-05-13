@@ -41,6 +41,12 @@
     <!-- Branch.Http: MapBranches(), BranchEndpointRouteBuilderExtensions.
          Transitively pulls in Branch (entity + DI) and Execution.Http (BranchScopeMiddleware). -->
     <ProjectReference Include="..\..\src\Branch.Http\Forge.Branch.Http.csproj" />
+    <!-- Messaging abstractions (IMessageProducer, IMessageConsumer, MessageEnvelope) -->
+    <ProjectReference Include="..\..\src\Messaging.Abstractions\Forge.Messaging.Abstractions.csproj" />
+    <!-- In-memory messaging transport — no broker required, ideal for demos -->
+    <ProjectReference Include="..\..\src\Messaging.InMemory\Forge.Messaging.InMemory.csproj" />
+    <!-- Entity change event stream (EventEmittingTransactionalStore + emitters) -->
+    <ProjectReference Include="..\..\src\Entity.Messaging\Forge.Entity.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

@@ -111,6 +111,25 @@ public static class EntityOperations
             await store.DeleteAsync(iri, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Delete the entity with the given <paramref name="iri"/>, propagating the entity type
+    /// to the transaction so that event emitters (e.g. <c>EventEmittingTransactionalStore</c>)
+    /// can emit a typed <c>Deleted</c> event after the commit.
+    /// </summary>
+    public static async ValueTask DeleteAsync<T>(string iri, CancellationToken cancellationToken = default)
+        where T : class, IEntity
+    {
+        var store = RequireStore();
+        if (store is ITransactionalEntityStore txStore)
+        {
+            await using var tx = new EntityTransaction(txStore);
+            tx.Delete<T>(iri, "https://forge-it.net/aspects/noop");
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+            await store.DeleteAsync(iri, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Load a single entity by IRI, or <see langword="null"/> if absent.</summary>
     public static ValueTask<T?> ReadAsync<T>(string iri, CancellationToken cancellationToken = default)
         where T : class, IEntity

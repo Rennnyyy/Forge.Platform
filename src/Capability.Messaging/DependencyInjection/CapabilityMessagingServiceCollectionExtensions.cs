@@ -1,0 +1,90 @@
+using Forge.Capability.Messaging;
+using Forge.Messaging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Forge.Capability.Messaging.DependencyInjection;
+
+/// <summary>
+/// DI extensions for the Capability.Messaging slice. See root ADR-0022.
+/// </summary>
+public static class CapabilityMessagingServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers the producer side of the async capability command bus for the
+    /// <typeparamref name="TCommand"/>/<typeparamref name="TResponse"/> pair:
+    /// <list type="bullet">
+    ///   <item><see cref="IAsyncCapabilityDispatcher{TCommand,TResponse}"/> — fire-and-forget and request-reply publish.</item>
+    ///   <item><see cref="PendingReplyRegistry{TCommand,TResponse}"/> — in-process reply matching (singleton).</item>
+    ///   <item><see cref="CapabilityReplyListener{TCommand,TResponse}"/> — starts the reply consumer loop.</item>
+    /// </list>
+    /// Requires <see cref="IMessageProducer{TKey,TValue}"/> and <see cref="IMessageConsumer{TKey,TValue}"/>
+    /// to already be registered (e.g. via <c>AddForgeMessagingInMemory()</c>).
+    /// </summary>
+    public static IServiceCollection AddForgeCapabilityMessaging<TCommand, TResponse>(
+        this IServiceCollection services,
+        Action<CapabilityMessagingOptions<TCommand, TResponse>> configure)
+        where TCommand : class
+        where TResponse : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var opts = new CapabilityMessagingOptions<TCommand, TResponse>();
+        configure(opts);
+
+        if (string.IsNullOrWhiteSpace(opts.CommandTopic))
+            throw new InvalidOperationException(
+                $"AddForgeCapabilityMessaging<{typeof(TCommand).Name},{typeof(TResponse).Name}>: " +
+                $"{nameof(CapabilityMessagingOptions<TCommand, TResponse>.CommandTopic)} must be set.");
+
+        services.TryAddSingleton(opts);
+        services.TryAddSingleton<PendingReplyRegistry<TCommand, TResponse>>();
+
+        services.TryAddSingleton<IAsyncCapabilityDispatcher<TCommand, TResponse>>(sp =>
+            new AsyncCapabilityDispatcher<TCommand, TResponse>(
+                sp.GetRequiredService<IMessageProducer<string, CapabilityCommandEnvelope<TCommand>>>(),
+                sp.GetRequiredService<PendingReplyRegistry<TCommand, TResponse>>(),
+                sp.GetRequiredService<CapabilityMessagingOptions<TCommand, TResponse>>()));
+
+        services.TryAddSingleton(sp =>
+            new CapabilityReplyListener<TCommand, TResponse>(
+                sp.GetRequiredService<IMessageConsumer<string, CapabilityReplyEnvelope<TResponse>>>(),
+                sp.GetRequiredService<PendingReplyRegistry<TCommand, TResponse>>(),
+                sp.GetRequiredService<CapabilityMessagingOptions<TCommand, TResponse>>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the consumer side of the async capability command bus for the
+    /// <typeparamref name="TCommand"/>/<typeparamref name="TResponse"/> pair:
+    /// <list type="bullet">
+    ///   <item><see cref="ICapabilityMessageConsumer{TCommand,TResponse}"/> — handles one command envelope.</item>
+    /// </list>
+    /// Requires <see cref="ICapabilityDispatcher{TCommand,TResponse}"/> and
+    /// <see cref="IMessageProducer{TKey,TValue}"/> to be registered.
+    /// </summary>
+    public static IServiceCollection AddForgeCapabilityConsumer<TCommand, TResponse>(
+        this IServiceCollection services,
+        Action<CapabilityMessagingOptions<TCommand, TResponse>>? configure = null)
+        where TCommand : class
+        where TResponse : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        if (configure is not null)
+        {
+            var opts = new CapabilityMessagingOptions<TCommand, TResponse>();
+            configure(opts);
+            services.TryAddSingleton(opts);
+        }
+
+        services.TryAddSingleton<ICapabilityMessageConsumer<TCommand, TResponse>>(sp =>
+            new CapabilityMessageConsumer<TCommand, TResponse>(
+                sp.GetRequiredService<ICapabilityDispatcher<TCommand, TResponse>>(),
+                sp.GetRequiredService<IMessageProducer<string, CapabilityReplyEnvelope<TResponse>>>()));
+
+        return services;
+    }
+}

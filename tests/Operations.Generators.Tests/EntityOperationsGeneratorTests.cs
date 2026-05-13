@@ -70,7 +70,7 @@ public sealed class EntityOperationsGeneratorTests
 
         code.ShouldContain("global::Forge.Operations.EntityOperations.CreateAsync(this");
         code.ShouldContain("global::Forge.Operations.EntityOperations.UpdateAsync(this");
-        code.ShouldContain("global::Forge.Operations.EntityOperations.DeleteAsync(Iri");
+        code.ShouldContain("global::Forge.Operations.EntityOperations.DeleteAsync<Thing>(Iri");
         code.ShouldContain("global::Forge.Operations.EntityOperations.ReadAsync<Thing>(iri");
         code.ShouldContain("global::Forge.Operations.EntityOperations.ListAsync<Thing>(");
     }

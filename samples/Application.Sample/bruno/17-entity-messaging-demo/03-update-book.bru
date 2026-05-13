@@ -1,0 +1,29 @@
+meta {
+  name: Entity Messaging - update book
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{messagingBookIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "isbn": "978-0-13-468599-1",
+    "title": "Clean Architecture (2nd edition)",
+    "author": "Robert C. Martin",
+    "publishedYear": 2017,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}

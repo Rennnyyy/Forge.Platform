@@ -22,8 +22,30 @@ using Forge.Authorization.Http.DependencyInjection;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.GraphDb.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
+using Forge.Entity.Messaging.DependencyInjection;
+using Forge.Messaging.InMemory.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── 0. Messaging — in-memory broker + entity change events ───────────────────
+// MUST be called before AddForgeAspects() / AddForgeAuthorizationHttp() so that
+// AddForgeEntityEvents() wins the unkeyed ITransactionalEntityStore slot.
+// AddForgeAuthorizationHttp() captures whatever unkeyed ITransactionalEntityStore
+// exists at registration time and wraps it with a GuardedTransactionalStore.
+// If messaging is registered first, the chain becomes:
+//   Guard → EventEmittingTransactionalStore → AspectEnforcing → Backend
+// If messaging is registered after Authorization, EventEmitting is never inserted.
+// See sample ADR-0010 and root ADR-0021.
+builder.Services.AddForgeMessagingInMemory();
+builder.Services.AddForgeEntityEvents();
+builder.Services.AddForgeEntityMessaging<Book>(opts =>
+{
+    opts.TypeIri = "https://forge-it.net/entities/Book";
+});
+builder.Services.AddSingleton<EntityEventLog>();
+builder.Services.AddSingleton<EntityStateCache>();
+builder.Services.AddHostedService<BookHistoryConsumerService>();
+builder.Services.AddHostedService<BookStateConsumerService>();
 
 // ── 1. Aspect infrastructure ──────────────────────────────────────────────────
 // Permissive when no aspects are registered; keeps the pipeline running without
@@ -159,6 +181,34 @@ app.MapBranches();
 //   POST   api/snapshots       — Create and seed a new snapshot
 //   DELETE api/snapshots/{name} — Drop snapshot entity + named graph
 app.MapSnapshots();
+
+// ── 8b3. Messaging diagnostics endpoints ──────────────────────────────────────
+// Two endpoints backed by two consumer services:
+//
+//   BookHistoryConsumerService → forge.entities.book.history → EntityEventLog
+//     Append-only audit log: every mutation (Create/Update/Delete) in arrival order.
+//     GET /api/diagnostics/entity-events          — all events
+//     GET /api/diagnostics/entity-events?iri=…    — events for a single entity IRI
+//
+//   BookStateConsumerService → forge.entities.book.state → EntityStateCache
+//     Compacted view: one entry per IRI, always the latest event (mirrors Kafka
+//     log compaction).  Exposed as:
+//     GET /api/diagnostics/entity-events/latest?iri=…
+//
+// Intended for local development and the Bruno messaging demo chapter (sample ADR-0010).
+// In production remove or guard these endpoints behind authentication.
+app.MapGet("/api/diagnostics/entity-events", (EntityEventLog log, string? iri) =>
+    iri is not null ? log.GetByIri(iri) : (IReadOnlyList<EntityEventLogEntry>)log.GetAll());
+
+// Compacted latest-state lookup — queries EntityStateCache (mirrors Kafka log compaction).
+// Returns 200 with the entry object, or 404 when no events exist for that IRI.
+app.MapGet("/api/diagnostics/entity-events/latest", (EntityStateCache cache, string iri) =>
+{
+    var entry = cache.GetLatest(iri);
+    return entry is not null
+        ? Results.Ok(entry)
+        : Results.NotFound(new { code = "EVENT_NOT_FOUND", message = $"No events captured for IRI '{iri}'." });
+});
 
 // ── 8. Capability aspect registration ────────────────────────────────────────
 // Registers a demo IMessageAspect and CapabilityAspect directly on IAspectStore

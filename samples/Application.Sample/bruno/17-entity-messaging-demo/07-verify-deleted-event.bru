@@ -1,0 +1,22 @@
+meta {
+  name: Entity Messaging - verify Deleted event
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/diagnostics/entity-events?iri={{messagingBookIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].operation: eq Created
+  res.body[1].operation: eq Updated
+  res.body[2].entityIri: eq {{messagingBookIri}}
+  res.body[2].typeName: eq Book
+  res.body[2].operation: eq Deleted
+  res.body[2].topic: eq forge.entities.book.state
+  res.body[2].timestampUtc: isDefined
+}

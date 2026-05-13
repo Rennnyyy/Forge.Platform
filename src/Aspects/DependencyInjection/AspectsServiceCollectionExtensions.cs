@@ -217,15 +217,15 @@ public static class AspectsServiceCollectionExtensions
 
     private static ITransactionalEntityStore ResolveFromKeyedDescriptor(
         ServiceDescriptor d, IServiceProvider sp, object key) => d switch
-    {
-        { ImplementationInstance: ITransactionalEntityStore inst } => inst,
-        { KeyedImplementationFactory: { } f } => (ITransactionalEntityStore)f(sp, key),
-        { KeyedImplementationInstance: { } i } => (ITransactionalEntityStore)i,
-        { KeyedImplementationType: { } t } =>
-            (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(sp, t),
-        _ => throw new InvalidOperationException(
-            $"Unexpected ITransactionalEntityStore service descriptor shape for key '{key}'.")
-    };
+        {
+            { ImplementationInstance: ITransactionalEntityStore inst } => inst,
+            { KeyedImplementationFactory: { } f } => (ITransactionalEntityStore)f(sp, key),
+            { KeyedImplementationInstance: { } i } => (ITransactionalEntityStore)i,
+            { KeyedImplementationType: { } t } =>
+                (ITransactionalEntityStore)ActivatorUtilities.CreateInstance(sp, t),
+            _ => throw new InvalidOperationException(
+                $"Unexpected ITransactionalEntityStore service descriptor shape for key '{key}'.")
+        };
 
     private static IEntityStore ResolveFromDescriptor(ServiceDescriptor d, IServiceProvider sp) => d switch
     {

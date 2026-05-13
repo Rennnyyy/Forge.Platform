@@ -1,0 +1,20 @@
+meta {
+  name: Entity Messaging - verify branch in Deleted event
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/diagnostics/entity-events/latest?iri={{branchBookIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.entityIri: eq {{branchBookIri}}
+  res.body.operation: eq Deleted
+  res.body.branchIri: eq {{messagingBranchIri}}
+  res.body.topic: eq forge.entities.book.state
+  res.body.timestampUtc: isDefined
+}

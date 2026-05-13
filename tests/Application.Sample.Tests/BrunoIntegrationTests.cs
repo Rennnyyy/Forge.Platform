@@ -419,6 +419,55 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 16 — Branch aspect demo: aspects enforced on branch/snapshot CRUD
+    /// (SHACL description length, semver format, archived status, delete guard).
+    /// See root ADR-0019 and Branch.Http ADR-0001.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_16_branch_aspect_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "16-branch-aspect-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 17 — Entity messaging demo: verifies that entity mutations (Create, Update,
+    /// Delete) on the <c>Book</c> entity emit <see cref="Forge.Entity.Messaging.EntityChangedEnvelope{T}"/>
+    /// messages through the in-memory broker and that the diagnostic endpoint
+    /// <c>GET /api/diagnostics/entity-events</c> captures all three operations in order,
+    /// including a <c>latest</c> lookup returning the final <c>Deleted</c> state.
+    /// See root ADR-0021 and sample ADR-0010.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_17_entity_messaging_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "17-entity-messaging-demo");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

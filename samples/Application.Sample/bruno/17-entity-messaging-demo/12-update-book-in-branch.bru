@@ -1,0 +1,30 @@
+meta {
+  name: Entity Messaging - update book in branch
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{branchBookIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{messagingBranchIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-13-110362-7",
+    "title": "The C Programming Language (2nd edition)",
+    "author": "Kernighan, Ritchie",
+    "publishedYear": 1988,
+    "available": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}

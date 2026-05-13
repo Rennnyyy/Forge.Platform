@@ -1,0 +1,19 @@
+meta {
+  name: Entity Messaging - delete book in branch
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/books?iri={{branchBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{messagingBranchIri}}
+}
+
+assert {
+  res.status: eq 200
+}
