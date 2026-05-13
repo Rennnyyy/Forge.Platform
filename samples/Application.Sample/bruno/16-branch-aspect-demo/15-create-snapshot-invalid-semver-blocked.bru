@@ -1,7 +1,7 @@
 meta {
   name: Snapshot aspect demo - create snapshot with semVer major=0 → 422
   type: http
-  seq: 14
+  seq: 15
 }
 
 post {
@@ -15,12 +15,16 @@ headers {
   X-Forge-Operation-AspectIri: urn:forge:aspects:operation:snapshot-write-v1
 }
 
+vars:pre-request {
+  snapBookIri: https://forge-it.net/books/978-0-13-110362-7
+}
+
 body:json {
   {
     "name": "aspect-demo-v0.9.0",
     "description": "Pre-release snapshot — semVer major is 0",
     "sourceGraphIri": "https://forge-it.net/branches/aspect-demo-source",
-    "entityIris": [],
+    "entityIris": ["{{snapBookIri}}"],
     "semVerMajor": 0,
     "semVerMinor": 9,
     "semVerPatch": 0

@@ -1,7 +1,7 @@
 meta {
   name: Snapshot aspect demo - create archived snapshot without aspect → 201
   type: http
-  seq: 15
+  seq: 16
 }
 
 post {
@@ -14,12 +14,16 @@ headers {
   Content-Type: application/json
 }
 
+vars:pre-request {
+  snapBookIri: https://forge-it.net/books/978-0-13-110362-7
+}
+
 body:json {
   {
     "name": "aspect-demo-archived",
     "description": "Archived milestone — superseded by v2.0.0",
     "sourceGraphIri": "https://forge-it.net/branches/aspect-demo-source",
-    "entityIris": [],
+    "entityIris": ["{{snapBookIri}}"],
     "semVerMajor": 1,
     "semVerMinor": 9,
     "semVerPatch": 9
