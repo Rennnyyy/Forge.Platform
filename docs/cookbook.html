@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Cookbook</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link active" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Cookbook</h1>
+    <p class="lead">Copy-paste patterns for the most common Forge.Platform scenarios.</p>
+  </div>
+
+  <!-- ── Entity ── -->
+  <section class="topic">
+    <h2 class="section-title">Entity</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">1 · Define a simple entity</h3>
+      <p class="recipe-when">When you need a new domain concept persisted as RDF triples with auto-generated REST endpoints.</p>
+      <pre class="recipe-code">using Forge.Entity;
+using Forge.Operations;
+
+[Entity(Path = "artists")]               // RDF type IRI segment + URL path
+[Identity(IdentityGenerator.Random)]     // UUID-based IRI suffix
+[OperationEndpoints]                     // registers POST/GET/PUT/DELETE via MapOperations()
+public partial class Artist
+{
+    [Predicate("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Predicate("country")]
+    public string Country { get; set; } = string.Empty;
+
+    [Predicate("bio")]
+    public string? Bio { get; set; }
+
+    [Predicate("active")]
+    public bool Active { get; set; } = true;
+
+    [Predicate("debutYear")]
+    public int DebutYear { get; set; }
+}</pre>
+    </div>
+
+    <div class="recipe">
+      <h3 class="recipe-title">2 · Define a related entity (object reference)</h3>
+      <p class="recipe-when">When an entity owns a reference to another entity (N:1 or M:N).</p>
+      <pre class="recipe-code">using Forge.Entity;
+using Forge.Operations;
+
+[Entity(Path = "studios", PredicatePath = "studio")]
+[Identity(IdentityGenerator.Random)]
+[OperationEndpoints]
+public partial class Studio
+{
+    [Predicate("name")]
+    public string Name { get; set; } = string.Empty;
+
+    // N:1 — stored as a single IRI predicate in this entity's RDF graph.
+    // The generator emits an EntityRef&lt;Artist&gt; backing field.
+    [Predicate("managedBy")]
+    public partial EntityRef&lt;Artist&gt;? ManagedBy { get; set; }
+
+    // 1:N ordered list — stored as rdf:List of Recording IRIs.
+    [Predicate("hasRecording")]
+    public partial EntityRefCollection&lt;Recording&gt; Recordings { get; }
+
+    // M:N — same Genre IRI can appear in many studios.
+    [Predicate("hasGenre")]
+    public partial EntityRefCollection&lt;Genre&gt; Genres { get; }
+}
+
+// Inverse side — read-only, populated at load time by the inverse-ref loader.
+// Declare on the referenced type:
+// [Inverse(nameof(Studio.ManagedBy), "managedBy")]
+// public partial EntityRefCollection&lt;Studio&gt; ManagedStudios { get; }</pre>
+    </div>
+
+    <div class="recipe">
+      <h3 class="recipe-title">3 · HTTP CRUD endpoints for an entity</h3>
+      <p class="recipe-when">When you want five REST endpoints (Create / List / Read / Update / Delete) auto-registered from an entity class.</p>
+      <pre class="recipe-code">// In Program.cs:
+
+// Registers one OperationEndpointDescriptor per [OperationEndpoints] type found
+// in the assembly that contains Book.
+builder.Services.AddOperationEndpointsHttpFromAssemblyContaining&lt;Book&gt;();
+
+// ...
+
+// Wires the five endpoints under api/entities/{path}:
+//   POST   api/entities/books         — Create
+//   GET    api/entities/books         — List
+//   GET    api/entities/books?iri=…   — Read single
+//   PUT    api/entities/books?iri=…   — Update
+//   DELETE api/entities/books?iri=…   — Delete
+app.MapOperations();</pre>
+    </div>
+
+  </section>
+
+  <!-- ── Branching ── -->
+  <section class="topic">
+    <h2 class="section-title">Branching</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">4 · Scope a request to a named branch</h3>
+      <p class="recipe-when">When you want all entity reads and writes within a request to target a specific named-graph branch rather than the default main graph.</p>
+      <pre class="recipe-code">// In Program.cs — register + activate the middleware:
+builder.Services.AddBranchHttp(builder.Configuration); // reads/writes X-Forge-BranchIri
+app.UseBranchScope();                                  // sets BranchScope.Current per request
+
+// From any client — pass the branch IRI in the request header:
+//   X-Forge-BranchIri: https://forge-it.net/branches/my-feature-branch
+//
+// The response echoes the effective IRI:
+//   X-Forge-Effective-BranchIri: https://forge-it.net/branches/my-feature-branch
+
+// From code — wrap in BranchScope.Use() (ambient scope, no DI required):
+using (BranchScope.Use("https://forge-it.net/branches/my-feature-branch"))
+{
+    await foreach (var book in Book.ListAsync())
+    {
+        // books read from the named graph for that branch
+    }
+}</pre>
+    </div>
+
+  </section>
+
+  <!-- ── Capabilities ── -->
+  <section class="topic">
+    <h2 class="section-title">Capabilities</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">5 · Implement a synchronous capability</h3>
+      <p class="recipe-when">When you need a typed command/response handler with aspect validation and correlated execution.</p>
+      <pre class="recipe-code">using Forge.Capability;
+
+// Command and response are plain classes.
+public sealed record CreateItemCommand(string Name, decimal Price);
+public sealed record CreateItemResponse(string Iri);
+
+// Handler — implement ICapabilityHandler&lt;TCommand, TResponse&gt;.
+// [Capability] declares the HTTP route and optionally the messaging topic.
+[Capability(Group = "catalog", Name = "items/create", Method = HttpMethod.Post)]
+public sealed class CreateItemHandler
+    : ICapabilityHandler&lt;CreateItemCommand, CreateItemResponse&gt;
+{
+    public async ValueTask&lt;ExecutionResult&lt;CreateItemResponse&gt;&gt; HandleAsync(
+        CreateItemCommand command,
+        CapabilityContext context,
+        CancellationToken cancellationToken)
+    {
+        // validate, create entity, etc.
+        var iri = $"https://forge-it.net/items/{Guid.NewGuid()}";
+        return ExecutionResult.Ok(new CreateItemResponse(iri));
+    }
+}
+
+// Registration in Program.cs:
+builder.Services.AddCapabilityHandlersFromAssemblyContaining&lt;CreateItemHandler&gt;();
+builder.Services.AddCapabilityHttp();
+// ...
+app.MapCapabilities();
+// → POST api/capabilities/catalog/items/create</pre>
+    </div>
+
+    <div class="recipe">
+      <h3 class="recipe-title">6 · Dispatch a capability over messaging (async)</h3>
+      <p class="recipe-when">When you need fire-and-forget or request-reply dispatch via a message broker (ADR-0022).</p>
+      <pre class="recipe-code">// Registration in Program.cs:
+builder.Services.AddForgeMessagingInMemory();           // or AddForgeMessagingKafka()
+builder.Services.AddForgeCapabilityMessaging();         // auto-discovers [Capability] handlers
+
+// Fire-and-forget:
+app.MapPost("/api/fire", async (
+    MyCommand cmd,
+    IAsyncCapabilityDispatcher&lt;MyCommand, MyResponse&gt; dispatcher,
+    CancellationToken ct) =>
+{
+    await dispatcher.PublishAsync(cmd, cancellationToken: ct);
+    return Results.Accepted();
+});
+
+// Request-reply — awaits the ExecutionResult from the handler:
+app.MapPost("/api/dispatch", async (
+    MyCommand cmd,
+    IAsyncCapabilityDispatcher&lt;MyCommand, MyResponse&gt; dispatcher,
+    CancellationToken ct) =>
+{
+    var result = await dispatcher.PublishAndWaitAsync(cmd, cancellationToken: ct);
+    return result switch
+    {
+        ExecutionResult&lt;MyResponse&gt;.Ok ok     =&gt; Results.Ok(ok.Response),
+        ExecutionResult&lt;MyResponse&gt;.Fail fail =&gt; Results.UnprocessableEntity(fail.Error),
+        _                                      =&gt; Results.StatusCode(500)
+    };
+});</pre>
+    </div>
+
+  </section>
+
+  <!-- ── Messaging ── -->
+  <section class="topic">
+    <h2 class="section-title">Messaging</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">7 · Emit entity change events</h3>
+      <p class="recipe-when">When you want every entity write to be published as an event to a history topic and a compacted state topic (ADR-0021).</p>
+      <pre class="recipe-code">// In Program.cs — order matters: messaging before aspects:
+builder.Services.AddForgeMessagingInMemory();   // or Kafka
+builder.Services.AddForgeEntityEvents();        // wires EventEmittingEntityStore decorator
+
+// Register per-entity messaging (serializer + topic names):
+builder.Services.AddForgeEntityMessaging&lt;Book&gt;(opts =&gt;
+{
+    opts.TypeIri = "https://forge-it.net/entities/Book";
+    // Topics auto-derived: forge.entities.book.history  (append-only)
+    //                      forge.entities.book.state    (compacted latest state)
+});
+
+// Consume events — implement a hosted service or background worker:
+public class BookHistoryConsumer : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // Inject IMessageConsumer&lt;string, EntityChangedEnvelope&lt;BookDto&gt;&gt;
+        await foreach (var envelope in _consumer.ConsumeAsync(
+            "forge.entities.book.history", stoppingToken))
+        {
+            // envelope.Payload.Operation: Created | Updated | Deleted
+            Console.WriteLine($"[{envelope.Payload.Operation}] {envelope.Payload.Iri}");
+        }
+    }
+}</pre>
+    </div>
+
+  </section>
+
+  <!-- ── Storage ── -->
+  <section class="topic">
+    <h2 class="section-title">Storage</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">8 · Object-bearing entity (file upload / download)</h3>
+      <p class="recipe-when">When an entity is primarily a metadata wrapper for a binary blob (ADR-0023).</p>
+      <pre class="recipe-code">using Forge.Entity;
+using Forge.ObjectStorage;
+using Forge.Operations;
+
+// Mark entity with [ObjectBearing] — MapOperations() skips it;
+// MapObjectOperations() registers eight routes instead.
+[Entity(Path = "track-masters", PredicatePath = "track-master")]
+[Identity(IdentityGenerator.Random)]
+[ObjectBearing]
+[OperationEndpoints]
+public partial class TrackMaster
+{
+    [Predicate("title")]
+    public string Title { get; set; } = string.Empty;
+
+    [Predicate("durationSeconds")]
+    public int DurationSeconds { get; set; }
+}
+
+// In Program.cs:
+builder.Services.AddForgeObjectStorageInMemory();
+builder.Services.AddForgeObjectStorageHttpFromAssemblyContaining&lt;TrackMaster&gt;();
+// ...
+app.MapObjectOperations();
+
+// Registered routes for TrackMaster:
+//   POST   api/entities/track-masters              — Create metadata
+//   GET    api/entities/track-masters              — List metadata
+//   GET    api/entities/track-masters?iri=…        — Read metadata
+//   PUT    api/entities/track-masters?iri=…        — Update metadata
+//   DELETE api/entities/track-masters?iri=…        — Delete entity + blob
+//   PUT    api/objects/track-masters/content?iri=… — Upload binary asset
+//   GET    api/objects/track-masters/content?iri=… — Download binary asset
+//   DELETE api/objects/track-masters/content?iri=… — Delete blob only</pre>
+    </div>
+
+  </section>
+
+  <!-- ── Security ── -->
+  <section class="topic">
+    <h2 class="section-title">Security</h2>
+
+    <div class="recipe">
+      <h3 class="recipe-title">9 · Add a SHACL aspect guard</h3>
+      <p class="recipe-when">When you need write operations to be validated against a SHACL shape before they are committed.</p>
+      <pre class="recipe-code">// Register the aspect infrastructure (enables AspectEnforcingTransactionalStore):
+builder.Services.AddForgeAspects();
+
+// Register a SHACL operation aspect from inline Turtle:
+builder.Services.AddOperationAspect(sp =&gt; new InlineTtlOperationAspect(
+    iri: "urn:forge:aspects:book-v1",
+    shapeTtl: """
+        @prefix sh: &lt;http://www.w3.org/ns/shacl#&gt; .
+        @prefix ex: &lt;https://forge-it.net/predicates/book/&gt; .
+
+        [] a sh:NodeShape ;
+           sh:targetClass &lt;https://forge-it.net/entities/Book&gt; ;
+           sh:property [
+               sh:path ex:isbn ;
+               sh:minLength 13 ;
+               sh:maxLength 13 ;
+               sh:message "ISBN must be exactly 13 characters." ] .
+    """));
+
+// Activate on a write request by sending the header:
+//   X-Forge-Operation-AspectIri: urn:forge:aspects:book-v1
+//
+// Writes that violate the shape return 422 Unprocessable Entity with
+// the SHACL violation messages in the response body.</pre>
+    </div>
+
+    <div class="recipe">
+      <h3 class="recipe-title">10 · Apply an authorization rule</h3>
+      <p class="recipe-when">When you need every write to pass through an authorization guard before the aspect or backend layer.</p>
+      <pre class="recipe-code">// Implement IAspectGuard:
+public sealed class MyAuthGuard : IAspectGuard
+{
+    public ValueTask&lt;bool&gt; IsAllowedAsync(
+        string agentToken,
+        TransactionOperation operation,
+        CancellationToken ct)
+    {
+        // agentToken comes from AuthorizationContext.CurrentAgentToken
+        // (set by X-Forge-Agent-Token header via UseAgentTokenMiddleware)
+        return ValueTask.FromResult(agentToken == "trusted-agent");
+    }
+}
+
+// Register — wraps ITransactionalEntityStore with GuardedTransactionalStore:
+builder.Services.AddForgeAuthorizationHttp(builder.Configuration);
+// Also register your guard:
+builder.Services.AddSingleton&lt;IAspectGuard, MyAuthGuard&gt;();
+// Activate middleware:
+app.UseAgentTokenMiddleware();</pre>
+    </div>
+
+  </section>
+
+</main>
+
+</body>
+</html>

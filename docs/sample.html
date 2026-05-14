@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Application.Sample</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link active" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Application.Sample</h1>
+    <p class="lead">A runnable reference application that exercises every Forge.Platform capability: entity CRUD, branching &amp; snapshots, capabilities, messaging, object storage, and aspects.</p>
+  </div>
+
+  <!-- ── What it demonstrates ── -->
+  <section id="sample-overview">
+    <h2 class="section-title">What It Demonstrates</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Entity lifecycle</h3>
+        <p>Eight entity types (<code>Book</code>, <code>DataRecord</code>, <code>Artist</code>, <code>FeaturedArtist</code>, <code>Genre</code>, <code>Recording</code>, <code>Studio</code>, <code>TrackMaster</code>) cover RDF-backed CRUD, type inheritance, enumeration entities, and object-bearing entities.</p>
+      </div>
+      <div class="card">
+        <h3>Operations HTTP layer</h3>
+        <p>The source-generated <code>[OperationEndpoints]</code> attribute wires five REST endpoints per entity automatically — no controller code required.</p>
+      </div>
+      <div class="card">
+        <h3>Branching &amp; Snapshots</h3>
+        <p>All entity data is scoped to a named graph identified by the <code>X-Forge-BranchIri</code> header. Branches and immutable snapshots are first-class resources under <code>api/branches</code> and <code>api/snapshots</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Capabilities (HTTP &amp; Messaging)</h3>
+        <p>Hand-crafted handlers (<code>GreetHandler</code>, <code>CreateItemHandler</code>, <code>TriggerFaultHandler</code>, <code>AspectDemoHandler</code>, …) are exposed synchronously via HTTP (<code>MapCapabilities()</code>) and asynchronously via an in-memory Kafka analogue (<code>AddForgeCapabilityMessaging()</code>).</p>
+      </div>
+      <div class="card">
+        <h3>Entity change events</h3>
+        <p><code>EventEmittingEntityStore</code> (wired by <code>AddForgeEntityEvents()</code>) publishes <code>EntityCreated</code>, <code>EntityUpdated</code>, and <code>EntityDeleted</code> events for <code>Book</code> to two in-memory consumers: an append-only <code>EntityEventLog</code> and a compacted <code>EntityStateCache</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Object storage</h3>
+        <p><code>TrackMaster</code> is an <code>[ObjectBearing]</code> entity. Its binary asset (track master audio file) is managed via eight HTTP routes under <code>api/objects/track-masters</code>. An in-memory blob store is wired by <code>AddForgeObjectStorageInMemory()</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Project structure ── -->
+  <section id="sample-structure">
+    <h2 class="section-title">Project Structure</h2>
+    <pre class="recipe-code">samples/Application.Sample/
+  Application.Sample.csproj      — project file; references all Forge slices
+  Program.cs                     — DI + middleware + endpoint wiring (annotated below)
+
+  Entities/
+    Book.cs                      — [Entity], [Identity(PropertyBasedPlain)], [OperationEndpoints]
+    DataRecord.cs                — [Entity], [Identity(PropertyBasedPlain)], [OperationEndpoints]
+    Artist.cs                    — [Entity], [Identity(Random)],             [OperationEndpoints]
+    FeaturedArtist.cs            — [Entity], [OperationEndpoints("featured-artists")] extends Artist
+    Genre.cs                     — [Entity], [Enumeration], [Identity(PropertyBasedPlain)]
+    Recording.cs                 — [Entity], [Identity(Random)],             [OperationEndpoints]
+    Studio.cs                    — [Entity], [Identity(Random)],             [OperationEndpoints]
+    TrackMaster.cs               — [ObjectBearing],                          [OperationEndpoints]
+
+  Capabilities/
+    GreetHandler.cs              — POST api/capabilities/demo/greet
+    CreateItemHandler.cs         — POST api/capabilities/demo/catalog/items/create
+    UpdateItemHandler.cs         — PUT  api/capabilities/demo/catalog/items/update
+    PatchItemHandler.cs          — PATCH api/capabilities/demo/catalog/items/patch
+    TriggerFaultHandler.cs       — POST api/capabilities/demo/fault (always 422)
+    AspectDemoHandler.cs         — POST api/capabilities/demo/aspect
+
+  Messaging/
+    BookHistoryConsumerService.cs  — consumes forge.entities.book.history → EntityEventLog
+    BookStateConsumerService.cs    — consumes forge.entities.book.state   → EntityStateCache
+
+  Infrastructure/
+    EntityEventLog.cs            — append-only in-memory event audit log
+    EntityStateCache.cs          — compacted latest-state cache per entity IRI
+    ItemStore.cs                 — in-memory product catalog (capability demo)
+
+tests/Application.Sample.Tests/ — xUnit + WebApplicationFactory integration tests</pre>
+  </section>
+
+  <!-- ── Program.cs walkthrough ── -->
+  <section id="sample-program">
+    <h2 class="section-title">Program.cs Walkthrough</h2>
+    <p>The sample DI and middleware wiring is annotated inline. The table below maps each registration call to its configuration reference:</p>
+
+    <pre class="recipe-code">var builder = WebApplication.CreateBuilder(args);
+
+// ── 0. Messaging — in-memory broker + entity change events ───────────────────
+// MUST be registered before AddForgeAspects() / AddForgeAuthorizationHttp()
+// so EventEmittingEntityStore wins the unkeyed ITransactionalEntityStore slot.
+// Chain: Guard → EventEmitting → AspectEnforcing → InMemoryBackend
+builder.Services.AddForgeMessagingInMemory();
+builder.Services.AddForgeEntityEvents();
+builder.Services.AddForgeEntityMessaging&lt;Book&gt;(opts =&gt;
+{
+    opts.TypeIri = "https://forge-it.net/entities/Book";
+});
+
+builder.Services.AddSingleton&lt;EntityEventLog&gt;();
+builder.Services.AddSingleton&lt;EntityStateCache&gt;();
+builder.Services.AddHostedService&lt;BookHistoryConsumerService&gt;();
+builder.Services.AddHostedService&lt;BookStateConsumerService&gt;();
+
+// ── 1. Aspect + authorization infrastructure ──────────────────────────────────
+builder.Services.AddForgeAspects();
+builder.Services.AddForgeAuthorizationHttp(builder.Configuration);
+
+// ── 2. Entity repository ────────────────────────────────────────────────────── 
+var repoBuilder = builder.Services.AddForgeEntityRepository(builder.Configuration);
+if (string.Equals(
+        builder.Configuration["Forge:EntityRepository:Backend"],
+        "GraphDb", StringComparison.OrdinalIgnoreCase))
+    repoBuilder.UseGraphDb();
+else
+    repoBuilder.UseInMemory();
+
+// ── 3. Branch infrastructure ──────────────────────────────────────────────────
+builder.Services.AddForgeBranchHttp(builder.Configuration);   // management store + aspects
+builder.Services.AddBranchHttp(builder.Configuration);        // header provider
+
+// ── 4-5. Capability handlers ──────────────────────────────────────────────────
+builder.Services.AddCapabilityHandlersFromAssemblyContaining&lt;Book&gt;();
+builder.Services.AddCapabilityHttp();
+builder.Services.AddForgeCapabilityMessaging();
+
+// ── 6. HTTP endpoint descriptors ──────────────────────────────────────────────
+builder.Services.AddOperationEndpointsHttpFromAssemblyContaining&lt;Book&gt;();
+builder.Services.AddForgeObjectStorageInMemory();
+builder.Services.AddForgeObjectStorageHttpFromAssemblyContaining&lt;TrackMaster&gt;();
+
+var app = builder.Build();
+
+// ── Middleware ────────────────────────────────────────────────────────────────
+app.UseBranchScope();       // X-Forge-BranchIri header → BranchScope.Current
+app.Use(/* snapshot 422 handler */);
+
+// ── Endpoints ─────────────────────────────────────────────────────────────────
+app.MapCapabilities();        // api/capabilities/**
+app.MapOperations();          // api/entities/{path}  (standard entities)
+app.MapObjectOperations();    // api/entities/track-masters + api/objects/track-masters
+app.MapBranches();            // api/branches
+app.MapSnapshots();           // api/snapshots
+
+app.MapGet("/api/diagnostics/entity-events", /* event log query */);
+
+app.Run();</pre>
+
+    <table class="api-table">
+      <thead>
+        <tr><th>Registration call</th><th>Configuration reference</th><th>ADR</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>AddForgeMessagingInMemory()</code></td><td><a href="configuration.html#config-forge-messaging">Messaging.InMemory</a></td><td>—</td></tr>
+        <tr><td><code>AddForgeEntityEvents()</code></td><td><a href="configuration.html#config-forge-messaging">Entity.Messaging</a></td><td><a href="adr.html#adr-0021">ADR-0021</a></td></tr>
+        <tr><td><code>AddForgeEntityMessaging&lt;T&gt;()</code></td><td><a href="configuration.html#config-forge-messaging">Entity.Messaging</a></td><td><a href="adr.html#adr-0021">ADR-0021</a></td></tr>
+        <tr><td><code>AddForgeAspects()</code></td><td><a href="configuration.html#config-forge-aspects">Aspects</a></td><td><a href="adr.html#adr-0019">ADR-0019</a></td></tr>
+        <tr><td><code>AddForgeAuthorizationHttp()</code></td><td><a href="configuration.html#config-forge-authorization">Authorization.Http</a></td><td>—</td></tr>
+        <tr><td><code>AddForgeEntityRepository()</code></td><td><a href="configuration.html#config-forge-repository">Repository</a></td><td><a href="adr.html#adr-0005">ADR-0005</a></td></tr>
+        <tr><td><code>AddForgeBranchHttp()</code></td><td><a href="configuration.html#config-forge-branch">Branch.Http</a></td><td><a href="adr.html#adr-0019">ADR-0019</a></td></tr>
+        <tr><td><code>AddCapabilityHandlersFromAssemblyContaining&lt;T&gt;()</code></td><td><a href="configuration.html#config-forge-capability">Capability</a></td><td><a href="adr.html#adr-0022">ADR-0022</a></td></tr>
+        <tr><td><code>AddForgeCapabilityMessaging()</code></td><td><a href="configuration.html#config-forge-capability">Capability.Messaging</a></td><td><a href="adr.html#adr-0022">ADR-0022</a></td></tr>
+        <tr><td><code>AddOperationEndpointsHttpFromAssemblyContaining&lt;T&gt;()</code></td><td><a href="configuration.html#config-forge-operations-http">Operations.Http</a></td><td><a href="adr.html#adr-0017">ADR-0017</a></td></tr>
+        <tr><td><code>AddForgeObjectStorageInMemory()</code></td><td><a href="configuration.html#config-forge-objectstorage">ObjectStorage.InMemory</a></td><td><a href="adr.html#adr-0023">ADR-0023</a></td></tr>
+        <tr><td><code>AddForgeObjectStorageHttpFromAssemblyContaining&lt;T&gt;()</code></td><td><a href="configuration.html#config-forge-objectstorage">ObjectStorage.Http</a></td><td><a href="adr.html#adr-0023">ADR-0023</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Entity definitions ── -->
+  <section id="sample-entities">
+    <h2 class="section-title">Entity Definitions</h2>
+
+    <pre class="recipe-code">// Book — property-based plain identity, fully managed lifecycle
+[Entity(Path = "books")]
+[Identity(IdentityKind.PropertyBasedPlain)]
+[OperationEndpoints]
+public partial class Book
+{
+    public string Title  { get; set; } = "";
+    public string Author { get; set; } = "";
+    public int    Year   { get; set; }
+}</pre>
+
+    <pre class="recipe-code">// Artist — random UUID identity
+[Entity(Path = "artists")]
+[Identity(IdentityKind.Random)]
+[OperationEndpoints]
+public partial class Artist
+{
+    public string Name    { get; set; } = "";
+    public string Country { get; set; } = "";
+}
+
+// FeaturedArtist — inherits Artist, overrides route path
+[Entity]
+[OperationEndpoints("featured-artists")]
+public partial class FeaturedArtist : Artist
+{
+    public string Feature { get; set; } = "";
+}</pre>
+
+    <pre class="recipe-code">// Genre — enumeration entity (read-only via HTTP, no create/update/delete routes)
+[Entity(Path = "genres")]
+[Enumeration]
+[Identity(IdentityKind.PropertyBasedPlain)]
+public partial class Genre
+{
+    public string Label { get; set; } = "";
+}</pre>
+
+    <pre class="recipe-code">// TrackMaster — object-bearing entity (binary blob + metadata)
+[ObjectBearing]
+[OperationEndpoints]
+public partial class TrackMaster
+{
+    public string Title    { get; set; } = "";
+    public string Artist   { get; set; } = "";
+    public int    Duration { get; set; }   // seconds
+}</pre>
+
+    <p>All entity classes are <code>partial</code> — the <code>Forge.Entity.Generators</code> Roslyn source generator adds RDF mapping code at compile time. The generator is referenced as an analyzer-style package reference in <code>Application.Sample.csproj</code>; no generated files are checked in.</p>
+  </section>
+
+  <!-- ── Endpoints table ── -->
+  <section id="sample-endpoints">
+    <h2 class="section-title">HTTP Endpoint Reference</h2>
+
+    <h3>Entity Operations (<code>MapOperations()</code>)</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Route</th><th>Operation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td><code>api/entities/books</code></td><td>Create Book</td></tr>
+        <tr><td>GET</td><td><code>api/entities/books</code></td><td>List Books</td></tr>
+        <tr><td>GET</td><td><code>api/entities/books?iri=…</code></td><td>Read Book</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/books?iri=…</code></td><td>Update Book</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/books?iri=…</code></td><td>Delete Book</td></tr>
+        <tr><td>POST</td><td><code>api/entities/data-records</code></td><td>Create DataRecord</td></tr>
+        <tr><td>GET</td><td><code>api/entities/data-records</code></td><td>List DataRecords</td></tr>
+        <tr><td>GET</td><td><code>api/entities/data-records?iri=…</code></td><td>Read DataRecord</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/data-records?iri=…</code></td><td>Update DataRecord</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/data-records?iri=…</code></td><td>Delete DataRecord</td></tr>
+        <tr><td>POST</td><td><code>api/entities/artists</code></td><td>Create Artist</td></tr>
+        <tr><td>GET</td><td><code>api/entities/artists</code></td><td>List Artists</td></tr>
+        <tr><td>GET</td><td><code>api/entities/artists?iri=…</code></td><td>Read Artist</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/artists?iri=…</code></td><td>Update Artist</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/artists?iri=…</code></td><td>Delete Artist</td></tr>
+        <tr><td>POST</td><td><code>api/entities/featured-artists</code></td><td>Create FeaturedArtist</td></tr>
+        <tr><td>GET</td><td><code>api/entities/featured-artists</code></td><td>List FeaturedArtists</td></tr>
+        <tr><td>GET</td><td><code>api/entities/featured-artists?iri=…</code></td><td>Read FeaturedArtist</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/featured-artists?iri=…</code></td><td>Update FeaturedArtist</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/featured-artists?iri=…</code></td><td>Delete FeaturedArtist</td></tr>
+        <tr><td>POST</td><td><code>api/entities/recordings</code></td><td>Create Recording</td></tr>
+        <tr><td>GET</td><td><code>api/entities/recordings</code></td><td>List Recordings</td></tr>
+        <tr><td>GET</td><td><code>api/entities/recordings?iri=…</code></td><td>Read Recording</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/recordings?iri=…</code></td><td>Update Recording</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/recordings?iri=…</code></td><td>Delete Recording</td></tr>
+        <tr><td>POST</td><td><code>api/entities/studios</code></td><td>Create Studio</td></tr>
+        <tr><td>GET</td><td><code>api/entities/studios</code></td><td>List Studios</td></tr>
+        <tr><td>GET</td><td><code>api/entities/studios?iri=…</code></td><td>Read Studio</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/studios?iri=…</code></td><td>Update Studio</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/studios?iri=…</code></td><td>Delete Studio</td></tr>
+        <tr><td>GET</td><td><code>api/entities/genres</code></td><td>List Genres (read-only)</td></tr>
+        <tr><td>GET</td><td><code>api/entities/genres?iri=…</code></td><td>Read Genre (read-only)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Object Storage (<code>MapObjectOperations()</code>)</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Route</th><th>Operation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td><code>api/entities/track-masters</code></td><td>Create TrackMaster metadata</td></tr>
+        <tr><td>GET</td><td><code>api/entities/track-masters</code></td><td>List TrackMasters</td></tr>
+        <tr><td>GET</td><td><code>api/entities/track-masters?iri=…</code></td><td>Read TrackMaster metadata</td></tr>
+        <tr><td>PUT</td><td><code>api/entities/track-masters?iri=…</code></td><td>Update TrackMaster metadata</td></tr>
+        <tr><td>DELETE</td><td><code>api/entities/track-masters?iri=…</code></td><td>Delete entity + blob</td></tr>
+        <tr><td>PUT</td><td><code>api/objects/track-masters/content?iri=…</code></td><td>Upload binary blob</td></tr>
+        <tr><td>GET</td><td><code>api/objects/track-masters/content?iri=…</code></td><td>Download binary blob</td></tr>
+        <tr><td>DELETE</td><td><code>api/objects/track-masters/content?iri=…</code></td><td>Delete blob only (entity stays)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Branch Management (<code>MapBranches()</code> + <code>MapSnapshots()</code>)</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Route</th><th>Operation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td><code>api/branches</code></td><td>Create branch</td></tr>
+        <tr><td>GET</td><td><code>api/branches</code></td><td>List branches</td></tr>
+        <tr><td>GET</td><td><code>api/branches?iri=…</code></td><td>Read branch</td></tr>
+        <tr><td>PUT</td><td><code>api/branches?iri=…</code></td><td>Update branch</td></tr>
+        <tr><td>DELETE</td><td><code>api/branches?iri=…</code></td><td>Delete branch + drop named graph</td></tr>
+        <tr><td>POST</td><td><code>api/snapshots</code></td><td>Create snapshot (seed + freeze)</td></tr>
+        <tr><td>DELETE</td><td><code>api/snapshots/{name}</code></td><td>Drop snapshot + named graph</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Capabilities (<code>MapCapabilities()</code>)</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Route</th><th>Handler</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td><code>api/capabilities/demo/greet</code></td><td><code>GreetHandler</code></td></tr>
+        <tr><td>POST</td><td><code>api/capabilities/demo/catalog/items/create</code></td><td><code>CreateItemHandler</code></td></tr>
+        <tr><td>PUT</td><td><code>api/capabilities/demo/catalog/items/update</code></td><td><code>UpdateItemHandler</code></td></tr>
+        <tr><td>PATCH</td><td><code>api/capabilities/demo/catalog/items/patch</code></td><td><code>PatchItemHandler</code></td></tr>
+        <tr><td>POST</td><td><code>api/capabilities/demo/fault</code></td><td><code>TriggerFaultHandler</code> (always 422)</td></tr>
+        <tr><td>POST</td><td><code>api/capabilities/demo/aspect</code></td><td><code>AspectDemoHandler</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Diagnostics</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Route</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GET</td><td><code>api/diagnostics/entity-events</code></td><td>All Book entity events from <code>EntityEventLog</code></td></tr>
+        <tr><td>GET</td><td><code>api/diagnostics/entity-events?iri=…</code></td><td>Events for a specific Book IRI</td></tr>
+        <tr><td>GET</td><td><code>api/diagnostics/entity-events/latest?iri=…</code></td><td>Latest event for a Book IRI from <code>EntityStateCache</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Key decisions ── -->
+  <section id="sample-decisions">
+    <h2 class="section-title">Key Design Decisions</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3><a href="adr.html#adr-0019">ADR-0019</a></h3>
+        <p>Managed entity HTTP aspect enforcement: all HTTP entry-points (entity ops, branch ops) run through <code>AspectEnforcingTransactionalStore</code>. The sample wires aspects onto both the main store and the branch management store.</p>
+      </div>
+      <div class="card">
+        <h3><a href="adr.html#adr-0021">ADR-0021</a></h3>
+        <p>Entity change event stream: <code>EventEmittingEntityStore</code> must be registered before the aspect/guard decorators so it sits above them in the decoration chain. The sample demonstrates the correct ordering in Program.cs step 0.</p>
+      </div>
+      <div class="card">
+        <h3><a href="adr.html#adr-0022">ADR-0022</a></h3>
+        <p>Async capability command bus: <code>AddForgeCapabilityMessaging()</code> auto-discovers all <code>[Capability]</code> handlers and wires end-to-end async request/reply transport without per-handler configuration.</p>
+      </div>
+      <div class="card">
+        <h3><a href="adr.html#adr-0023">ADR-0023</a></h3>
+        <p>Object storage slices: <code>TrackMaster</code> uses <code>[ObjectBearing]</code> to add an eight-route binary asset API layer on top of a standard entity. Object and entity lifecycles are managed independently.</p>
+      </div>
+      <div class="card">
+        <h3><a href="adr.html#adr-0014">ADR-0014</a></h3>
+        <p>Registration-order-independent decorator chain: the deferred factory pattern ensures all decorators are applied regardless of the order <code>AddForge…()</code> calls appear in Program.cs.</p>
+      </div>
+      <div class="card">
+        <h3><a href="adr.html#adr-0017">ADR-0017</a></h3>
+        <p>Shared operation contracts: all entities use the same shared Request/Response types from <code>Forge.Operations.Http</code>. Entity-specific types are only used for capability payloads.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Running the sample ── -->
+  <section id="sample-running">
+    <h2 class="section-title">Running the Sample</h2>
+    <ol class="steps">
+      <li>
+        <strong>Clone and restore</strong>
+        <pre class="recipe-code">git clone &lt;repo-url&gt;
+cd platform
+dotnet restore</pre>
+      </li>
+      <li>
+        <strong>Start with InMemory backend (default)</strong>
+        <pre class="recipe-code">dotnet run --project samples/Application.Sample</pre>
+      </li>
+      <li>
+        <strong>Optional: start with GraphDB backend</strong>
+        <pre class="recipe-code"># Start GraphDB (Docker):
+docker run -p 7200:7200 ontotext/graphdb:10.7.5
+
+# Run with GraphDB environment (loads appsettings.GraphDb.json):
+dotnet run --project samples/Application.Sample \
+  --environment GraphDb</pre>
+      </li>
+      <li>
+        <strong>Run Bruno API tests</strong>
+        <pre class="recipe-code">bru run spec/forge --env local</pre>
+      </li>
+      <li>
+        <strong>Run unit + integration tests</strong>
+        <pre class="recipe-code">dotnet test tests/Application.Sample.Tests</pre>
+      </li>
+    </ol>
+  </section>
+
+</main>
+
+</body>
+</html>

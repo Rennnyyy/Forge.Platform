@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link active" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Forge.Platform</h1>
+    <p class="lead">A modular .NET 10 SDK for building RDF-backed domain APIs — from entity modelling to HTTP endpoints, messaging, branching, and binary storage.</p>
+  </div>
+
+  <!-- ── What is Forge.Platform? ── -->
+  <section class="topic">
+    <h2 class="section-title">What is Forge.Platform?</h2>
+    <p>
+      Forge.Platform is a layered .NET 10 SDK that treats <strong>RDF named graphs</strong> as
+      the canonical persistence model for structured domain entities. It provides a coherent set
+      of composable slices — each independently versionable — that cover the full lifecycle from
+      compile-time code generation, through HTTP endpoint wiring, to asynchronous messaging and
+      binary object storage. Consumers reference only the slices they need; the dependency
+      injection layer assembles a correctly ordered decorator chain regardless of registration order.
+    </p>
+    <p>
+      The platform is designed around a single principle: <em>domain logic should not know
+      about persistence, transport, or policy</em>. Entity types are plain annotated classes;
+      Roslyn generators emit the boilerplate; the Repository and Operations layers handle
+      persistence and HTTP mapping; Aspects and Authorization layers enforce SHACL and rule-based
+      guards before any write reaches the store. Branching isolates work in named RDF graphs;
+      Capability and Messaging layers provide synchronous and asynchronous dispatch patterns;
+      Object Storage adds a first-class blob-management surface for binary-bearing entities.
+    </p>
+  </section>
+
+  <!-- ── Platform slices ── -->
+  <section class="topic">
+    <h2 class="section-title">Platform slices</h2>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph LR
+  subgraph Foundations
+    Execution["Forge.Execution"]
+    AspAbstr["Forge.Aspects.Abstractions"]
+    MsgAbstr["Forge.Messaging.Abstractions"]
+    ObjAbstr["Forge.ObjectStorage.Abstractions"]
+  end
+  subgraph Entity_Persistence["Entity &amp; Persistence"]
+    Entity["Forge.Entity"]
+    EntGen["Forge.Entity.Generators"]
+    Repo["Forge.Repository"]
+    RepoInMem["Forge.Repository.InMemory"]
+    RepoGraphDb["Forge.Repository.GraphDb"]
+    Sparql["Forge.Sparql"]
+  end
+  subgraph Operations_Layer["Operations"]
+    Ops["Forge.Operations"]
+    OpsGen["Forge.Operations.Generators"]
+    OpsHttp["Forge.Operations.Http"]
+  end
+  subgraph HTTP_Cross_Cutting["HTTP Cross-Cutting"]
+    ExecHttp["Forge.Execution.Http"]
+  end
+  subgraph Authorization_Layer["Authorization"]
+    Auth["Forge.Authorization"]
+    AuthHttp["Forge.Authorization.Http"]
+  end
+  subgraph Aspects_Layer["Aspects"]
+    Aspects["Forge.Aspects"]
+  end
+  subgraph Branch_Snapshot["Branch &amp; Snapshot"]
+    Branch["Forge.Branch"]
+    BranchHttp["Forge.Branch.Http"]
+  end
+  subgraph Capability_Layer["Capability"]
+    Cap["Forge.Capability"]
+    CapHttp["Forge.Capability.Http"]
+    CapMsg["Forge.Capability.Messaging"]
+  end
+  subgraph Messaging_Layer["Messaging"]
+    MsgInMem["Forge.Messaging.InMemory"]
+    MsgKafka["Forge.Messaging.Kafka"]
+    EntMsg["Forge.Entity.Messaging"]
+  end
+  subgraph ObjectStorage_Layer["Object Storage"]
+    ObjInMem["Forge.ObjectStorage.InMemory"]
+    ObjHttp["Forge.ObjectStorage.Http"]
+  end
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Quick links ── -->
+  <section class="topic">
+    <h2 class="section-title">Quick links</h2>
+    <div class="card-grid">
+
+      <a class="card-link" href="getting-started.html">
+        <div class="card">
+          <h3>🚀 Getting Started</h3>
+          <p style="color:var(--muted);font-size:.88rem">Add packages, wire DI, define your first entity, run a query.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="projects.html">
+        <div class="card">
+          <h3>📦 Projects</h3>
+          <p style="color:var(--muted);font-size:.88rem">Full dependency graph and per-package reference cards.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="architecture.html">
+        <div class="card">
+          <h3>🏛 Architecture</h3>
+          <p style="color:var(--muted);font-size:.88rem">Layer diagram, dependency heatmap, and slice responsibility breakdown.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="api-reference.html">
+        <div class="card">
+          <h3>📖 API Reference</h3>
+          <p style="color:var(--muted);font-size:.88rem">Key interfaces, types, and extension methods per package.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="cookbook.html">
+        <div class="card">
+          <h3>🍳 Cookbook</h3>
+          <p style="color:var(--muted);font-size:.88rem">Copy-paste recipes for entities, HTTP, branching, capabilities, messaging, and storage.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="configuration.html">
+        <div class="card">
+          <h3>⚙️ Configuration</h3>
+          <p style="color:var(--muted);font-size:.88rem">Every <code>AddForge…()</code> and <code>Map…()</code> DI registration with its options.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="testing.html">
+        <div class="card">
+          <h3>🧪 Testing</h3>
+          <p style="color:var(--muted);font-size:.88rem">Unit tests with InMemory backends, shared fixtures, and integration tests.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="sample.html">
+        <div class="card">
+          <h3>🎵 Sample Walkthrough</h3>
+          <p style="color:var(--muted);font-size:.88rem">Annotated tour of <code>Application.Sample</code> — a music-catalogue demo app.</p>
+        </div>
+      </a>
+
+      <a class="card-link" href="adr.html">
+        <div class="card">
+          <h3>📋 ADRs</h3>
+          <p style="color:var(--muted);font-size:.88rem">23 Architecture Decision Records — timeline, topic chart, and full text.</p>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+</main>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+</script>
+</body>
+</html>

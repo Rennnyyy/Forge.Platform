@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — API Reference</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link active" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>API Reference</h1>
+    <p class="lead">Key interfaces, classes, and extension methods per package — ordered from most fundamental to most derived.</p>
+  </div>
+
+  <!-- ── Forge.Execution ── -->
+  <section class="topic" id="api-forge-execution">
+    <h2 class="section-title">Forge.Execution</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ExecutionCorrelation</code></td><td>Ambient correlation record — <code>ExecutionId</code> (GUID) + <code>RequestId</code>. Flows through the whole pipeline.</td></tr>
+        <tr><td><code>ExecutionError</code></td><td>Structured error with <code>Code</code> (string) and <code>Message</code>. Returned by all fail paths.</td></tr>
+        <tr><td><code>ExecutionResult&lt;T&gt;</code></td><td>Discriminated union: <code>Ok</code> carries <code>T Response</code>; <code>Fail</code> carries <code>ExecutionError</code>.</td></tr>
+        <tr><td><code>ExecutionScope</code></td><td>Static ambient scope; <code>ExecutionScope.Current</code> returns the active <code>ExecutionCorrelation</code>; <code>Use(correlation)</code> creates a scoped context.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Aspects.Abstractions ── -->
+  <section class="topic" id="api-forge-aspects-abstractions">
+    <h2 class="section-title">Forge.Aspects.Abstractions</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IAspect</code></td><td>Marker interface for all aspect types (operation, query, message).</td></tr>
+        <tr><td><code>IOperationAspect</code></td><td>Validates an entity write operation against a SHACL shape.</td></tr>
+        <tr><td><code>IMessageAspect</code></td><td>Validates a capability command payload against a SHACL shape.</td></tr>
+        <tr><td><code>ICapabilityAspect</code></td><td>Validates a capability invocation context.</td></tr>
+        <tr><td><code>IAspectStore</code></td><td>Registry for registered aspects, keyed by IRI.</td></tr>
+        <tr><td><code>AspectException</code></td><td>Exception thrown when an aspect validation fails; carries SHACL violation details.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>Aspect.NoOpIri</code></td><td>Sentinel IRI (<code>"urn:forge:aspects:no-op"</code>) meaning "do not enforce any aspect".</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Messaging.Abstractions ── -->
+  <section class="topic" id="api-forge-messaging-abstractions">
+    <h2 class="section-title">Forge.Messaging.Abstractions</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IMessageProducer&lt;TKey,TValue&gt;</code></td><td>Publishes one message to a named topic.</td></tr>
+        <tr><td><code>IMessageConsumer&lt;TKey,TValue&gt;</code></td><td>Consumes messages from a named topic as an async stream.</td></tr>
+        <tr><td><code>IMessageSerializer&lt;T&gt;</code></td><td>Serialization seam — converts <code>T</code> to <code>ReadOnlyMemory&lt;byte&gt;</code>.</td></tr>
+        <tr><td><code>IMessageDeserializer&lt;T&gt;</code></td><td>Deserialization seam — converts <code>ReadOnlyMemory&lt;byte&gt;</code> to <code>T</code>.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>MessageEnvelope&lt;TValue&gt;</code></td><td>Broker-agnostic envelope; carries <code>Topic</code>, <code>PartitionKey</code>, <code>Payload</code>, <code>Correlation</code>, <code>TimestampUtc</code>, <code>ContentType</code>, <code>SchemaVersion</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.ObjectStorage.Abstractions ── -->
+  <section class="topic" id="api-forge-objectstorage-abstractions">
+    <h2 class="section-title">Forge.ObjectStorage.Abstractions</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IObjectStore</code></td><td>Read/write blob storage for a single entity type. Provides <code>PutAsync</code>, <code>GetAsync</code>, <code>DeleteAsync</code>.</td></tr>
+        <tr><td><code>IObjectStoreProvider</code></td><td>Resolves a keyed <code>IObjectStore</code> by <code>StoreKey</code>.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ObjectNotFoundException</code></td><td>Thrown when a blob cannot be found for the given entity IRI.</td></tr>
+        <tr><td><code>[ObjectBearing]</code></td><td>Attribute marking an entity class as owning a binary object. Forces <code>MapObjectOperations()</code> to register the eight-route surface.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Entity ── -->
+  <section class="topic" id="api-forge-entity">
+    <h2 class="section-title">Forge.Entity</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IEntity</code></td><td>Marker interface for all entity types. Exposes <code>string Iri</code> and <code>bool IsIdentitySealed</code>.</td></tr>
+        <tr><td><code>IEntityOptions</code></td><td>Provides <code>BaseIri</code> and <code>PredicateBaseIri</code> to generators and mappers.</td></tr>
+        <tr><td><code>IEntityLoader</code></td><td>Loads a single entity by type and IRI.</td></tr>
+        <tr><td><code>ICollectionLoader</code></td><td>Loads a typed collection of entities by IRI list.</td></tr>
+        <tr><td><code>IInverseRefLoader</code></td><td>Loads inverse-relation collections (e.g. all <code>Studio</code>s managed by an <code>Artist</code>).</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>EntityBase</code></td><td>Abstract base implementing <code>IEntity</code>; provides IRI sealing and equality by IRI.</td></tr>
+        <tr><td><code>EntityRef&lt;T&gt;</code></td><td>Awaitable lazy reference to a related entity. Exposes <code>Iri</code>, <code>IsLoaded</code>, <code>ValueOrThrow</code>, <code>ResolveAsync()</code>.</td></tr>
+        <tr><td><code>EntityRefCollection&lt;T&gt;</code></td><td>Async-enumerable, lazy collection of related entity references. Exposes <code>AddAsync</code>, <code>RemoveAsync</code>, <code>ContainsAsync</code>.</td></tr>
+        <tr><td><code>EntitySession</code></td><td>Ambient scope providing the current <code>IEntityLoader</code> to generated code.</td></tr>
+        <tr><td><code>EntityOptions</code></td><td>Static ambient wiring for <code>BaseIri</code> and <code>PredicateBaseIri</code>; override with <code>EntityOptions.Use(options)</code>.</td></tr>
+      </tbody>
+    </table>
+    <h3>Attributes</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>[Entity]</code></td><td>Declares a class as an entity. Parameters: <code>Path</code> (URL segment), <code>PredicatePath</code> (predicate IRI segment).</td></tr>
+        <tr><td><code>[Identity]</code></td><td>Selects the identity strategy: <code>IdentityGenerator.Random</code> (UUID), <code>IdentityGenerator.PropertyBasedPlain</code> (from <code>[IdentityPart]</code> properties).</td></tr>
+        <tr><td><code>[IdentityPart(order)]</code></td><td>Marks a property as contributing to the composite IRI suffix.</td></tr>
+        <tr><td><code>[Predicate(name)]</code></td><td>Declares a scalar or relation property with the given predicate local name.</td></tr>
+        <tr><td><code>[Inverse(targetProperty, predicateName)]</code></td><td>Declares a read-only inverse-relation collection populated by the inverse loader.</td></tr>
+        <tr><td><code>[Enumeration]</code></td><td>Marks an entity class as a closed vocabulary of named individuals. Suppresses Create/Update/Delete endpoints.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Repository ── -->
+  <section class="topic" id="api-forge-repository">
+    <h2 class="section-title">Forge.Repository</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IEntityStore</code></td><td>Read-only entity store; exposes typed load and async-enumerable query.</td></tr>
+        <tr><td><code>ITransactionalEntityStore</code></td><td>Extends <code>IEntityStore</code> with transactional write support (used by <code>EntityTransaction</code>).</td></tr>
+        <tr><td><code>IEntityRepository&lt;T&gt;</code></td><td>Typed helper over <code>IEntityStore</code>; provides <code>FindAsync</code>, <code>LoadAsync</code>, <code>QueryAllAsync</code>.</td></tr>
+        <tr><td><code>ISparqlQueryStore</code></td><td>Optional back-end interface exposing raw SPARQL SELECT/ASK queries.</td></tr>
+        <tr><td><code>IMultiGraphSparqlStore</code></td><td>Extends <code>ISparqlQueryStore</code> for backends that support multi-graph queries.</td></tr>
+        <tr><td><code>IRdfMapper&lt;T&gt;</code></td><td>Projects an entity to RDF triples and hydrates it back from an <code>RdfGraph</code>.</td></tr>
+        <tr><td><code>IRdfMapperRegistry</code></td><td>Registry of <code>IRdfMapper</code> instances by entity type.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>EntityTransaction</code></td><td>Unit of work — fluent <code>Create&lt;T&gt;</code>, <code>Update&lt;T&gt;</code>, <code>Delete</code>, <code>DropGraph</code>. Commit via <code>CommitAsync()</code>.</td></tr>
+        <tr><td><code>EntityRepository&lt;T&gt;</code></td><td>Concrete <code>IEntityRepository&lt;T&gt;</code> wrapping an <code>IEntityStore</code>.</td></tr>
+        <tr><td><code>BranchScope</code></td><td>Thread-local ambient scope; sets the active branch IRI for all store operations.</td></tr>
+        <tr><td><code>ForgeEntityRepositoryBuilder</code></td><td>Fluent builder returned by <code>AddForgeEntityRepository()</code>. Exposes store key constants and <code>RegisterEntity&lt;T&gt;()</code>.</td></tr>
+        <tr><td><code>RdfTerm</code></td><td>Value type representing an IRI, blank node, or literal in the RDF model.</td></tr>
+        <tr><td><code>RdfTriple</code></td><td>Value type holding (Subject, Predicate, Object) <code>RdfTerm</code>s.</td></tr>
+        <tr><td><code>EntityAlreadyExistsException</code></td><td>Thrown when a Create operation targets an IRI that already exists.</td></tr>
+        <tr><td><code>EntityNotFoundException</code></td><td>Thrown by <code>LoadAsync</code> when the entity IRI is not present.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Operations ── -->
+  <section class="topic" id="api-forge-operations">
+    <h2 class="section-title">Forge.Operations</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>EntityOperations</code></td><td>Static ambient scope providing <code>CreateAsync&lt;T&gt;</code>, <code>ReadAsync&lt;T&gt;</code>, <code>UpdateAsync&lt;T&gt;</code>, <code>DeleteAsync</code>, <code>ListAsync&lt;T&gt;</code>, <code>BeginTransaction()</code>.</td></tr>
+      </tbody>
+    </table>
+    <h3>Attributes</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>[OperationEndpoints]</code></td><td>Marks an entity class for REST endpoint registration via <code>MapOperations()</code>. Optional parameter overrides the URL path segment.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Aspects ── -->
+  <section class="topic" id="api-forge-aspects">
+    <h2 class="section-title">Forge.Aspects</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>InlineTtlOperationAspect</code></td><td>An <code>IOperationAspect</code> backed by an inline Turtle SHACL shape string.</td></tr>
+        <tr><td><code>InlineTtlMessageAspect</code></td><td>An <code>IMessageAspect</code> backed by an inline Turtle SHACL shape string.</td></tr>
+        <tr><td><code>QueryAspectScope</code></td><td>Ambient scope for the active query aspect IRI; used by SPARQL-backed stores.</td></tr>
+      </tbody>
+    </table>
+    <h3>Extension methods</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>AspectsServiceCollectionExtensions.AddForgeAspects()</code></td><td>Wires <code>AspectEnforcingTransactionalStore</code> into the unkeyed decorator chain.</td></tr>
+        <tr><td><code>AspectsServiceCollectionExtensions.AddForgeAspectsForKeyedStore(key, resolver)</code></td><td>Wires aspect enforcement on a named keyed store (required for managed-entity HTTP layers, ADR-0019).</td></tr>
+        <tr><td><code>AspectsServiceCollectionExtensions.AddOperationAspect(factory)</code></td><td>Registers an <code>IOperationAspect</code> in <code>IAspectStore</code>.</td></tr>
+        <tr><td><code>AspectsServiceCollectionExtensions.AddMessageAspect(factory)</code></td><td>Registers an <code>IMessageAspect</code> in <code>IAspectStore</code>.</td></tr>
+        <tr><td><code>AspectsServiceCollectionExtensions.AddQueryAspect(factory)</code></td><td>Registers an <code>IQueryAspect</code> in <code>IAspectStore</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Authorization ── -->
+  <section class="topic" id="api-forge-authorization">
+    <h2 class="section-title">Forge.Authorization</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IAspectGuard</code></td><td>Authorizes a write operation based on the active agent token and the operation details.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>AuthorizationContext</code></td><td>Ambient scope for the current agent token. Set by <code>UseAgentTokenMiddleware()</code> from the <code>X-Forge-Agent-Token</code> header.</td></tr>
+        <tr><td><code>AllowAllAspectGuard</code></td><td>No-op guard that permits all operations; useful for development.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Capability ── -->
+  <section class="topic" id="api-forge-capability">
+    <h2 class="section-title">Forge.Capability</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ICapabilityHandler&lt;TCommand,TResponse&gt;</code></td><td>In-process command handler. Implement <code>HandleAsync(command, context, ct)</code> returning <code>ExecutionResult&lt;TResponse&gt;</code>.</td></tr>
+        <tr><td><code>ICapabilityDispatcher&lt;TCommand,TResponse&gt;</code></td><td>Synchronous in-process dispatcher — routes to the registered handler.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>CapabilityContext</code></td><td>Execution context passed to <code>HandleAsync</code>; provides <code>ExecutionCorrelation</code>, <code>AspectIri</code>, and an event accumulator.</td></tr>
+      </tbody>
+    </table>
+    <h3>Attributes</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>[Capability]</code></td><td>Marks a handler class with its HTTP route (<code>Group</code>, <code>Name</code>, <code>Method</code>) and optionally messaging topic names.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Capability.Messaging ── -->
+  <section class="topic" id="api-forge-capability-messaging">
+    <h2 class="section-title">Forge.Capability.Messaging</h2>
+    <h3>Interfaces</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>IAsyncCapabilityDispatcher&lt;TCommand,TResponse&gt;</code></td><td>Async dispatcher. <code>PublishAsync</code> (fire-and-forget) and <code>PublishAndWaitAsync</code> (request-reply via <code>PendingReplyRegistry</code>).</td></tr>
+        <tr><td><code>ICapabilityMessageConsumer&lt;TCommand,TResponse&gt;</code></td><td>SDK-provided consumer; reads one command envelope, delegates to the registered <code>ICapabilityHandler</code>, publishes the reply.</td></tr>
+      </tbody>
+    </table>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>CapabilityCommandEnvelope&lt;TCommand&gt;</code></td><td>Published by the dispatcher; carries <code>Command</code>, <code>Correlation</code>, <code>AspectIri</code>, <code>ReplyToTopic</code>, <code>TimestampUtc</code>.</td></tr>
+        <tr><td><code>CapabilityReplyEnvelope&lt;TResponse&gt;</code></td><td>Published by the consumer; carries <code>Result</code>, <code>Correlation</code>, <code>TimestampUtc</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Branch ── -->
+  <section class="topic" id="api-forge-branch">
+    <h2 class="section-title">Forge.Branch</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>Branch</code></td><td>Entity type representing a named graph branch; has <code>Name</code>, <code>Description</code>, and <code>DefaultSnapshotIri</code>.</td></tr>
+        <tr><td><code>BranchDefault</code></td><td>Static helper exposing <code>BranchIri</code> — the IRI of the configured default branch (from <code>Forge:Branch:DefaultBranchIri</code>).</td></tr>
+        <tr><td><code>BranchProtectionViolationException</code></td><td>Thrown when an attempt is made to write directly to a snapshot-protected graph.</td></tr>
+        <tr><td><code>SnapshotImmutabilityViolationException</code></td><td>Thrown when a write targets a frozen snapshot graph.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Execution.Http ── -->
+  <section class="topic" id="api-forge-execution-http">
+    <h2 class="section-title">Forge.Execution.Http</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ExecutionEndpointHelper</code></td><td>Shared helper for endpoint handlers: extracts correlation, resolves aspect IRI from <code>X-Forge-Operation-AspectIri</code> header.</td></tr>
+        <tr><td><code>HeaderExecutionAspectIriProvider</code></td><td>Reads the <code>X-Forge-Operation-AspectIri</code> request header; falls back to <code>Aspect.NoOpIri</code>.</td></tr>
+        <tr><td><code>IExecutionAspectIriProvider</code></td><td>Interface for resolving the active aspect IRI from a request context.</td></tr>
+      </tbody>
+    </table>
+    <h3>Extension methods</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ExecutionHttpApplicationBuilderExtensions.UseExecutionCorrelation()</code></td><td>Middleware that sets <code>ExecutionScope.Current</code> from the incoming request.</td></tr>
+        <tr><td><code>ExecutionHttpApplicationBuilderExtensions.UseBranchScope()</code></td><td>Middleware that reads <code>X-Forge-BranchIri</code> and sets <code>BranchScope.Current</code> for the request lifetime.</td></tr>
+        <tr><td><code>ExecutionHttpServiceCollectionExtensions.AddBranchHttp(config)</code></td><td>Registers <code>HeaderBranchIriProvider</code> and binds <code>BranchOptions</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Forge.Operations.Http ── -->
+  <section class="topic" id="api-forge-operations-http">
+    <h2 class="section-title">Forge.Operations.Http</h2>
+    <h3>Key types</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>OperationCreatedResponse</code></td><td>Shared 201 response — carries <code>Iri</code> (string). Used by all managed-entity HTTP layers.</td></tr>
+        <tr><td><code>OperationUpdatedResponse</code></td><td>Shared 200 response for successful updates.</td></tr>
+        <tr><td><code>OperationDeletedResponse</code></td><td>Shared 200 response for successful deletes.</td></tr>
+        <tr><td><code>OperationListResponse&lt;T&gt;</code></td><td>Shared list envelope carrying <code>IReadOnlyList&lt;T&gt; Items</code>.</td></tr>
+      </tbody>
+    </table>
+    <h3>Extension methods</h3>
+    <table class="api-table">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>OperationEndpointsEndpointRouteBuilderExtensions.MapOperations()</code></td><td>Registers five REST endpoints per discovered <code>[OperationEndpoints]</code> entity. Skips <code>[ObjectBearing]</code> types.</td></tr>
+        <tr><td><code>OperationEndpointsHttpServiceCollectionExtensions.AddOperationEndpointsHttpFromAssemblyContaining&lt;T&gt;()</code></td><td>Scans an assembly for <code>[OperationEndpoints]</code> types and registers one <code>OperationEndpointDescriptor</code> each.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+</body>
+</html>

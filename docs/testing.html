@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Testing</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link active" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Testing</h1>
+    <p class="lead">Philosophy, tooling, shared fixtures, and patterns for unit, integration, and end-to-end testing across the Forge.Platform monorepo.</p>
+  </div>
+
+  <!-- ── Philosophy ── -->
+  <section id="testing-philosophy">
+    <h2 class="section-title">Philosophy</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Real behaviour, fake infrastructure</h3>
+        <p>Unit tests run against in-memory backends (<code>InMemoryEntityStore</code>, <code>InMemoryMessageBroker</code>). All business logic exercises real DI-wired services — no hand-rolled mocks for domain code.</p>
+      </div>
+      <div class="card">
+        <h3>Shared fixtures, not shared state</h3>
+        <p>Re-usable seed data lives in <code>Entity.Tests.Fixtures.Core</code> (entity definitions) and <code>Entity.Tests.Fixtures</code> (repository-backed populated stores). Each test class receives a fresh fixture instance — never static state. See <a href="adr.html#adr-0007">ADR-0007</a> and <a href="adr.html#adr-0015">ADR-0015</a>.</p>
+      </div>
+      <div class="card">
+        <h3>Bruno for integration tests</h3>
+        <p>HTTP integration tests are written as Bruno collections in <code>spec/</code>. Each chapter maps to one behavioural story defined in <a href="adr.html#adr-0013">ADR-0013</a> and expanded in <a href="adr.html#adr-0016">ADR-0016</a>. Tests can run against GraphDB (<a href="adr.html#adr-0018">ADR-0018</a>).</p>
+      </div>
+      <div class="card">
+        <h3>One test project per slice</h3>
+        <p>Every src/ slice has a matching tests/ project. Generator test projects use <code>Microsoft.CodeAnalysis.Testing</code> to verify roslyn source output at compile time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Unit tests with InMemory backends ── -->
+  <section id="testing-unit">
+    <h2 class="section-title">Unit Tests — InMemory Backends</h2>
+    <p>Swap the real repository backend for an in-memory one in your <code>WebApplicationFactory</code> or test DI container:</p>
+
+    <pre class="recipe-code">// Service registration in test host:
+services.AddForgeEntityRepository(config)
+        .RegisterEntity&lt;Book&gt;()
+        .UseInMemory();        // &lt;-- in-memory RDF store, no external infra needed
+
+services.AddForgeMessagingInMemory(); // in-memory Kafka analogue</pre>
+
+    <h3>Key in-memory types</h3>
+    <table class="api-table">
+      <thead>
+        <tr><th>Type</th><th>Package</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>InMemoryEntityStore</code></td>
+          <td><code>Forge.Repository.InMemory</code></td>
+          <td>dotNetRDF TripleStore backed by a <code>MemoryStoreManager</code>. All SPARQL and update operations are evaluated in-process.</td>
+        </tr>
+        <tr>
+          <td><code>InMemoryMessageBroker</code></td>
+          <td><code>Forge.Messaging.InMemory</code></td>
+          <td>Channel&lt;T&gt;-backed broker. Implements both <code>IMessageProducer</code> and <code>IMessageConsumer</code> and delivers messages synchronously within the same process.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Resetting state between tests</h3>
+    <pre class="recipe-code">// Implement IAsyncLifetime in your test class (xUnit) to get a fresh store per test:
+public class BookTests : IAsyncLifetime
+{
+    private readonly WebApplicationFactory&lt;Program&gt; _factory;
+    private HttpClient _client = null!;
+
+    public BookTests()
+    {
+        _factory = new WebApplicationFactory&lt;Program&gt;()
+            .WithWebHostBuilder(b =&gt; b.ConfigureServices(ConfigureTestServices));
+        _client = _factory.CreateClient();
+    }
+
+    private static void ConfigureTestServices(IServiceCollection services)
+    {
+        services.AddForgeEntityRepository(/* test config */)
+                .RegisterEntity&lt;Book&gt;()
+                .UseInMemory();
+    }
+
+    public async Task InitializeAsync() =&gt; await Task.CompletedTask;
+    public async Task DisposeAsync()    =&gt; await _factory.DisposeAsync();
+}</pre>
+  </section>
+
+  <!-- ── Shared Test Fixtures ── -->
+  <section id="testing-fixtures">
+    <h2 class="section-title">Shared Test Fixtures</h2>
+    <p>The fixture split (<a href="adr.html#adr-0015">ADR-0015</a>) separates compile-time-only entity definitions from heavier repository-backed fixtures to keep non-repository test projects lean.</p>
+
+    <table class="api-table">
+      <thead>
+        <tr><th>Project</th><th>Purpose</th><th>Used by</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Entity.Tests.Fixtures.Core</code></td>
+          <td>Entity class definitions (<code>TestEntity</code>, <code>TestRelated</code>, etc.) that compile without any repository dependency. Safe to reference from generator tests and any slice-level unit test.</td>
+          <td><code>Entity.Generators.Tests</code>, <code>Operations.Generators.Tests</code>, <code>Sparql.Tests</code></td>
+        </tr>
+        <tr>
+          <td><code>Entity.Tests.Fixtures</code></td>
+          <td>Pre-populated in-memory stores using <code>Repository.InMemory</code>. Provides <code>EntityFixture</code>, <code>RelationshipFixture</code>, and <code>BranchFixture</code> with seed data for common test scenarios.</td>
+          <td><code>Entity.Tests</code>, <code>Repository.InMemory.Tests</code> (via <code>Tests/</code>), <code>Branch.Tests</code>, etc.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Using EntityFixture</h3>
+    <pre class="recipe-code">// In xUnit — inject fixture via IClassFixture&lt;T&gt;:
+public class MyTests : IClassFixture&lt;EntityFixture&gt;
+{
+    private readonly EntityFixture _fixture;
+
+    public MyTests(EntityFixture fixture) =&gt; _fixture = fixture;
+
+    [Fact]
+    public async Task CanReadSeededEntity()
+    {
+        var book = await _fixture.Books.ReadAsync(_fixture.SeedBookIri);
+        Assert.NotNull(book);
+    }
+}</pre>
+  </section>
+
+  <!-- ── Integration tests ── -->
+  <section id="testing-integration">
+    <h2 class="section-title">Integration Tests</h2>
+
+    <h3>Application.Sample.Tests</h3>
+    <p>Standard xUnit <code>WebApplicationFactory</code> integration tests that boot the full <code>Application.Sample</code> pipeline against an in-memory backend. These tests verify HTTP contract compliance, response codes, and entity lifecycle.</p>
+
+    <h3>Bruno API tests</h3>
+    <p>The <code>spec/</code> folder holds a Bruno collection with 14 chapters (<a href="adr.html#adr-0016">ADR-0016</a>). Each chapter is a self-contained story directory with a <code>.bru</code> file per request:</p>
+
+    <pre class="recipe-code">spec/
+  forge/
+    01-create-book/
+      01-create.bru
+      02-read-back.bru
+    02-update-book/
+      01-update.bru
+    …
+    14-object-storage/
+      01-upload-blob.bru
+      02-download-blob.bru</pre>
+
+    <p>Run via Bruno CLI:</p>
+    <pre class="recipe-code">bru run spec/forge --env local</pre>
+
+    <h3>GraphDB backend tests</h3>
+    <p>Set <code>FORGE_GRAPHDB_BASEURL</code> and <code>FORGE_GRAPHDB_REPOID</code> environment variables and run with the <code>graphdb</code> Bruno environment to execute tests against a real Ontotext GraphDB instance (<a href="adr.html#adr-0018">ADR-0018</a>):</p>
+
+    <pre class="recipe-code">bru run spec/forge --env graphdb</pre>
+  </section>
+
+  <!-- ── Test project table ── -->
+  <section id="testing-projects">
+    <h2 class="section-title">Test Project Overview</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Test project</th><th>Subject under test</th><th>Backend</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Application.Sample.Tests</code></td><td>Full pipeline smoke tests</td><td>InMemory</td></tr>
+        <tr><td><code>Aspects.Tests</code></td><td>Aspect store, aspect enforcement decorator</td><td>InMemory</td></tr>
+        <tr><td><code>Authorization.Tests</code></td><td><code>IAspectGuard</code>, guarded store decorator</td><td>InMemory</td></tr>
+        <tr><td><code>Authorization.Http.Tests</code></td><td>Agent-token middleware, HTTP auth integration</td><td>InMemory</td></tr>
+        <tr><td><code>Branch.Tests</code></td><td>Branch scope, branch seed service</td><td>InMemory</td></tr>
+        <tr><td><code>Branch.Http.Tests</code></td><td>Branch HTTP routes, snapshot routes</td><td>InMemory</td></tr>
+        <tr><td><code>Capability.Tests</code></td><td>Capability handler dispatch</td><td>InMemory</td></tr>
+        <tr><td><code>Capability.Http.Tests</code></td><td>Capability HTTP endpoints</td><td>InMemory</td></tr>
+        <tr><td><code>Capability.Messaging.Tests</code></td><td>Async capability command bus</td><td>InMemory broker</td></tr>
+        <tr><td><code>Entity.Tests</code></td><td>Source-generated mappers, transactions</td><td>InMemory</td></tr>
+        <tr><td><code>Entity.Tests.Fixtures</code></td><td>Fixture library validation</td><td>InMemory</td></tr>
+        <tr><td><code>Entity.Tests.Fixtures.Core</code></td><td>Fixture entity definitions (compile-only)</td><td>—</td></tr>
+        <tr><td><code>Entity.Generators.Tests</code></td><td>Roslyn source generator output</td><td>CodeAnalysis.Testing</td></tr>
+        <tr><td><code>Entity.Messaging.Tests</code></td><td>EventEmittingEntityStore, entity events</td><td>InMemory</td></tr>
+        <tr><td><code>Execution.Tests</code></td><td>Execution context, correlation</td><td>—</td></tr>
+        <tr><td><code>Execution.Http.Tests</code></td><td>Correlation middleware, branch scope middleware</td><td>InMemory</td></tr>
+        <tr><td><code>Messaging.Abstractions.Tests</code></td><td>Abstractions contracts</td><td>—</td></tr>
+        <tr><td><code>Messaging.InMemory.Tests</code></td><td><code>InMemoryMessageBroker</code></td><td>In-process</td></tr>
+        <tr><td><code>Messaging.Kafka.Tests</code></td><td>Kafka producer/consumer wrappers</td><td>Testcontainers</td></tr>
+        <tr><td><code>ObjectStorage.Abstractions.Tests</code></td><td>Abstractions contracts</td><td>—</td></tr>
+        <tr><td><code>ObjectStorage.InMemory.Tests</code></td><td><code>InMemoryObjectStore</code></td><td>In-process</td></tr>
+        <tr><td><code>ObjectStorage.Http.Tests</code></td><td>Object storage HTTP routes</td><td>InMemory</td></tr>
+        <tr><td><code>Operations.Tests</code></td><td>CRUD operations, transaction helpers</td><td>InMemory</td></tr>
+        <tr><td><code>Operations.Generators.Tests</code></td><td>Roslyn operations generator output</td><td>CodeAnalysis.Testing</td></tr>
+        <tr><td><code>Operations.Http.Tests</code></td><td>Operation endpoint wiring, route generation</td><td>InMemory</td></tr>
+        <tr><td><code>Repository.GraphDb.Tests</code></td><td>GraphDB HTTP store integration</td><td>Testcontainers / live GraphDB</td></tr>
+        <tr><td><code>Sparql.Tests</code></td><td>SPARQL query builder, filters</td><td>InMemory</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Generator tests ── -->
+  <section id="testing-generators">
+    <h2 class="section-title">Testing Roslyn Source Generators</h2>
+    <p>Generator test projects (<code>Entity.Generators.Tests</code>, <code>Operations.Generators.Tests</code>) use the <code>Microsoft.CodeAnalysis.CSharp.Testing</code> harness. Each test compiles an input source string and asserts on the generated output:</p>
+
+    <pre class="recipe-code">// Example generator test (Entity.Generators.Tests):
+[Fact]
+public async Task GeneratesRdfMapper()
+{
+    var source = """
+        using Forge.Entity;
+
+        [Entity(Path = "widgets")]
+        [Identity(IdentityKind.Random)]
+        public partial class Widget { public string Name { get; set; } = ""; }
+        """;
+
+    await new CSharpSourceGeneratorTest&lt;EntityMapperGenerator, DefaultVerifier&gt;
+    {
+        TestState =
+        {
+            Sources        = { source },
+            GeneratedSources = { (typeof(EntityMapperGenerator), "Widget.Mapper.g.cs", expectedOutput) }
+        }
+    }.RunAsync();
+}</pre>
+
+    <div class="tip">
+      Generator tests reference <code>Entity.Tests.Fixtures.Core</code> (not <code>Entity.Tests.Fixtures</code>) to avoid pulling in <code>Repository.InMemory</code> which would create a circular in generator test compilation.
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

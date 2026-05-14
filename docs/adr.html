@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — ADRs</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link active" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Architecture Decision Records</h1>
+    <p class="lead">All 23 ADRs — timeline, topic breakdown, and full expandable records.</p>
+  </div>
+
+  <!-- ── Timeline ── -->
+  <section class="topic">
+    <h2 class="section-title">ADR timeline</h2>
+    <div class="chart-wrap">
+      <div id="adr-timeline" style="height:260px"></div>
+    </div>
+  </section>
+
+  <!-- ── Topics bar ── -->
+  <section class="topic">
+    <h2 class="section-title">ADRs by topic area</h2>
+    <div class="chart-wrap">
+      <div id="adr-topics" style="height:280px"></div>
+    </div>
+  </section>
+
+  <!-- ── ADR list ── -->
+  <section class="topic">
+    <h2 class="section-title">Decision records</h2>
+
+    <details class="adr-record" id="adr-0001">
+      <summary>
+        <span class="badge badge-blue">0001</span>
+        <span class="adr-title">Single-solution monorepo with src/ and tests/</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-04-29</span>
+      </summary>
+      <div class="adr-body">
+        <p>Establish a single <code>.slnx</code> solution containing all library packages in <code>src/</code> and all test projects in <code>tests/</code>, with <code>Directory.Build.props</code> and <code>Directory.Packages.props</code> at the monorepo root for shared MSBuild settings and central package version management.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0002">
+      <summary>
+        <span class="badge badge-blue">0002</span>
+        <span class="adr-title">.NET 10 + Central Package Management</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-04-29</span>
+      </summary>
+      <div class="adr-body">
+        <p>Target <code>net10.0</code> for all runtime packages and <code>netstandard2.0</code> for Roslyn source generators. Use Central Package Management (CPM) via <code>Directory.Packages.props</code> to ensure a single canonical version per NuGet dependency across the entire monorepo.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0003">
+      <summary>
+        <span class="badge badge-blue">0003</span>
+        <span class="adr-title">Architecture Decision Records as the design source of truth</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-04-29</span>
+      </summary>
+      <div class="adr-body">
+        <p>Every non-trivial design choice must be captured in a numbered ADR in the <code>adr/</code> folder before implementation begins. ADRs are the authoritative record of the why, not just the what, for every architectural decision in the platform.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0004">
+      <summary>
+        <span class="badge badge-blue">0004</span>
+        <span class="adr-title">Default namespace = Forge.&lt;library&gt;</span>
+        <span class="badge badge-amber">Superseded by 0008</span>
+        <span class="adr-date">2026-04-29</span>
+      </summary>
+      <div class="adr-body">
+        <p>Establishes the <code>Forge.&lt;LibraryName&gt;</code> namespace convention for all packages, mapping directly to the folder name under <code>src/</code>. Superseded by ADR-0008 which removed the <code>Entity.</code> prefix from satellite package names.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0005">
+      <summary>
+        <span class="badge badge-blue">0005</span>
+        <span class="adr-title">RDF-backed Entity Repository as a separate slice</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-04-30</span>
+      </summary>
+      <div class="adr-body">
+        <p>The persistence layer uses RDF named graphs rather than a relational schema, with dotNetRDF as the in-process implementation. The repository slice is isolated so that alternative backends (GraphDB, future SPARQL endpoints) can be substituted by implementing <code>IEntityStore</code> without touching domain code.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0006">
+      <summary>
+        <span class="badge badge-blue">0006</span>
+        <span class="adr-title">Canonical base URL is https://forge-it.net</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-01</span>
+      </summary>
+      <div class="adr-body">
+        <p>All entity IRIs are minted under <code>https://forge-it.net</code> as the base. This is configurable via <code>EntityOptions.BaseIri</code> but defaults to the canonical URL. Predicate IRIs use <code>https://forge-it.net/predicates/{predicatePath}/{name}</code>.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0007">
+      <summary>
+        <span class="badge badge-blue">0007</span>
+        <span class="adr-title">Shared test fixtures project for sample entities</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-01</span>
+      </summary>
+      <div class="adr-body">
+        <p>A <code>tests/Entity.Tests.Fixtures</code> project holds shared entity definitions and DI setup used by multiple test suites, preventing duplication. Companion ADR-0015 later split this into Core and full-CRUD tiers.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0008">
+      <summary>
+        <span class="badge badge-blue">0008</span>
+        <span class="adr-title">Remove Entity. prefix from satellite package names</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-02</span>
+      </summary>
+      <div class="adr-body">
+        <p>Satellite packages that were originally named <code>Forge.Entity.*</code> (e.g. <code>Forge.Entity.Operations</code>) are renamed to drop the <code>Entity.</code> prefix (e.g. <code>Forge.Operations</code>). The feature namespace follows the package name convention. Supersedes ADR-0004's implicit assumption about satellite naming.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0009">
+      <summary>
+        <span class="badge badge-blue">0009</span>
+        <span class="adr-title">ADR adjustment policy: inline notes for identifier-only changes</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-03</span>
+      </summary>
+      <div class="adr-body">
+        <p>When a subsequent decision changes only an identifier (type name, method name, namespace) established by an earlier ADR, an inline note is added to the original ADR rather than creating a new numbered record, reducing ADR proliferation for cosmetic renames.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0010">
+      <summary>
+        <span class="badge badge-blue">0010</span>
+        <span class="adr-title">Sub-folder structure inside slice directories</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-03</span>
+      </summary>
+      <div class="adr-body">
+        <p>Each slice directory under <code>src/</code> organises its files into sub-folders: <code>DependencyInjection/</code>, <code>Transaction/</code>, <code>Mapping/</code>, <code>Rdf/</code>, etc. This keeps root directory clean and establishes a predictable navigation pattern across all packages.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0011">
+      <summary>
+        <span class="badge badge-blue">0011</span>
+        <span class="adr-title">Samples folder for runnable demonstration applications</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-04</span>
+      </summary>
+      <div class="adr-body">
+        <p>A top-level <code>samples/</code> folder contains runnable ASP.NET Core applications that demonstrate platform features end-to-end. The sample application depends on all src/ packages and is part of the <code>.slnx</code> solution but not published as a NuGet package.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0012">
+      <summary>
+        <span class="badge badge-blue">0012</span>
+        <span class="adr-title">Integration-testing samples via Bruno CLI and a subprocess host</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-04</span>
+      </summary>
+      <div class="adr-body">
+        <p>The <code>tests/Application.Sample.Tests</code> project drives the committed Bruno HTTP collection against a live sample-app process spawned as a subprocess. The test class uses <code>xUnit</code> <code>[Fact]</code>s to gate each Bruno chapter, giving CI visibility per story chapter.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0013">
+      <summary>
+        <span class="badge badge-blue">0013</span>
+        <span class="adr-title">Bruno collection organised as story chapters</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-04</span>
+      </summary>
+      <div class="adr-body">
+        <p>The Bruno collection under <code>samples/Application.Sample/bruno/</code> is structured as numbered story chapters (e.g. <code>01-books/</code>, <code>02-branches/</code>). Each chapter exercises one feature slice end-to-end. Amended by ADR-0016 to expand to 14 chapters.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0014">
+      <summary>
+        <span class="badge badge-blue">0014</span>
+        <span class="adr-title">Registration-order-independent DI decorator chain</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-09</span>
+      </summary>
+      <div class="adr-body">
+        <p>The keyed-service decorator chain (Backend → AspectEnforcing → EventEmitting → Guard) is built using deferred factory delegates that resolve the next-in-chain at provider build time. This means <code>AddForgeAspects()</code>, <code>AddForgeEntityEvents()</code>, etc. can be called in any order in <code>Program.cs</code> without breaking the chain.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0015">
+      <summary>
+        <span class="badge badge-blue">0015</span>
+        <span class="adr-title">Split entity test fixtures into Core and full-CRUD projects</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-04</span>
+      </summary>
+      <div class="adr-body">
+        <p><code>tests/Entity.Tests.Fixtures.Core</code> holds only entity definitions and minimal DI wiring, while <code>tests/Entity.Tests.Fixtures</code> adds generated-CRUD methods and full operation endpoint setup. Downstream test projects reference only the tier they need to minimise compile-time coupling.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0016">
+      <summary>
+        <span class="badge badge-blue">0016</span>
+        <span class="adr-title">Bruno collection expanded to 14 chapters</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-04</span>
+      </summary>
+      <div class="adr-body">
+        <p>The Bruno collection is expanded from its initial scope to 14 story chapters covering all major feature slices: books, branches, snapshots, capabilities, aspects, data-records, object-bearing entities, messaging diagnostics, async capability dispatch, studios, recordings, genres, featured-artists, and track-masters. Amends ADR-0013.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0017">
+      <summary>
+        <span class="badge badge-blue">0017</span>
+        <span class="adr-title">Platform entity HTTP layers must use shared Forge.Operations.Http contracts</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-12</span>
+      </summary>
+      <div class="adr-body">
+        <p>Any hand-written HTTP layer for a platform-managed entity (e.g. <code>Forge.Branch.Http</code>) must use the shared response types from <code>Forge.Operations.Http</code> — <code>OperationCreatedResponse</code>, <code>OperationUpdatedResponse</code>, <code>OperationDeletedResponse</code>, <code>OperationListResponse&lt;T&gt;</code> — rather than defining its own response records.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0018">
+      <summary>
+        <span class="badge badge-blue">0018</span>
+        <span class="adr-title">Bruno integration tests also run against GraphDB backend</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-12</span>
+      </summary>
+      <div class="adr-body">
+        <p>A parallel <code>BrunoGraphDbIntegrationTests</code> class in <code>Application.Sample.Tests</code> backs the full Bruno suite with a live GraphDB container (via <code>BrunoGraphDbFixture</code>). All 15 test cases use <code>[SkippableFact]</code> and skip gracefully when no container runtime is available.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0019">
+      <summary>
+        <span class="badge badge-blue">0019</span>
+        <span class="adr-title">Platform managed-entity HTTP layers must wire aspect enforcement</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-12</span>
+      </summary>
+      <div class="adr-body">
+        <p>Any hand-written HTTP layer for a platform-managed entity must satisfy four obligations: use shared response contracts, call <code>AddForgeAspectsForKeyedStore()</code> to wire aspect enforcement on the keyed management store, thread <code>X-Forge-Operation-AspectIri</code> through every write, and register a <code>ManagedEntityStoreKeyRegistration</code>. A startup-time <code>ManagedEntityAspectValidationService</code> enforces this automatically when <code>AddForgeAspects()</code> is active.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0020">
+      <summary>
+        <span class="badge badge-blue">0020</span>
+        <span class="adr-title">Messaging abstractions slice</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-13</span>
+      </summary>
+      <div class="adr-body">
+        <p>Introduces three new slices: <code>Forge.Messaging.Abstractions</code> (broker-agnostic interfaces and <code>MessageEnvelope&lt;T&gt;</code>), <code>Forge.Messaging.Kafka</code> (Confluent.Kafka implementation), and <code>Forge.Messaging.InMemory</code> (in-process channel-based implementation for tests). Feature slices depend only on the abstractions; no Kafka reference leaks into domain slices.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0021">
+      <summary>
+        <span class="badge badge-blue">0021</span>
+        <span class="adr-title">Entity change event stream</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-13</span>
+      </summary>
+      <div class="adr-body">
+        <p>An <code>EventEmittingEntityStore</code> decorator sits above <code>AspectEnforcingTransactionalStore</code> in the decorator chain. After each valid write it publishes an <code>EntityChangedEnvelope&lt;TDto&gt;</code> to both a history topic (<code>forge.entities.{type}.history</code>) and a compacted state topic (<code>forge.entities.{type}.state</code>). Delivery is at-least-once; consumers must be idempotent.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0022">
+      <summary>
+        <span class="badge badge-blue">0022</span>
+        <span class="adr-title">Async capability and operations command bus</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-13</span>
+      </summary>
+      <div class="adr-body">
+        <p><code>Forge.Capability.Messaging</code> adds <code>IAsyncCapabilityDispatcher&lt;TCommand,TResponse&gt;</code> supporting fire-and-forget (<code>PublishAsync</code>) and request-reply (<code>PublishAndWaitAsync</code>). The in-process <code>ICapabilityHandler</code> logic is reused unchanged on the consumer side; a <code>PendingReplyRegistry</code> correlates replies by <code>ExecutionId</code>.</p>
+      </div>
+    </details>
+
+    <details class="adr-record" id="adr-0023">
+      <summary>
+        <span class="badge badge-blue">0023</span>
+        <span class="adr-title">Object Storage slices</span>
+        <span class="badge badge-green">Accepted</span>
+        <span class="adr-date">2026-05-13</span>
+      </summary>
+      <div class="adr-body">
+        <p>Three new slices address binary object storage: <code>Forge.ObjectStorage.Abstractions</code> (provider-agnostic <code>IObjectStore</code>), <code>Forge.ObjectStorage.InMemory</code> (in-memory blob store for tests), and <code>Forge.ObjectStorage.Http</code> that wires eight REST routes per <code>[ObjectBearing]</code> entity via <code>MapObjectOperations()</code> — covering metadata CRUD, streaming upload, binary download, and blob-only delete.</p>
+      </div>
+    </details>
+
+  </section>
+
+</main>
+
+<script>
+// ── ADR timeline ────────────────────────────────────────────────────────────
+(function() {
+  const adrs = [
+    { id: '0001', date: '2026-04-29', status: 'Accepted' },
+    { id: '0002', date: '2026-04-29', status: 'Accepted' },
+    { id: '0003', date: '2026-04-29', status: 'Accepted' },
+    { id: '0004', date: '2026-04-29', status: 'Superseded' },
+    { id: '0005', date: '2026-04-30', status: 'Accepted' },
+    { id: '0006', date: '2026-05-01', status: 'Accepted' },
+    { id: '0007', date: '2026-05-01', status: 'Accepted' },
+    { id: '0008', date: '2026-05-02', status: 'Accepted' },
+    { id: '0009', date: '2026-05-03', status: 'Accepted' },
+    { id: '0010', date: '2026-05-03', status: 'Accepted' },
+    { id: '0011', date: '2026-05-04', status: 'Accepted' },
+    { id: '0012', date: '2026-05-04', status: 'Accepted' },
+    { id: '0013', date: '2026-05-04', status: 'Accepted' },
+    { id: '0014', date: '2026-05-09', status: 'Accepted' },
+    { id: '0015', date: '2026-05-04', status: 'Accepted' },
+    { id: '0016', date: '2026-05-04', status: 'Accepted' },
+    { id: '0017', date: '2026-05-12', status: 'Accepted' },
+    { id: '0018', date: '2026-05-12', status: 'Accepted' },
+    { id: '0019', date: '2026-05-12', status: 'Accepted' },
+    { id: '0020', date: '2026-05-13', status: 'Accepted' },
+    { id: '0021', date: '2026-05-13', status: 'Accepted' },
+    { id: '0022', date: '2026-05-13', status: 'Accepted' },
+    { id: '0023', date: '2026-05-13', status: 'Accepted' }
+  ];
+
+  const colorMap = { Accepted: '#10b981', Superseded: '#64748b', Proposed: '#f59e0b' };
+
+  const data = adrs.map((a, i) => ({
+    value: [a.date, i + 1],
+    name: a.id,
+    itemStyle: { color: colorMap[a.status] || '#64748b' }
+  }));
+
+  const chart = echarts.init(document.getElementById('adr-timeline'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: p => `ADR-${p.name} (${p.value[0]})<br/>${adrs[p.dataIndex].status}`
+    },
+    xAxis: {
+      type: 'time',
+      axisLabel: { color: '#64748b', fontSize: 11 },
+      axisLine: { lineStyle: { color: '#2e3144' } },
+      splitLine: { lineStyle: { color: '#2e3144' } }
+    },
+    yAxis: {
+      type: 'value', name: 'ADR #',
+      min: 1, max: 23, interval: 2,
+      axisLabel: { color: '#64748b', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#2e3144' } }
+    },
+    series: [{
+      type: 'scatter',
+      symbolSize: 14,
+      data: data,
+      label: {
+        show: true,
+        position: 'top',
+        formatter: p => p.name,
+        color: '#e2e8f0',
+        fontSize: 9
+      }
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+
+// ── ADR topics bar ──────────────────────────────────────────────────────────
+(function() {
+  const topics = [
+    { name: 'Governance',       count: 4, color: '#64748b' },  // 0001,0002,0003,0009
+    { name: 'Tooling',          count: 5, color: '#f59e0b' },  // 0004,0008,0010,0011,0013,0016 → actually 0013+0016+0011+0010+0004+0008 → 6??
+    { name: 'Repository / RDF', count: 2, color: '#3b82f6' },  // 0005,0006
+    { name: 'Testing',          count: 4, color: '#10b981' },  // 0007,0012,0015,0018
+    { name: 'HTTP',             count: 2, color: '#8b5cf6' },  // 0017,0019
+    { name: 'Messaging',        count: 3, color: '#22d3ee' },  // 0020,0021,0022
+    { name: 'Storage',          count: 1, color: '#34d399' },  // 0023
+    { name: 'DI / Arch',        count: 2, color: '#6366f1' }   // 0014,0016
+  ];
+
+  const chart = echarts.init(document.getElementById('adr-topics'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '18%', right: '8%', top: '8%', bottom: '12%' },
+    xAxis: {
+      type: 'value',
+      axisLabel: { color: '#64748b' },
+      splitLine: { lineStyle: { color: '#2e3144' } }
+    },
+    yAxis: {
+      type: 'category',
+      data: topics.map(t => t.name),
+      axisLabel: { color: '#e2e8f0', fontSize: 12 }
+    },
+    series: [{
+      type: 'bar',
+      data: topics.map(t => ({ value: t.count, itemStyle: { color: t.color } })),
+      label: { show: true, position: 'right', color: '#e2e8f0', fontSize: 11 },
+      barMaxWidth: 30
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+</script>
+
+</body>
+</html>

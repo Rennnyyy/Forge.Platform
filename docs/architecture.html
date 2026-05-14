@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Architecture</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link active" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Architecture</h1>
+    <p class="lead">Layered architecture diagram, package-count breakdown, and dependency heat-map across all 27 source slices.</p>
+  </div>
+
+  <!-- ── Layer diagram ── -->
+  <section class="topic">
+    <h2 class="section-title">Layer diagram</h2>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph TD
+  subgraph Foundations
+    Execution["Forge.Execution"]
+    AspectsAbstractions["Forge.Aspects.Abstractions"]
+    MessagingAbstractions["Forge.Messaging.Abstractions"]
+    ObjStorageAbstractions["Forge.ObjectStorage.Abstractions"]
+  end
+  subgraph EntityPersistence["Entity &amp; Persistence"]
+    Entity["Forge.Entity"]
+    EntityGenerators["Forge.Entity.Generators"]
+    Repository["Forge.Repository"]
+    RepositoryInMemory["Forge.Repository.InMemory"]
+    RepositoryGraphDb["Forge.Repository.GraphDb"]
+    Sparql["Forge.Sparql"]
+  end
+  subgraph Operations
+    Ops["Forge.Operations"]
+    OpsGenerators["Forge.Operations.Generators"]
+    OpsHttp["Forge.Operations.Http"]
+  end
+  subgraph HTTPCrossCutting["HTTP Cross-Cutting"]
+    ExecutionHttp["Forge.Execution.Http"]
+  end
+  subgraph Authorization
+    Auth["Forge.Authorization"]
+    AuthHttp["Forge.Authorization.Http"]
+    Aspects["Forge.Aspects"]
+  end
+  subgraph BranchSnapshot["Branch &amp; Snapshot"]
+    Branch["Forge.Branch"]
+    BranchHttp["Forge.Branch.Http"]
+  end
+  subgraph Capability
+    Cap["Forge.Capability"]
+    CapHttp["Forge.Capability.Http"]
+    CapMessaging["Forge.Capability.Messaging"]
+  end
+  subgraph Messaging
+    MsgInMemory["Forge.Messaging.InMemory"]
+    MsgKafka["Forge.Messaging.Kafka"]
+    EntityMessaging["Forge.Entity.Messaging"]
+  end
+  subgraph ObjectStorage["Object Storage"]
+    ObjStorageInMemory["Forge.ObjectStorage.InMemory"]
+    ObjStorageHttp["Forge.ObjectStorage.Http"]
+  end
+
+  Foundations --> EntityPersistence
+  EntityPersistence --> Operations
+  EntityPersistence --> HTTPCrossCutting
+  Operations --> HTTPCrossCutting
+  HTTPCrossCutting --> BranchSnapshot
+  HTTPCrossCutting --> Capability
+  HTTPCrossCutting --> ObjectStorage
+  Foundations --> Authorization
+  Authorization --> BranchSnapshot
+  Foundations --> Messaging
+  Messaging --> Capability
+
+  classDef generator fill:#1e3a8a,stroke:#3b82f6,color:#bfdbfe
+  classDef abstract fill:#1c1f2e,stroke:#4b5563,color:#9ca3af
+  class EntityGenerators,OpsGenerators generator
+  class AspectsAbstractions,MessagingAbstractions,ObjStorageAbstractions abstract
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Package count per layer ── -->
+  <section class="topic">
+    <h2 class="section-title">Package count per layer</h2>
+    <div class="chart-wrap">
+      <div id="layer-donut" style="height:340px"></div>
+    </div>
+  </section>
+
+  <!-- ── Dependency heat-map ── -->
+  <section class="topic">
+    <h2 class="section-title">Dependency heat-map</h2>
+    <p class="text-muted" style="margin-bottom:1rem;font-size:.85rem;">Each cell is 1 (blue) if a runtime project-reference edge exists between column (source) and row (target), 0 otherwise.</p>
+    <div class="chart-wrap">
+      <div id="dep-heatmap" style="height:560px"></div>
+    </div>
+  </section>
+
+  <!-- ── Layer descriptions ── -->
+  <section class="topic">
+    <h2 class="section-title">Layer descriptions</h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <h3><span class="badge badge-green">Foundations</span> Foundations</h3>
+        <p>The lowest-level abstraction packages. <code>Forge.Execution</code> provides the <code>ExecutionCorrelation</code> ambient scope and error types. <code>Forge.Aspects.Abstractions</code> defines the <code>IAspect</code> contract and <code>Aspect.NoOpIri</code> sentinel. <code>Forge.Messaging.Abstractions</code> defines <code>IMessageProducer</code>, <code>IMessageConsumer</code>, and <code>MessageEnvelope&lt;T&gt;</code>. <code>Forge.ObjectStorage.Abstractions</code> defines <code>IObjectStore</code>. None of these depend on any other Forge slice.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Execution, Aspects.Abstractions, Messaging.Abstractions, ObjectStorage.Abstractions</dd>
+          <dt>Depends on</dt><dd>—</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-blue">Entity &amp; Persistence</span></h3>
+        <p>Defines the entity programming model (<code>IEntity</code>, <code>[Entity]</code>, <code>[Predicate]</code>, <code>[Identity]</code>) and the RDF backed repository. <code>Forge.Entity.Generators</code> is a Roslyn source generator that emits structural partial classes. <code>Forge.Repository</code> defines <code>IEntityStore</code>, <code>ITransactionalEntityStore</code>, and <code>EntityTransaction</code>. <code>Forge.Repository.InMemory</code> and <code>Forge.Repository.GraphDb</code> are concrete backends. <code>Forge.Sparql</code> provides SPARQL query support.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Entity, Entity.Generators, Repository, Repository.InMemory, Repository.GraphDb, Sparql</dd>
+          <dt>Depends on</dt><dd>Foundations</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-violet">Operations</span></h3>
+        <p>Derived from the entity model, <code>Forge.Operations</code> exposes <code>EntityOperations</code> static CRUD helpers. <code>Forge.Operations.Generators</code> emits <code>CreateAsync</code>/<code>ReadAsync</code>/<code>UpdateAsync</code>/<code>DeleteAsync</code>/<code>ListAsync</code> active-record methods. <code>Forge.Operations.Http</code> scans assemblies for <code>[OperationEndpoints]</code> types and wires five REST endpoints per entity via <code>MapOperations()</code>.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Operations, Operations.Generators, Operations.Http</dd>
+          <dt>Depends on</dt><dd>Entity &amp; Persistence, HTTP Cross-Cutting</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-violet">HTTP Cross-Cutting</span></h3>
+        <p><code>Forge.Execution.Http</code> threads <code>ExecutionCorrelation</code> through the HTTP pipeline, provides <code>ExecutionEndpointHelper</code>, and bridges <code>BranchScope</code> from the HTTP layer. It is the foundation dependency for all HTTP slices.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Execution.Http</dd>
+          <dt>Depends on</dt><dd>Foundations, Entity &amp; Persistence, Branch</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-amber">Authorization</span></h3>
+        <p><code>Forge.Authorization</code> provides <code>IAspectGuard</code>, <code>GuardedTransactionalStore</code>, and <code>AuthorizationContext</code>. <code>Forge.Authorization.Http</code> wires the HTTP startup guard and agent-token middleware. <code>Forge.Aspects</code> provides aspect enforcement, SHACL validation via dotNetRDF, and <code>AddForgeAspects()</code>.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Authorization, Authorization.Http, Aspects</dd>
+          <dt>Depends on</dt><dd>Foundations, Entity &amp; Persistence</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-blue">Branch &amp; Snapshot</span></h3>
+        <p><code>Forge.Branch</code> defines the <code>Branch</code> entity, manages named-graph isolation per branch, and exposes the <code>BranchScope</code>. <code>Forge.Branch.Http</code> wires five REST endpoints for branch CRUD and two endpoints for snapshot management via <code>MapBranches()</code> and <code>MapSnapshots()</code>.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Branch, Branch.Http</dd>
+          <dt>Depends on</dt><dd>Entity &amp; Persistence, HTTP Cross-Cutting, Authorization</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-violet">Capability</span></h3>
+        <p><code>Forge.Capability</code> defines <code>ICapabilityHandler&lt;TReq,TResp&gt;</code>, <code>[Capability]</code>, and the in-process dispatcher. <code>Forge.Capability.Http</code> exposes handlers over HTTP via <code>MapCapabilities()</code>. <code>Forge.Capability.Messaging</code> adds <code>IAsyncCapabilityDispatcher</code> for fire-and-forget and request-reply dispatch over the messaging layer (ADR-0022).</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Capability, Capability.Http, Capability.Messaging</dd>
+          <dt>Depends on</dt><dd>Foundations, Authorization, HTTP Cross-Cutting</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-green">Messaging</span></h3>
+        <p><code>Forge.Messaging.InMemory</code> provides an in-process channel-based broker for testing. <code>Forge.Messaging.Kafka</code> provides a Confluent.Kafka implementation. <code>Forge.Entity.Messaging</code> wires the <code>EventEmittingEntityStore</code> decorator (ADR-0021) that publishes entity-change events to the history and state topics after each write.</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>Messaging.InMemory, Messaging.Kafka, Entity.Messaging</dd>
+          <dt>Depends on</dt><dd>Foundations (Messaging.Abstractions), Entity &amp; Persistence</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-green">Object Storage</span></h3>
+        <p><code>Forge.ObjectStorage.InMemory</code> provides an in-memory blob store. <code>Forge.ObjectStorage.Http</code> registers <code>[ObjectBearing]</code> entities and wires eight REST routes per entity via <code>MapObjectOperations()</code> — covering metadata CRUD, streaming upload, binary download, and blob-only delete (ADR-0023).</p>
+        <dl class="meta mt-2">
+          <dt>Packages</dt><dd>ObjectStorage.InMemory, ObjectStorage.Http</dd>
+          <dt>Depends on</dt><dd>Foundations (ObjectStorage.Abstractions), Operations, HTTP Cross-Cutting</dd>
+        </dl>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+</script>
+
+<script>
+// ── Layer donut chart ───────────────────────────────────────────────────────
+(function() {
+  const chart = echarts.init(document.getElementById('layer-donut'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'item', formatter: '{b}: {c} packages ({d}%)' },
+    legend: {
+      orient: 'vertical', right: 10, top: 'center',
+      textStyle: { color: '#e2e8f0', fontSize: 12 }
+    },
+    series: [{
+      name: 'Packages per layer',
+      type: 'pie',
+      radius: ['40%', '68%'],
+      center: ['40%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 4, borderColor: '#0f1117', borderWidth: 2 },
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#e2e8f0' } },
+      data: [
+        { value: 4, name: 'Foundations',        itemStyle: { color: '#10b981' } },
+        { value: 6, name: 'Entity & Persistence', itemStyle: { color: '#3b82f6' } },
+        { value: 3, name: 'Operations',          itemStyle: { color: '#8b5cf6' } },
+        { value: 1, name: 'HTTP Cross-Cutting',  itemStyle: { color: '#6366f1' } },
+        { value: 3, name: 'Authorization',       itemStyle: { color: '#f59e0b' } },
+        { value: 2, name: 'Branch & Snapshot',   itemStyle: { color: '#0ea5e9' } },
+        { value: 3, name: 'Capability',          itemStyle: { color: '#a855f7' } },
+        { value: 3, name: 'Messaging',           itemStyle: { color: '#22d3ee' } },
+        { value: 2, name: 'Object Storage',      itemStyle: { color: '#34d399' } }
+      ]
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+
+// ── Dependency heat-map ─────────────────────────────────────────────────────
+(function() {
+  // Projects in layer order (short names)
+  const projects = [
+    'Execution','Aspects.Abstractions','Messaging.Abstractions','ObjectStorage.Abstractions',
+    'Entity','Entity.Generators','Repository','Repository.InMemory','Repository.GraphDb','Sparql',
+    'Operations','Operations.Http',
+    'Execution.Http',
+    'Aspects','Authorization','Authorization.Http',
+    'Branch','Branch.Http',
+    'Capability','Capability.Http','Capability.Messaging',
+    'Messaging.InMemory','Messaging.Kafka','Entity.Messaging',
+    'ObjectStorage.InMemory','ObjectStorage.Http'
+  ];
+
+  // Runtime edges: [source, target]
+  const edges = [
+    ['Messaging.Abstractions','Execution'],
+    ['Repository','Entity'],
+    ['Repository','Aspects.Abstractions'],
+    ['Sparql','Entity'],
+    ['Sparql','Repository'],
+    ['Operations','Entity'],
+    ['Operations','Repository'],
+    ['Aspects','Aspects.Abstractions'],
+    ['Aspects','Entity'],
+    ['Aspects','Repository'],
+    ['Authorization','Repository'],
+    ['Branch','Entity'],
+    ['Branch','Repository'],
+    ['Repository.InMemory','Entity'],
+    ['Repository.InMemory','Repository'],
+    ['Repository.GraphDb','Entity'],
+    ['Repository.GraphDb','Repository'],
+    ['Execution.Http','Aspects.Abstractions'],
+    ['Execution.Http','Execution'],
+    ['Execution.Http','Repository'],
+    ['Execution.Http','Branch'],
+    ['Capability','Aspects.Abstractions'],
+    ['Capability','Authorization'],
+    ['Capability','Execution'],
+    ['Operations.Http','Operations'],
+    ['Operations.Http','Execution.Http'],
+    ['Authorization.Http','Authorization'],
+    ['Branch.Http','Branch'],
+    ['Branch.Http','Execution.Http'],
+    ['Branch.Http','Operations.Http'],
+    ['Branch.Http','Repository'],
+    ['Branch.Http','Aspects'],
+    ['Branch.Http','Capability'],
+    ['Capability.Http','Capability'],
+    ['Capability.Http','Execution.Http'],
+    ['Capability.Messaging','Capability'],
+    ['Capability.Messaging','Messaging.Abstractions'],
+    ['Messaging.InMemory','Messaging.Abstractions'],
+    ['Messaging.Kafka','Messaging.Abstractions'],
+    ['Entity.Messaging','Execution'],
+    ['Entity.Messaging','Messaging.Abstractions'],
+    ['Entity.Messaging','Repository'],
+    ['ObjectStorage.InMemory','ObjectStorage.Abstractions'],
+    ['ObjectStorage.Http','ObjectStorage.Abstractions'],
+    ['ObjectStorage.Http','Operations.Http'],
+    ['ObjectStorage.Http','Aspects.Abstractions'],
+    ['ObjectStorage.Http','Execution.Http']
+  ];
+
+  const n = projects.length;
+  const idx = Object.fromEntries(projects.map((p, i) => [p, i]));
+  const data = [];
+  edges.forEach(([src, tgt]) => {
+    if (idx[src] !== undefined && idx[tgt] !== undefined) {
+      data.push([idx[src], idx[tgt], 1]);
+    }
+  });
+
+  const chart = echarts.init(document.getElementById('dep-heatmap'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      position: 'top',
+      formatter: p => p.value[2] === 1
+        ? `${projects[p.value[0]]} → ${projects[p.value[1]]}`
+        : ''
+    },
+    grid: { bottom: '20%', left: '28%' },
+    xAxis: {
+      type: 'category', data: projects,
+      axisLabel: { rotate: 45, color: '#64748b', fontSize: 10 },
+      splitArea: { show: true, areaStyle: { color: ['#1a1d27','#22263a'] } }
+    },
+    yAxis: {
+      type: 'category', data: projects,
+      axisLabel: { color: '#64748b', fontSize: 10 },
+      splitArea: { show: true, areaStyle: { color: ['#1a1d27','#22263a'] } }
+    },
+    visualMap: {
+      min: 0, max: 1, show: false,
+      inRange: { color: ['#22263a', '#3b82f6'] }
+    },
+    series: [{
+      type: 'heatmap',
+      data: data,
+      label: { show: false },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(59,130,246,.5)' } }
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+</script>
+
+</body>
+</html>

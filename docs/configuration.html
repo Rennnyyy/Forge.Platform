@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Configuration</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link active" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Configuration Reference</h1>
+    <p class="lead">Every <code>AddForge…()</code>, <code>UseForge…()</code>, and <code>Map…()</code> registration method with its parameters and what it wires up.</p>
+  </div>
+
+  <div class="tip">
+    <strong>Note:</strong> All registrations follow the managed-entity keyed store pattern described in <a href="adr.html#adr-0019">ADR-0019</a>. Registration order is irrelevant thanks to the deferred-factory decorator chain described in <a href="adr.html#adr-0014">ADR-0014</a>.
+  </div>
+
+  <!-- ── Repository ── -->
+  <div class="config-section" id="config-forge-repository">
+    <h2 class="section-title">Forge.Repository</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeEntityRepository(config)</code></td>
+          <td><code>IConfiguration configuration</code></td>
+          <td>Binds <code>EntityRepositoryOptions</code> from the <code>Forge:EntityRepository</code> section. Returns a <code>ForgeEntityRepositoryBuilder</code> for chaining backend and entity registration calls.</td>
+        </tr>
+        <tr>
+          <td><code>RegisterEntity&lt;T&gt;()</code> <span class="text-muted">(on builder)</span></td>
+          <td>none</td>
+          <td>Registers <code>IRdfMapper&lt;T&gt;</code>, <code>IEntityRepository&lt;T&gt;</code>, and all generated mappers for entity type <code>T</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+    <pre class="recipe-code">// EntityRepositoryOptions defaults
+new EntityRepositoryOptions
+{
+    Backend          = "InMemory",   // "InMemory" | "GraphDb"
+    DefaultBranchIri = "",           // seeded by AddForgeBranchHttp()
+    NamedGraph       = null,         // null = use branch-scoped named graph
+    TypeBaseIri      = null          // null = derived from EntityOptions.BaseIri
+};</pre>
+  </div>
+
+  <!-- ── Repository.InMemory ── -->
+  <div class="config-section" id="config-forge-repository-inmemory">
+    <h2 class="section-title">Forge.Repository.InMemory</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>UseInMemory()</code> <span class="text-muted">(on builder)</span></td>
+          <td>none</td>
+          <td>Registers an in-memory dotNetRDF store as the <code>BackendStoreKey</code> keyed <code>ITransactionalEntityStore</code>. No external infrastructure required.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Repository.GraphDb ── -->
+  <div class="config-section" id="config-forge-repository-graphdb">
+    <h2 class="section-title">Forge.Repository.GraphDb</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>UseGraphDb()</code> <span class="text-muted">(on builder)</span></td>
+          <td>none</td>
+          <td>Registers an Ontotext GraphDB HTTP store as the backend. Reads connection settings from <code>Forge:GraphDb:BaseUrl</code> and <code>Forge:GraphDb:RepositoryId</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+    <pre class="recipe-code">// GraphDb configuration keys in appsettings.json:
+{
+  "Forge": {
+    "EntityRepository": { "Backend": "GraphDb" },
+    "GraphDb": {
+      "BaseUrl":       "http://localhost:7200",
+      "RepositoryId":  "forge-sample"
+    }
+  }
+}</pre>
+  </div>
+
+  <!-- ── Aspects ── -->
+  <div class="config-section" id="config-forge-aspects">
+    <h2 class="section-title">Forge.Aspects</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeAspects()</code></td>
+          <td>none</td>
+          <td>Registers <code>IAspectStore</code> and decorates the unkeyed <code>ITransactionalEntityStore</code> with <code>AspectEnforcingTransactionalStore</code>. Also registers <code>ManagedEntityAspectValidationService</code> (startup validator, conditional on <code>IAspectStore</code> presence).</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeAspectsForKeyedStore(storeKey, sparqlResolver)</code></td>
+          <td><code>string storeKey</code>, <code>Func&lt;IServiceProvider, ISparqlQueryStore&gt; sparqlStoreResolver</code></td>
+          <td>Decorates the named keyed store with <code>AspectEnforcingTransactionalStore</code>. Required for managed-entity HTTP layers (ADR-0019). Registers a matching <code>AspectEnforcedKeyedStoreRegistration(storeKey)</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddOperationAspect(factory)</code></td>
+          <td><code>Func&lt;IServiceProvider, IOperationAspect&gt; factory</code></td>
+          <td>Registers an <code>IOperationAspect</code> in <code>IAspectStore</code>. Activated on write requests by header <code>X-Forge-Operation-AspectIri</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddMessageAspect(factory)</code></td>
+          <td><code>Func&lt;IServiceProvider, IMessageAspect&gt; factory</code></td>
+          <td>Registers an <code>IMessageAspect</code> in <code>IAspectStore</code>. Activated on capability dispatch requests by header <code>X-Forge-Capability-AspectIri</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddQueryAspect(factory)</code></td>
+          <td><code>Func&lt;IServiceProvider, IQueryAspect&gt; factory</code></td>
+          <td>Registers an <code>IQueryAspect</code> in <code>IAspectStore</code>, governing SPARQL query filtering.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Authorization ── -->
+  <div class="config-section" id="config-forge-authorization">
+    <h2 class="section-title">Forge.Authorization + Forge.Authorization.Http</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeAuthorization()</code></td>
+          <td>none</td>
+          <td>Registers <code>IAspectGuard</code> and decorates <code>ITransactionalEntityStore</code> with <code>GuardedTransactionalStore</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeAuthorizationHttp(config)</code></td>
+          <td><code>IConfiguration configuration</code></td>
+          <td>Registers <code>GuardedTransactionalStore</code> decorator, binds <code>AuthorizationOptions</code> from <code>Forge:Authorization</code> section, and registers a startup filter that enforces <code>RequireExplicitGuard</code>.</td>
+        </tr>
+        <tr>
+          <td><code>UseAgentTokenMiddleware()</code></td>
+          <td>none</td>
+          <td>Reads <code>X-Forge-Agent-Token</code> request header and sets <code>AuthorizationContext.CurrentAgentToken</code> for the request lifetime.</td>
+        </tr>
+      </tbody>
+    </table>
+    <pre class="recipe-code">// AuthorizationOptions defaults (Forge:Authorization section):
+{
+  "Forge": {
+    "Authorization": {
+      "RequireExplicitGuard": true   // false = uses AllowAllAspectGuard (dev only)
+    }
+  }
+}</pre>
+  </div>
+
+  <!-- ── Branch ── -->
+  <div class="config-section" id="config-forge-branch">
+    <h2 class="section-title">Forge.Branch + Forge.Branch.Http</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeBranch(config)</code></td>
+          <td><code>IConfiguration configuration</code></td>
+          <td>Registers the management-graph store (keyed <code>"forge.branch.management"</code> and <code>"forge.branch.management.raw"</code>), sets <code>BranchDefault.BranchIri</code> from <code>Forge:Branch:DefaultBranchIri</code>, and starts <code>BranchSeedingService</code> to upsert the default branch entity on first boot.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeBranchHttp(config)</code></td>
+          <td><code>IConfiguration configuration</code></td>
+          <td>Calls <code>AddForgeBranch()</code> and wires <code>AspectEnforcingTransactionalStore</code> onto the management store via <code>AddForgeAspectsForKeyedStore()</code>. Registers <code>HeaderExecutionAspectIriProvider</code> for the management surface. Required for the aspect-IRI threading obligation of ADR-0019.</td>
+        </tr>
+        <tr>
+          <td><code>AddBranchHttp(config)</code></td>
+          <td><code>IConfiguration configuration</code></td>
+          <td>Registers <code>HeaderBranchIriProvider</code> (reads <code>X-Forge-BranchIri</code>) and binds <code>BranchOptions</code>. Does <em>not</em> register the management store.</td>
+        </tr>
+        <tr>
+          <td><code>UseBranchScope()</code></td>
+          <td>none</td>
+          <td>Middleware: reads <code>X-Forge-BranchIri</code>, calls <code>BranchScope.Use(iri)</code>, echoes the effective IRI in <code>X-Forge-Effective-BranchIri</code> response header.</td>
+        </tr>
+        <tr>
+          <td><code>MapBranches()</code></td>
+          <td>none</td>
+          <td>Registers five REST endpoints for Branch entity CRUD under <code>api/branches</code>.</td>
+        </tr>
+        <tr>
+          <td><code>MapSnapshots()</code></td>
+          <td>none</td>
+          <td>Registers POST and DELETE endpoints for snapshot management under <code>api/snapshots</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Capability ── -->
+  <div class="config-section" id="config-forge-capability">
+    <h2 class="section-title">Forge.Capability + Forge.Capability.Http + Forge.Capability.Messaging</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddCapabilityHandler&lt;TCmd,TResp,THandler&gt;()</code></td>
+          <td>none</td>
+          <td>Registers a single <code>ICapabilityHandler</code> and its metadata.</td>
+        </tr>
+        <tr>
+          <td><code>AddCapabilityHandlersFromAssemblyContaining&lt;T&gt;()</code></td>
+          <td>none</td>
+          <td>Scans the assembly containing <code>T</code> for all types implementing <code>ICapabilityHandler&lt;,&gt;</code> and registers them with their <code>[Capability]</code> metadata. Must be called before <code>AddCapabilityHttp()</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddCapabilityHttp()</code></td>
+          <td>none</td>
+          <td>Builds endpoint metadata from registered capability handlers. Must be called after <code>AddCapabilityHandlers…()</code>.</td>
+        </tr>
+        <tr>
+          <td><code>MapCapabilities()</code></td>
+          <td>none</td>
+          <td>Registers one HTTP endpoint per <code>[Capability]</code> handler under <code>api/capabilities/{group}/{name}</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeCapabilityMessaging()</code></td>
+          <td>none</td>
+          <td>Auto-discovery variant — scans registered capability handlers and derives topic names (<code>forge.capabilities.{identity}.commands</code> / <code>.replies</code>), wires <code>IAsyncCapabilityDispatcher</code>, command-pump, and reply listener for each.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeCapabilityMessaging&lt;TCmd,TResp&gt;(options)</code></td>
+          <td><code>Action&lt;CapabilityMessagingOptions&gt;? configure</code></td>
+          <td>Producer-side: wires <code>IAsyncCapabilityDispatcher&lt;TCmd,TResp&gt;</code> for a specific command/response pair.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeCapabilityConsumer&lt;TCmd,TResp&gt;(options)</code></td>
+          <td><code>Action&lt;CapabilityMessagingOptions&gt;? configure</code></td>
+          <td>Consumer-side: wires <code>ICapabilityMessageConsumer&lt;TCmd,TResp&gt;</code> and the reply publisher for a specific command/response pair.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Messaging ── -->
+  <div class="config-section" id="config-forge-messaging">
+    <h2 class="section-title">Forge.Messaging.InMemory + Forge.Messaging.Kafka + Forge.Entity.Messaging</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeMessagingInMemory()</code></td>
+          <td>none</td>
+          <td>Registers <code>InMemoryMessageBroker</code> as singleton <code>IMessageProducer</code> and <code>IMessageConsumer</code> for all key/value types. No external broker required.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeMessagingKafka(options)</code></td>
+          <td><code>Action&lt;KafkaOptions&gt;? configure = null</code></td>
+          <td>Registers Confluent.Kafka-backed <code>IMessageProducer</code> and <code>IMessageConsumer</code>. Reads bootstrap servers and SASL settings from <code>Forge:Kafka:*</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeEntityEvents()</code></td>
+          <td>none</td>
+          <td>Decorates the decorated <code>ITransactionalEntityStore</code> with <code>EventEmittingEntityStore</code>. Must be called before <code>AddForgeAspects()</code> / <code>AddForgeAuthorizationHttp()</code> so the event decorator sits above the aspect layer in the chain.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeEntityMessaging&lt;TEntity&gt;(options)</code></td>
+          <td><code>Action&lt;EntityMessagingOptions&gt;? configure = null</code></td>
+          <td>Registers the <code>IMessageSerializer</code> and topic configuration for entity type <code>TEntity</code>. Options: <code>TypeIri</code>, <code>HistoryTopic</code> (default: <code>forge.entities.{type}.history</code>), <code>StateTopic</code> (default: <code>forge.entities.{type}.state</code>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Object Storage ── -->
+  <div class="config-section" id="config-forge-objectstorage">
+    <h2 class="section-title">Forge.ObjectStorage.InMemory + Forge.ObjectStorage.Http</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddForgeObjectStorageInMemory()</code></td>
+          <td>none</td>
+          <td>Registers an in-memory <code>IObjectStoreProvider</code> that creates a keyed <code>IObjectStore</code> per entity type's <code>StoreKey</code>.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeObjectStorageHttp(descriptor)</code></td>
+          <td><code>ObjectStorageEndpointDescriptor descriptor</code></td>
+          <td>Registers a single <code>[ObjectBearing]</code> entity type for eight-route HTTP wiring.</td>
+        </tr>
+        <tr>
+          <td><code>AddForgeObjectStorageHttpFromAssemblyContaining&lt;T&gt;()</code></td>
+          <td>none</td>
+          <td>Scans the assembly containing <code>T</code> for all <code>[ObjectBearing]</code> entity types and registers their <code>ObjectStorageEndpointDescriptor</code>s.</td>
+        </tr>
+        <tr>
+          <td><code>MapObjectOperations()</code></td>
+          <td>none</td>
+          <td>Registers eight REST routes per <code>[ObjectBearing]</code> entity: metadata CRUD (5 routes), plus Upload, Download, and Blob-Delete (3 routes).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Operations.Http ── -->
+  <div class="config-section" id="config-forge-operations-http">
+    <h2 class="section-title">Forge.Operations.Http</h2>
+    <table class="api-table">
+      <thead>
+        <tr><th>Method</th><th>Parameters</th><th>Registers / configures</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>AddOperationEndpointsHttp(descriptor)</code></td>
+          <td><code>OperationEndpointDescriptor descriptor</code></td>
+          <td>Registers one <code>OperationEndpointDescriptor</code> for a single entity type, enabling <code>MapOperations()</code> to wire the five REST endpoints for it.</td>
+        </tr>
+        <tr>
+          <td><code>AddOperationEndpointsHttpFromAssemblyContaining&lt;T&gt;()</code></td>
+          <td>none</td>
+          <td>Scans the assembly containing <code>T</code> for all <code>[OperationEndpoints]</code> entity types (excluding <code>[ObjectBearing]</code>) and registers their descriptors.</td>
+        </tr>
+        <tr>
+          <td><code>MapOperations()</code></td>
+          <td>none</td>
+          <td>Wires five REST endpoints per discovered entity: POST (Create), GET (List), GET?iri= (Read), PUT?iri= (Update), DELETE?iri= (Delete) under <code>api/entities/{path}</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+</body>
+</html>

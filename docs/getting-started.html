@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Getting Started</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link active" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Getting Started</h1>
+    <p class="lead">Add Forge.Platform to a new ASP.NET Core application, define your first entity, and query it — in under ten minutes.</p>
+  </div>
+
+  <!-- ── Prerequisites ── -->
+  <section class="topic">
+    <h2 class="section-title">Prerequisites</h2>
+    <div class="card">
+      <dl class="meta">
+        <dt>Runtime</dt><dd><code>net10.0</code> — .NET 10 SDK</dd>
+        <dt>IDE</dt><dd>Visual Studio 2022 17.12+, Rider 2024.3+, or VS Code with C# Dev Kit</dd>
+        <dt>Source generators</dt><dd>Roslyn source generators are consumed automatically via the <code>OutputItemType="Analyzer"</code> project reference; no manual step required.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ── Steps ── -->
+  <section class="topic">
+    <h2 class="section-title">Step-by-step setup</h2>
+    <ol class="steps">
+
+      <li>
+        <div class="step-title">Add packages</div>
+        <div class="step-body">
+          <p>Reference the core slices you need. For a minimal entity-backed REST API:</p>
+          <table class="api-table mt-2">
+            <thead>
+              <tr><th>Package</th><th>Role</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Forge.Entity</code></td><td>Entity attributes, <code>IEntity</code>, <code>EntityBase</code></td></tr>
+              <tr><td><code>Forge.Entity.Generators</code></td><td>Roslyn generator — structural partial class, IRI sealing</td></tr>
+              <tr><td><code>Forge.Operations</code></td><td><code>EntityOperations</code> static CRUD helpers, <code>[OperationEndpoints]</code></td></tr>
+              <tr><td><code>Forge.Operations.Generators</code></td><td>Roslyn generator — <code>CreateAsync</code>, <code>ReadAsync</code>, <code>UpdateAsync</code>, <code>DeleteAsync</code>, <code>ListAsync</code></td></tr>
+              <tr><td><code>Forge.Repository</code></td><td><code>IEntityStore</code>, <code>ITransactionalEntityStore</code>, <code>EntityTransaction</code></td></tr>
+              <tr><td><code>Forge.Repository.InMemory</code></td><td>In-memory dotNetRDF backend (no infrastructure required)</td></tr>
+              <tr><td><code>Forge.Execution.Http</code></td><td>Correlation threading, <code>BranchScope</code> middleware, HTTP helpers</td></tr>
+              <tr><td><code>Forge.Operations.Http</code></td><td><code>MapOperations()</code> — five REST endpoints per entity</td></tr>
+            </tbody>
+          </table>
+          <pre class="recipe-code">dotnet add package Forge.Entity
+dotnet add package Forge.Entity.Generators
+dotnet add package Forge.Operations
+dotnet add package Forge.Operations.Generators
+dotnet add package Forge.Repository
+dotnet add package Forge.Repository.InMemory
+dotnet add package Forge.Execution.Http
+dotnet add package Forge.Operations.Http</pre>
+        </div>
+      </li>
+
+      <li>
+        <div class="step-title">Wire DI in Program.cs</div>
+        <div class="step-body">
+          <p>Register the platform services in dependency-injection order. Below is the minimal
+          wiring derived from <code>samples/Application.Sample/Program.cs</code>:</p>
+          <pre class="recipe-code">var builder = WebApplication.CreateBuilder(args);
+
+// 1. Entity repository — InMemory backend for development
+var repoBuilder = builder.Services.AddForgeEntityRepository(builder.Configuration);
+repoBuilder.UseInMemory();
+
+// 2. HTTP transport for entity operations
+//    Scans MyAssembly for [Entity]+[OperationEndpoints] types
+builder.Services.AddOperationEndpointsHttpFromAssemblyContaining&lt;Book&gt;();
+
+var app = builder.Build();
+
+// 3. Map five REST endpoints per [OperationEndpoints] entity
+app.MapOperations();
+
+app.Run();</pre>
+          <div class="tip">
+            <strong>Tip:</strong> To switch to GraphDB, call <code>repoBuilder.UseGraphDb()</code> instead of <code>UseInMemory()</code> and set <code>Forge__EntityRepository__Backend=GraphDb</code> plus the <code>Forge:GraphDb:*</code> connection settings.
+          </div>
+        </div>
+      </li>
+
+      <li>
+        <div class="step-title">Define your first entity</div>
+        <div class="step-body">
+          <p>Annotated partial classes are the entity model. The source generator emits the structural half at compile time:</p>
+          <pre class="recipe-code">using Forge.Entity;
+using Forge.Operations;
+
+// [Entity] declares the RDF type and URL path segment.
+// [Identity] controls how the IRI suffix is generated.
+// [OperationEndpoints] tells MapOperations() to register REST routes.
+[Entity(Path = "books")]
+[Identity(IdentityGenerator.PropertyBasedPlain)]
+[OperationEndpoints]
+public partial class Book
+{
+    // [IdentityPart] marks the property whose value forms the IRI suffix.
+    [IdentityPart(0)]
+    [Predicate("isbn")]
+    public partial string Isbn { get; init; }
+
+    // Plain predicates are stored as RDF literals.
+    [Predicate("title")]
+    public string Title { get; set; } = string.Empty;
+
+    [Predicate("author")]
+    public string Author { get; set; } = string.Empty;
+
+    [Predicate("publishedYear")]
+    public int PublishedYear { get; set; }
+
+    [Predicate("available")]
+    public bool Available { get; set; } = true;
+}</pre>
+          <div class="tip">
+            <strong>What the generator emits:</strong> <code>Forge.Entity.Generators</code> emits a partial class that implements <code>IEntity</code>, seals <code>Iri</code> from the identity properties, and wires <code>EntityRef&lt;T&gt;</code> / <code>EntityRefCollection&lt;T&gt;</code> backing fields for relation properties. <code>Forge.Operations.Generators</code> emits static <code>CreateAsync</code>, <code>ReadAsync</code>, <code>UpdateAsync</code>, <code>DeleteAsync</code>, and <code>ListAsync</code> methods on the partial class.
+          </div>
+        </div>
+      </li>
+
+      <li>
+        <div class="step-title">Register the entity type</div>
+        <div class="step-body">
+          <p>The assembly scan performed by <code>AddOperationEndpointsHttpFromAssemblyContaining&lt;T&gt;()</code> automatically calls <code>RegisterEntity&lt;T&gt;()</code> for every <code>[OperationEndpoints]</code> type it discovers. For types you want to register manually you can also call:</p>
+          <pre class="recipe-code">repoBuilder.RegisterEntity&lt;Book&gt;();</pre>
+        </div>
+      </li>
+
+      <li>
+        <div class="step-title">Save and query an entity</div>
+        <div class="step-body">
+          <p>Save via <code>EntityTransaction</code> (the transactional write unit), read via generated helpers or <code>IEntityRepository&lt;T&gt;</code>:</p>
+          <pre class="recipe-code">// ── Save ──────────────────────────────────────────────────────────────────
+// Inject ITransactionalEntityStore or use the generated CreateAsync helper.
+// Using the generated helper (requires EntityOperations.Use() scope):
+await using var tx = EntityOperations.BeginTransaction();
+tx.Create(new Book
+{
+    Isbn = "978-3-16-148410-0",
+    Title = "Domain-Driven Design",
+    Author = "Eric Evans",
+    PublishedYear = 2003,
+    Available = true
+});
+await tx.CommitAsync();
+
+// ── Query all ─────────────────────────────────────────────────────────────
+// Via generated ListAsync (inside an EntityOperations.Use scope):
+await foreach (var book in Book.ListAsync())
+{
+    Console.WriteLine($"{book.Isbn}: {book.Title}");
+}
+
+// ── Query by IRI ─────────────────────────────────────────────────────────
+var iri = "https://forge-it.net/books/978-3-16-148410-0";
+Book? found = await Book.ReadAsync(iri);</pre>
+          <div class="tip">
+            <strong>Branch scope:</strong> Wrap reads and writes in <code>BranchScope.Use(branchIri)</code> to target a named-graph branch rather than the default main graph.
+          </div>
+        </div>
+      </li>
+
+    </ol>
+  </section>
+
+  <!-- ── Next steps ── -->
+  <section class="topic">
+    <h2 class="section-title">Next steps</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3><a href="cookbook.html">Cookbook</a></h3>
+        <p>Copy-paste recipes for common scenarios: relations, branches, capabilities, messaging, aspects, and object storage.</p>
+      </div>
+      <div class="card">
+        <h3><a href="configuration.html">Configuration reference</a></h3>
+        <p>Every <code>AddForge…()</code> and <code>Map…()</code> method with its parameters and what it wires up.</p>
+      </div>
+      <div class="card">
+        <h3><a href="testing.html">Testing guide</a></h3>
+        <p>Unit tests with InMemory backends, shared fixtures, and integration tests with <code>WebApplicationFactory</code>.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
