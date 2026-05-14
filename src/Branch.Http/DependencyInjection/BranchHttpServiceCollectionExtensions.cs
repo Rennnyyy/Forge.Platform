@@ -1,6 +1,7 @@
 using Forge.Aspects;
 using Forge.Aspects.DependencyInjection;
 using Forge.Branch.DependencyInjection;
+using Forge.Capability.DependencyInjection;
 using Forge.Repository;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.Configuration;
@@ -51,6 +52,10 @@ public static class BranchHttpServiceCollectionExtensions
             sparqlStoreResolver: sp =>
                 (ISparqlQueryStore)sp.GetRequiredKeyedService<ITransactionalEntityStore>(
                     ManagementStoreKey + ".raw"));
+
+        // Register the branch.merge capability handler so it is discovered by
+        // AddCapabilityHttp() / MapCapabilities() without any extra call in the host app.
+        services.AddCapabilityHandler<MergeBranchesCommand, MergeBranchesResponse, MergeBranchesHandler>();
 
         return services;
     }

@@ -1,0 +1,21 @@
+meta {
+  name: Branch merge - verify book in source branch (GET)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{mergeBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{mergeSrcIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.isbn: eq 978-0-20-161622-4
+  res.body.title: contains Pragmatic Programmer
+}

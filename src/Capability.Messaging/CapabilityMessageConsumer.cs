@@ -1,29 +1,30 @@
 using Forge.Execution;
 using Forge.Messaging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Forge.Capability.Messaging;
 
 /// <summary>
 /// Default implementation of <see cref="ICapabilityMessageConsumer{TCommand,TResponse}"/>.
-/// Delegates to the in-process <see cref="ICapabilityDispatcher{TCommand,TResponse}"/>
-/// and publishes a <see cref="CapabilityReplyEnvelope{TResponse}"/> when the originating
-/// command envelope requested a reply. See root ADR-0022.
+/// Creates a DI scope per message so that scoped handler dependencies (e.g. repository
+/// services) are properly managed. Publishes a <see cref="CapabilityReplyEnvelope{TResponse}"/>
+/// when the originating command envelope requested a reply. See root ADR-0022.
 /// </summary>
 internal sealed class CapabilityMessageConsumer<TCommand, TResponse>
     : ICapabilityMessageConsumer<TCommand, TResponse>
     where TCommand : class
     where TResponse : class
 {
-    private readonly ICapabilityDispatcher<TCommand, TResponse> _dispatcher;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMessageProducer<string, CapabilityReplyEnvelope<TResponse>> _replyProducer;
 
     public CapabilityMessageConsumer(
-        ICapabilityDispatcher<TCommand, TResponse> dispatcher,
+        IServiceScopeFactory scopeFactory,
         IMessageProducer<string, CapabilityReplyEnvelope<TResponse>> replyProducer)
     {
-        ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(scopeFactory);
         ArgumentNullException.ThrowIfNull(replyProducer);
-        _dispatcher = dispatcher;
+        _scopeFactory = scopeFactory;
         _replyProducer = replyProducer;
     }
 
@@ -39,7 +40,12 @@ internal sealed class CapabilityMessageConsumer<TCommand, TResponse>
         // Restore the originating correlation for the duration of handler execution.
         using var _ = ExecutionScope.Use(cmd.Correlation);
 
-        var result = await _dispatcher.DispatchAsync(
+        // Create a scope per message so scoped handler dependencies are properly resolved.
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var dispatcher = scope.ServiceProvider
+            .GetRequiredService<ICapabilityDispatcher<TCommand, TResponse>>();
+
+        var result = await dispatcher.DispatchAsync(
             cmd.Command, cmd.AspectIri, cancellationToken).ConfigureAwait(false);
 
         if (cmd.ReplyToTopic is not null)

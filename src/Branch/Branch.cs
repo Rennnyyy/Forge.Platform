@@ -37,6 +37,15 @@ public partial class Branch
     public string? Description { get; set; }
 
     /// <summary>
+    /// IRI of the <see cref="Branch"/> or <see cref="Snapshot"/> from which this branch
+    /// was forked. Null for primary branches created directly without a source graph.
+    /// Set automatically by <c>BranchSeedingService.CreateSeededBranchAsync</c> and
+    /// <c>CreateSnapshotAsync</c>. See Branch ADR-0005.
+    /// </summary>
+    [Predicate("derivedFrom")]
+    public string? DerivedFrom { get; set; }
+
+    /// <summary>
     /// Timestamp of branch creation. Set by the caller at creation time; never mutated.
     /// </summary>
     [Predicate("createdAt")]

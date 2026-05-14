@@ -67,6 +67,9 @@ public sealed class BranchSeedingService
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceGraphIri);
         ArgumentNullException.ThrowIfNull(entityIris);
 
+        // Record lineage (Branch ADR-0005).
+        branch.DerivedFrom = sourceGraphIri;
+
         // 1. Seed the named graph in the data store.
         await using (var seedTx = new EntityTransaction(_dataStore))
         {
@@ -115,6 +118,9 @@ public sealed class BranchSeedingService
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceGraphIri);
         ArgumentNullException.ThrowIfNull(entityIris);
+
+        // Record lineage (Branch ADR-0005).
+        snapshot.DerivedFrom = sourceGraphIri;
 
         // 1. SemVer uniqueness check (only when at least one SemVer property is set).
         if (snapshot.SemVerMajor is not null)

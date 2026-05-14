@@ -85,7 +85,7 @@ public static class CapabilityMessagingServiceCollectionExtensions
 
         services.TryAddSingleton<ICapabilityMessageConsumer<TCommand, TResponse>>(sp =>
             new CapabilityMessageConsumer<TCommand, TResponse>(
-                sp.GetRequiredService<ICapabilityDispatcher<TCommand, TResponse>>(),
+                sp.GetRequiredService<IServiceScopeFactory>(),
                 sp.GetRequiredService<IMessageProducer<string, CapabilityReplyEnvelope<TResponse>>>()));
 
         return services;

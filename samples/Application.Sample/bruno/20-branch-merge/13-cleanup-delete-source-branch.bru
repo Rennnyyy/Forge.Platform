@@ -1,0 +1,15 @@
+meta {
+  name: Branch merge - cleanup delete source branch (DELETE)
+  type: http
+  seq: 13
+}
+
+delete {
+  url: {{baseUrl}}/api/branches?iri={{mergeSrcIri}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

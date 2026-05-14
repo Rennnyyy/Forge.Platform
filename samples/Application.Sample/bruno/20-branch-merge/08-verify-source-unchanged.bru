@@ -1,0 +1,20 @@
+meta {
+  name: Branch merge - verify source branch still intact (GET)
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{mergeBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{mergeSrcIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.isbn: eq 978-0-20-161622-4
+}

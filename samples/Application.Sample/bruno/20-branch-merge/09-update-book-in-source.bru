@@ -1,0 +1,30 @@
+meta {
+  name: Branch merge - update book in source branch (PUT)
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/entities/books?iri={{mergeBookIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{mergeSrcIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-20-161622-4",
+    "title": "The Pragmatic Programmer: 20th Anniversary Edition",
+    "author": "David Thomas, Andrew Hunt",
+    "publishedYear": 2019,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+}

@@ -14,7 +14,7 @@ namespace Forge.Repository.GraphDb;
 /// file is the HTTP JSON adapter for the <see cref="ISparqlQueryStore"/> seam
 /// (Sparql ADR-0002, GraphDb ADR-0001).
 /// </summary>
-public sealed partial class GraphDbEntityStore : ISparqlQueryStore
+public sealed partial class GraphDbEntityStore : ISparqlQueryStore, IMultiGraphSparqlStore
 {
     public async IAsyncEnumerable<SparqlResultRow> ExecuteSelectAsync(
         string sparql,

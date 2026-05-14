@@ -33,6 +33,7 @@
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
     <ProjectReference Include="..\..\src\Repository.InMemory\Forge.Repository.InMemory.csproj" />
+    <ProjectReference Include="..\Entity.Tests.Fixtures.Core\Forge.Entity.Tests.Fixtures.Core.csproj" />
   </ItemGroup>
 
 </Project>

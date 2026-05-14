@@ -1,0 +1,20 @@
+meta {
+  name: Branch merge - verify target branch is empty (GET)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{mergeTgtIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isEmpty
+}

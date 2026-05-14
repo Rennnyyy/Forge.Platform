@@ -1,0 +1,30 @@
+meta {
+  name: Branch merge - merge source into target (POST)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/branch/merge
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "sourceBranchIri": "{{mergeSrcIri}}",
+    "targetBranchIri": "{{mergeTgtIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.createdCount: eq 1
+  res.body.updatedCount: eq 0
+  res.body.totalCount: eq 1
+  res.body.isEmpty: eq false
+}

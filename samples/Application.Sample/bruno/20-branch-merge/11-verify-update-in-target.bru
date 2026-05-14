@@ -1,0 +1,21 @@
+meta {
+  name: Branch merge - verify updated edition in target (GET)
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/entities/books?iri={{mergeBookIri}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{mergeTgtIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.title: contains 20th Anniversary Edition
+  res.body.publishedYear: eq 2019
+}

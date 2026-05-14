@@ -1,0 +1,26 @@
+meta {
+  name: Branch merge - reject merge into same branch (POST)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/branch/merge
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "sourceBranchIri": "{{mergeSrcIri}}",
+    "targetBranchIri": "{{mergeSrcIri}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+}

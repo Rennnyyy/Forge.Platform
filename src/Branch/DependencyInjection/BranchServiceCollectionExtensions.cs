@@ -1,5 +1,7 @@
+using Forge.Branch.Merge;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
+using Forge.Repository.Mapping;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,11 +122,33 @@ public static class BranchServiceCollectionExtensions
         // ── 5. Application services ───────────────────────────────────────────
         services.AddScoped<BranchSeedingService>();
 
-        // ── 6. Startup services ───────────────────────────────────────────────
+        // ── 6. Merge services (Branch ADR-0004/0006/0007) ─────────────────────
+        // BranchDiffEngine reads the raw backend store (before decorators) so SPARQL
+        // capability checks (IMultiGraphSparqlStore / ISparqlQueryStore) reach the actual
+        // IEntityStore implementation, not a decorator that might not forward the interface.
+        services.AddSingleton<IBranchDiffEngine>(sp =>
+        {
+            var registry = sp.GetRequiredService<IRdfMapperRegistry>();
+            var rawStore = sp.GetRequiredKeyedService<IEntityStore>(
+                ForgeEntityRepositoryBuilder.BackendStoreKey);
+            var repoOptions = sp.GetRequiredService<IOptions<EntityRepositoryOptions>>();
+            return new BranchDiffEngine(registry, rawStore, repoOptions);
+        });
+
+        services.AddSingleton<IMergePlanner>(sp =>
+        {
+            var registry = sp.GetRequiredService<IRdfMapperRegistry>();
+            var repoOptions = sp.GetRequiredService<IOptions<EntityRepositoryOptions>>();
+            return new MergePlanner(registry, repoOptions);
+        });
+
+        services.AddScoped<BranchMergeService>();
+
+        // ── 7. Startup services ───────────────────────────────────────────────
         services.AddHostedService<DefaultBranchStartupService>();
         services.AddHostedService<SnapshotStartupService>();
 
-        // ── 7. Wrap the unkeyed data store with the snapshot immutability guard ─
+        // ── 8. Wrap the unkeyed data store with the snapshot immutability guard ─
         // Capture whatever ITransactionalEntityStore is currently the unkeyed registration
         // (after aspects + authorization decorators have already been applied) and replace
         // it with DataSnapshotGuardedTransactionalStore so that entity writes into frozen

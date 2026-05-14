@@ -1,0 +1,31 @@
+meta {
+  name: Branch merge - create target branch (POST)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/branches
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "merge-target",
+    "description": "Target branch that receives merged entities"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("mergeTgtIri", res.body.iri);
+}

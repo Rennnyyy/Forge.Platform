@@ -21,6 +21,20 @@ public interface ISparqlQueryStore
 }
 
 /// <summary>
+/// Opt-in marker for backends that support SPARQL <c>GRAPH</c>-clause queries across
+/// multiple named graphs simultaneously. Extends <see cref="ISparqlQueryStore"/> but
+/// adds no new methods; it serves as a capability discriminator used by
+/// <c>BranchDiffEngine</c> (Branch ADR-0004) to choose multi-graph SPARQL over the
+/// scoped single-graph fallback.
+/// <para/>
+/// <c>GraphDbEntityStore</c> implements this interface because its SPARQL endpoint
+/// natively supports named-graph federation.
+/// <c>InMemoryEntityStore</c> does <em>not</em> implement it: its Leviathan dataset
+/// is single-graph and <c>GRAPH</c> clauses return no results.
+/// </summary>
+public interface IMultiGraphSparqlStore : ISparqlQueryStore { }
+
+/// <summary>
 /// One row of a SPARQL <c>SELECT</c> result-set: a map from projected variable name (no
 /// leading <c>?</c>) to the bound <see cref="RdfTerm"/>. Unbound variables are absent.
 /// </summary>

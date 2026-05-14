@@ -25,6 +25,8 @@
     <ProjectReference Include="..\Repository\Forge.Repository.csproj" />
     <!-- AddForgeAspectsForKeyedStore, ISparqlQueryStore, Aspect.NoOpIri -->
     <ProjectReference Include="..\Aspects\Forge.Aspects.csproj" />
+    <!-- ICapabilityHandler<,>, CapabilityAttribute, ICapabilityDispatcher<,>, AddCapabilityHandler -->
+    <ProjectReference Include="..\Capability\Forge.Capability.csproj" />
   </ItemGroup>
 
 </Project>

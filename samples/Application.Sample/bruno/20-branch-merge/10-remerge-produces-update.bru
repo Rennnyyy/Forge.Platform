@@ -1,0 +1,29 @@
+meta {
+  name: Branch merge - re-merge produces update (POST)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/branch/merge
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "sourceBranchIri": "{{mergeSrcIri}}",
+    "targetBranchIri": "{{mergeTgtIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.createdCount: eq 0
+  res.body.updatedCount: eq 1
+  res.body.totalCount: eq 1
+}

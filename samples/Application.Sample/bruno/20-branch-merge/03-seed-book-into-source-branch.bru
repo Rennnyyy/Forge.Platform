@@ -1,0 +1,35 @@
+meta {
+  name: Branch merge - seed book into source branch (POST)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/entities/books
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Forge-BranchIri: {{mergeSrcIri}}
+}
+
+body:json {
+  {
+    "isbn": "978-0-20-161622-4",
+    "title": "The Pragmatic Programmer",
+    "author": "David Thomas, Andrew Hunt",
+    "publishedYear": 1999,
+    "available": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("mergeBookIri", res.body.iri);
+}
