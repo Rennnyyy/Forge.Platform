@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Http;
 
-namespace Forge.Execution.Http;
+namespace Forge.Branch.Http;
 
 /// <summary>
 /// Resolves the branch IRI for the current HTTP request.
 /// A <c>null</c> return signals "absent header — use the configured default branch".
 /// An absent header is not an error; a structurally invalid value is.
-/// See Execution.Http ADR-0001.
+/// See Branch.Http ADR-0002.
 /// </summary>
 public interface IBranchIriProvider
 {

@@ -302,7 +302,7 @@ public sealed class CapabilityDispatcherTests
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 10. Active AuthorizationContext scope → AgentToken forwarded to handler context
+    // 10. IAgentTokenAccessor returns a token → AgentToken forwarded to handler context
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -314,19 +314,22 @@ public sealed class CapabilityDispatcherTests
                .Returns(ci => ValueTask.FromResult<ExecutionResult<TestResponse>>(
                    new ExecutionResult<TestResponse>.Ok(new TestResponse("ok"))));
 
-        var dispatcher = BuildDispatcher(handler);
+        var tokenAccessor = Substitute.For<IAgentTokenAccessor>();
+        tokenAccessor.GetAgentToken().Returns("agent-42");
+        var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
+            handler,
+            Substitute.For<IMessageAspectEngine>(),
+            Substitute.For<IAspectStore>(),
+            tokenAccessor: tokenAccessor);
 
-        using (Forge.Authorization.AuthorizationContext.Use("agent-42"))
-        {
-            await dispatcher.DispatchAsync(new TestCommand("x"));
-        }
+        await dispatcher.DispatchAsync(new TestCommand("x"));
 
         capturedContext.ShouldNotBeNull();
         capturedContext!.AgentToken.ShouldBe("agent-42");
     }
 
     // ───────────────────────────────────────────────────────────────────
-    // 11. No AuthorizationContext scope → AgentToken in context is null
+    // 11. No IAgentTokenAccessor registered → AgentToken in context is null
     // ───────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -338,6 +341,7 @@ public sealed class CapabilityDispatcherTests
                .Returns(ci => ValueTask.FromResult<ExecutionResult<TestResponse>>(
                    new ExecutionResult<TestResponse>.Ok(new TestResponse("ok"))));
 
+        // No IAgentTokenAccessor injected — token accessor is null, agent token defaults to null.
         var dispatcher = BuildDispatcher(handler);
         await dispatcher.DispatchAsync(new TestCommand("x"));
 
@@ -357,11 +361,12 @@ public sealed class CapabilityDispatcherTests
         commandAspect.Iri.Returns("urn:cmd-policy");
         var capAspect = new CapabilityAspect { Iri = "urn:cap", CommandAspectIri = "urn:cmd-policy" };
         var store = StoreWith(capAspect, ("urn:cmd-policy", commandAspect));
+        var tokenAccessor = Substitute.For<IAgentTokenAccessor>();
+        tokenAccessor.GetAgentToken().Returns("agent-1");
         var dispatcher = new CapabilityDispatcher<TestCommand, TestResponse>(
-            OkHandler(), Substitute.For<IMessageAspectEngine>(), store, guard);
+            OkHandler(), Substitute.For<IMessageAspectEngine>(), store, guard, tokenAccessor);
 
-        using (Forge.Authorization.AuthorizationContext.Use("agent-1"))
-            await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
+        await dispatcher.DispatchAsync(new TestCommand("x"), "urn:cap");
 
         await guard.Received(1).AuthorizeAsync("agent-1", "urn:cmd-policy", Arg.Any<CancellationToken>());
     }

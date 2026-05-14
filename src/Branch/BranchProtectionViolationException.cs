@@ -7,12 +7,15 @@ namespace Forge.Branch;
 ///   <item>Dropping the management graph.</item>
 /// </list>
 /// </summary>
-public sealed class BranchProtectionViolationException : InvalidOperationException
+public sealed class BranchProtectionViolationException : Forge.Repository.EntityGuardViolationException
 {
     /// <summary>The IRI of the protected resource that the operation targeted.</summary>
     public string ProtectedIri { get; }
 
     /// <summary>Initializes a new instance with a formatted message.</summary>
+    /// <inheritdoc/>
+    public override string ErrorCode => "BRANCH_PROTECTED";
+
     internal BranchProtectionViolationException(string message, string protectedIri)
         : base(message)
     {

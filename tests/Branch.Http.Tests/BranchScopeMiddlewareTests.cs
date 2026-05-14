@@ -1,7 +1,7 @@
 using Forge.Branch;
 using Forge.Entity;
-using Forge.Execution.Http;
-using Forge.Execution.Http.DependencyInjection;
+using Forge.Branch.Http;
+using Forge.Branch.Http.DependencyInjection;
 using Forge.Repository;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 using Shouldly;
 using BranchEntity = Forge.Branch.Branch;
 
-namespace Forge.Execution.Http.Tests;
+namespace Forge.Branch.Http.Tests;
 
 /// <summary>
 /// Behavioural spec for <see cref="BranchScopeMiddleware"/>.
@@ -246,7 +246,7 @@ public sealed class BranchScopeMiddlewareTests
     {
         var config = new ConfigurationBuilder().Build();
         Should.Throw<ArgumentNullException>(() =>
-            ExecutionHttpServiceCollectionExtensions.AddBranchHttp(null!, config));
+            BranchHttpServiceCollectionExtensions.AddBranchHttp(null!, config));
     }
 
     [Fact]
@@ -260,7 +260,7 @@ public sealed class BranchScopeMiddlewareTests
     public void UseBranchScope_throws_for_null_app()
     {
         Should.Throw<ArgumentNullException>(() =>
-            ExecutionHttpApplicationBuilderExtensions.UseBranchScope(null!));
+            BranchHttpApplicationBuilderExtensions.UseBranchScope(null!));
     }
 }
 

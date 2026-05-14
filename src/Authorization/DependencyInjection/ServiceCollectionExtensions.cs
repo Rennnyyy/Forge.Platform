@@ -1,9 +1,11 @@
 using Forge.Aspects.Abstractions;
+using Forge.Execution;
 using Forge.Repository;
 using Forge.Repository.DependencyInjection;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Forge.Authorization.DependencyInjection;
@@ -45,6 +47,16 @@ public static class AuthorizationServiceCollectionExtensions
         // needing a separate explicit registration. TryAdd semantics: a guard registered
         // by the application before calling AddForgeAuthorization takes precedence.
         services.TryAddSingleton<IAspectGuard>(effectiveGuard);
+
+        // Register the agent token accessor so capability dispatchers can read
+        // AuthorizationContext.CurrentAgentToken without a direct reference to
+        // Forge.Authorization. See Capability ADR-0019.
+        services.TryAddSingleton<IAgentTokenAccessor, AuthorizationAgentTokenAccessor>();
+
+        // Warn at startup when the permissive allow-all guard is active so operators can
+        // detect it in structured logs before reaching production. See Authorization ADR-0007.
+        if (effectiveGuard is AllowAllAspectGuard)
+            services.AddSingleton<IHostedService, AllowAllGuardWarningService>();
 
         // Capture any unkeyed ITransactionalEntityStore that was registered *before* this call
         // (e.g. AspectEnforcingTransactionalStore from AddForgeAspects, or a direct backend

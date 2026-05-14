@@ -10,3 +10,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0002 — BranchScope: per-operation branch IRI via ambient context](0002-branch-scope-ambient.md)
 - [0003 — Transaction branch binding and DropGraphOperation](0003-transaction-branch-binding.md)
 - [0004 — SeedGraphOperation: filtered triple copy within a transaction](0004-seed-graph-operation.md)
+- [0005 — EntityGuardViolationException: base for guard-layer domain violations](0005-entity-guard-violation-exception.md)

@@ -8,3 +8,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 ## Index
 
 - [0001 — Aspect enforcement wiring for Branch and Snapshot HTTP endpoints](0001-aspect-enforcement-wiring.md)
+- [0002 — BranchScopeMiddleware and carrier types in Forge.Branch.Http](0002-branch-scope-middleware.md)

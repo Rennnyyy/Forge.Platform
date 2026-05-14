@@ -22,3 +22,7 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0013 — `[CrudCapabilityHandler]` marker attribute on generated handlers](0013-crud-handler-marker-attribute.md)
 - [0014 — CRUD Create handler returns `ALREADY_EXISTS` capability error on duplicate IRI](0014-crud-create-returns-already-exists-error.md)
 - [0015 — Generated CUD handlers route through `EntityTransaction` for operation-aspect support](0015-crud-handlers-use-transactions-for-operation-aspects.md)
+- [0016 — Migrate `CapabilityResult<T>` to `ExecutionResult<T>` in `Forge.Execution`](0016-migrate-capability-result-to-execution.md)
+- [0017 — Retire generated CRUD capabilities](0017-retire-crud-capabilities.md)
+- [0018 — Capability handler autodiscovery via assembly scanning](0018-capability-handler-autodiscovery.md)
+- [0019 — IAgentTokenAccessor: decouple CapabilityDispatcher from Forge.Authorization](0019-agent-token-accessor-interface.md)

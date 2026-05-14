@@ -6,12 +6,15 @@ namespace Forge.Branch;
 /// <c>Delete</c> + <c>DropGraph</c> pair that removes the snapshot entirely
 /// (see Branch ADR-0002).
 /// </summary>
-public sealed class SnapshotImmutabilityViolationException : InvalidOperationException
+public sealed class SnapshotImmutabilityViolationException : Forge.Repository.EntityGuardViolationException
 {
     /// <summary>The IRI of the snapshot named graph that the operation targeted.</summary>
     public string SnapshotIri { get; }
 
     /// <summary>Initializes a new instance with a formatted message.</summary>
+    /// <inheritdoc/>
+    public override string ErrorCode => "SNAPSHOT_IMMUTABLE";
+
     internal SnapshotImmutabilityViolationException(string message, string snapshotIri)
         : base(message)
     {

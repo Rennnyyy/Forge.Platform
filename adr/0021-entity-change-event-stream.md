@@ -131,5 +131,7 @@ Operations source generator. Each slice that opts in to event streaming register
 - The decorator chain constant `EventsTxKey` is public — third-party decorators can slot
   in above or below the event-emitting tier using the same pattern.
 - At-least-once implies duplicate events are possible on retry; consumers must handle them.
-- `Forge.EntityEvents` depends on `Forge.Messaging.Abstractions` and `Forge.Repository`.
+- `Forge.Entity.Messaging` depends on `Forge.Messaging.Abstractions` and `Forge.Repository`.
   It does not depend on `Forge.Messaging.Kafka` — the Kafka producer is injected via DI.
+
+> *`Forge.EntityEvents` renamed to `Forge.Entity.Messaging` due to ADR-0024.*

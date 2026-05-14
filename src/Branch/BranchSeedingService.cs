@@ -1,6 +1,7 @@
 using Forge.Repository;
 using Forge.Repository.Transaction;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Forge.Branch;
 
@@ -23,18 +24,22 @@ public sealed class BranchSeedingService
     private readonly ITransactionalEntityStore _managementStore;
     private readonly ITransactionalEntityStore _dataStore;
     private readonly ISnapshotFrozenSetInvalidator _snapshotGuard;
+    private readonly ILogger<BranchSeedingService> _logger;
 
     public BranchSeedingService(
         [FromKeyedServices("forge.branch.management")] ITransactionalEntityStore managementStore,
         ITransactionalEntityStore dataStore,
-        [FromKeyedServices("forge.branch.management")] ISnapshotFrozenSetInvalidator snapshotGuard)
+        [FromKeyedServices("forge.branch.management")] ISnapshotFrozenSetInvalidator snapshotGuard,
+        ILogger<BranchSeedingService> logger)
     {
         ArgumentNullException.ThrowIfNull(managementStore);
         ArgumentNullException.ThrowIfNull(dataStore);
         ArgumentNullException.ThrowIfNull(snapshotGuard);
+        ArgumentNullException.ThrowIfNull(logger);
         _managementStore = managementStore;
         _dataStore = dataStore;
         _snapshotGuard = snapshotGuard;
+        _logger = logger;
     }
 
     /// <summary>
@@ -78,9 +83,22 @@ public sealed class BranchSeedingService
         }
 
         // 2. Create the management entity.
-        await using var mgmtTx = new EntityTransaction(_managementStore);
-        mgmtTx.Create(branch, aspectIri);
-        await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await using var mgmtTx = new EntityTransaction(_managementStore);
+            mgmtTx.Create(branch, aspectIri);
+            await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // The data graph was seeded successfully but the management entity was not
+            // written. The named graph at branch.Iri is now orphaned. See Branch ADR-0008.
+            _logger.LogWarning(ex,
+                "Branch management write failed after successful data-graph seed. " +
+                "Orphaned named graph: {BranchIri}. Manual cleanup may be required.",
+                branch.Iri);
+            throw;
+        }
 
         return branch;
     }
@@ -134,9 +152,22 @@ public sealed class BranchSeedingService
         }
 
         // 3. Create the management entity.
-        await using var mgmtTx = new EntityTransaction(_managementStore);
-        mgmtTx.Create(snapshot, aspectIri);
-        await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await using var mgmtTx = new EntityTransaction(_managementStore);
+            mgmtTx.Create(snapshot, aspectIri);
+            await mgmtTx.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // The data graph was seeded successfully but the management entity was not
+            // written. The named graph at snapshot.Iri is now orphaned. See Branch ADR-0008.
+            _logger.LogWarning(ex,
+                "Snapshot management write failed after successful data-graph seed. " +
+                "Orphaned named graph: {SnapshotIri}. Manual cleanup may be required.",
+                snapshot.Iri);
+            throw;
+        }
 
         // 4. Refresh frozen set so the immutability guard is immediately aware.
         await _snapshotGuard.InvalidateFrozenSetAsync(cancellationToken).ConfigureAwait(false);

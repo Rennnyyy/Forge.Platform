@@ -22,5 +22,6 @@ body:json {
 }
 
 assert {
-  res.status: eq 400
+  res.status: eq 422
+  res.body.code: eq INVALID_MERGE
 }

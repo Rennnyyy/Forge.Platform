@@ -55,11 +55,19 @@ public static class EntityMessagingServiceCollectionExtensions
             });
 
         // Expose unkeyed ITransactionalEntityStore for consumers that don't use AddForgeAuthorization.
-        // TryAdd semantics: AddForgeAspects() may have already registered it.
-        // If EventsTxKey resolved first (AddForgeEntityEvents called before AddForgeAspects),
-        // this alias points to EventEmittingTransactionalStore.
-        // AddForgeAuthorization() will capture and replace this with the guard wrapper.
-        services.TryAddSingleton<ITransactionalEntityStore>(sp =>
+        // Use the capture-and-replace pattern (same as AddForgeAuthorization / AddForgeBranch) so
+        // that AddForgeEntityEvents() is order-independent relative to AddForgeAspects().
+        // TryAddSingleton would silently lose to AddForgeAspects() if it ran first, meaning
+        // EventEmittingTransactionalStore would never appear in the unkeyed slot.
+        // See Entity.Messaging ADR-0001.
+        var rawDescriptor = services.FirstOrDefault(
+            d => d.ServiceType == typeof(ITransactionalEntityStore) && d.ServiceKey is null);
+        if (rawDescriptor is not null)
+            services.Remove(rawDescriptor);
+
+        // Always resolves to the fully-decorated EventsTxKey store at provider-build time.
+        // AddForgeAuthorization() will perform its own capture-and-replace on top of this.
+        services.AddSingleton<ITransactionalEntityStore>(sp =>
             sp.GetRequiredKeyedService<ITransactionalEntityStore>(
                 ForgeEntityRepositoryBuilder.EventsTxKey));
 

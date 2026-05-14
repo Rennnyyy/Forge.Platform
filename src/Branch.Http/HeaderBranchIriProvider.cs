@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Http;
 
-namespace Forge.Execution.Http;
+namespace Forge.Branch.Http;
 
 /// <summary>
 /// <see cref="IBranchIriProvider"/> implementation that reads the branch IRI from
 /// the <c>X-Forge-BranchIri</c> request header. Returns <c>null</c> when the header
 /// is absent or whitespace. Throws <see cref="InvalidBranchIriException"/> when the
 /// value is present but not a valid absolute URI.
-/// See Execution.Http ADR-0001.
+/// See Branch.Http ADR-0002.
 /// </summary>
 public sealed class HeaderBranchIriProvider : IBranchIriProvider
 {

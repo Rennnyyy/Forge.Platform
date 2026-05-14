@@ -1,6 +1,7 @@
 using Forge.Entity;
 using Forge.Repository;
 using Forge.Repository.Transaction;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 
 namespace Forge.Branch.Tests;
@@ -35,7 +36,8 @@ public sealed class BranchSeedingServiceTests
         return new BranchSeedingService(
             managementStore: guard,
             dataStore: dataCapture,
-            snapshotGuard: guard);
+            snapshotGuard: guard,
+            logger: NullLogger<BranchSeedingService>.Instance);
     }
 
     private static Branch MakeBranch(string name = "feature-x") =>
@@ -116,7 +118,7 @@ public sealed class BranchSeedingServiceTests
             Source, ["https://forge-it.net/entities/missing"]));
         var mgmt = new CapturingStore();
         var guard = new SnapshotGuardedTransactionalStore(mgmt);
-        var svc = new BranchSeedingService(guard, throwingData, guard);
+        var svc = new BranchSeedingService(guard, throwingData, guard, NullLogger<BranchSeedingService>.Instance);
 
         await Should.ThrowAsync<SeedOperationMissingEntityException>(
             () => svc.CreateSeededBranchAsync(MakeBranch(), Source, SomeIris()));
@@ -269,7 +271,7 @@ public sealed class BranchSeedingServiceTests
         var mgmt = new QueryCapturingStore(snapshot);       // returns the snapshot on next query
         var data = new CapturingStore();
         var guard = new SnapshotGuardedTransactionalStore(mgmt);
-        var svc = new BranchSeedingService(guard, data, guard);
+        var svc = new BranchSeedingService(guard, data, guard, NullLogger<BranchSeedingService>.Instance);
 
         await svc.CreateSnapshotAsync(snapshot, Source, SomeIris());
 
@@ -286,7 +288,7 @@ public sealed class BranchSeedingServiceTests
             Source, ["https://forge-it.net/entities/missing"]));
         var mgmt = new CapturingStore();
         var guard = new SnapshotGuardedTransactionalStore(mgmt);
-        var svc = new BranchSeedingService(guard, throwingData, guard);
+        var svc = new BranchSeedingService(guard, throwingData, guard, NullLogger<BranchSeedingService>.Instance);
 
         await Should.ThrowAsync<SeedOperationMissingEntityException>(
             () => svc.CreateSnapshotAsync(MakeSnapshot(), Source, SomeIris()));

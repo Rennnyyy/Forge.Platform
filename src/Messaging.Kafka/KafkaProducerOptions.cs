@@ -34,6 +34,14 @@ public sealed class KafkaProducerOptions
     public bool EnableIdempotence { get; set; } = true;
 
     /// <summary>
+    /// Optional first-class TLS/SASL transport-security settings.
+    /// When <c>null</c> the producer connects without explicit security configuration
+    /// (relies on <see cref="AdditionalConfig"/> or Confluent.Kafka defaults).
+    /// See <c>Messaging.Kafka/adr/0001-kafka-security-options.md</c>.
+    /// </summary>
+    public KafkaSecurityOptions? Security { get; set; }
+
+    /// <summary>
     /// Any additional Confluent.Kafka producer configuration key/value pairs.
     /// These are merged on top of the structured properties above.
     /// </summary>
@@ -48,6 +56,10 @@ public sealed class KafkaProducerOptions
             MaxInFlight = MaxInFlight,
             EnableIdempotence = EnableIdempotence,
         };
+        if (Security?.SecurityProtocol is not null) cfg.SecurityProtocol = Security.SecurityProtocol;
+        if (Security?.SaslMechanism is not null) cfg.SaslMechanism = Security.SaslMechanism;
+        if (Security?.SaslUsername is not null) cfg.SaslUsername = Security.SaslUsername;
+        if (Security?.SaslPassword is not null) cfg.SaslPassword = Security.SaslPassword;
         foreach (var (k, v) in AdditionalConfig)
             cfg.Set(k, v);
         return cfg;

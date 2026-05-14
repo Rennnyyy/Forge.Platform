@@ -33,14 +33,10 @@ using Forge.ObjectStorage.InMemory.DependencyInjection;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── 0. Messaging — in-memory broker + entity change events ───────────────────
-// MUST be called before AddForgeAspects() / AddForgeAuthorizationHttp() so that
-// AddForgeEntityEvents() wins the unkeyed ITransactionalEntityStore slot.
-// AddForgeAuthorizationHttp() captures whatever unkeyed ITransactionalEntityStore
-// exists at registration time and wraps it with a GuardedTransactionalStore.
-// If messaging is registered first, the chain becomes:
-//   Guard → EventEmittingTransactionalStore → AspectEnforcing → Backend
-// If messaging is registered after Authorization, EventEmitting is never inserted.
-// See sample ADR-0010 and root ADR-0021.
+// Call order relative to AddForgeAspects() / AddForgeAuthorizationHttp() is arbitrary;
+// AddForgeEntityEvents() uses the capture-and-replace pattern to ensure the
+// EventEmittingTransactionalStore is always inserted in the decorator chain.
+// Final chain: Guard → EventEmitting → AspectEnforcing → Backend (root ADR-0021).
 builder.Services.AddForgeMessagingInMemory();
 builder.Services.AddForgeEntityEvents();
 builder.Services.AddForgeEntityMessaging<Book>(opts =>

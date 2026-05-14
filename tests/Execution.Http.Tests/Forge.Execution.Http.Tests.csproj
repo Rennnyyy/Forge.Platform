@@ -26,7 +26,6 @@
     <ProjectReference Include="..\..\src\Execution.Http\Forge.Execution.Http.csproj" />
     <ProjectReference Include="..\..\src\Aspects\Forge.Aspects.csproj" />
     <ProjectReference Include="..\..\src\Repository\Forge.Repository.csproj" />
-    <ProjectReference Include="..\..\src\Branch\Forge.Branch.csproj" />
   </ItemGroup>
 
 </Project>

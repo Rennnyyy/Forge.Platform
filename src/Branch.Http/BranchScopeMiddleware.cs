@@ -1,4 +1,3 @@
-using Forge.Branch;
 using Forge.Execution;
 using Forge.Repository;
 using Microsoft.AspNetCore.Http;
@@ -6,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using BranchEntity = Forge.Branch.Branch;
 
-namespace Forge.Execution.Http;
+namespace Forge.Branch.Http;
 
 /// <summary>
 /// Middleware that establishes an ambient <see cref="BranchScope"/> for every HTTP
@@ -15,7 +14,7 @@ namespace Forge.Execution.Http;
 /// branch IRI (<see cref="BranchOptions.DefaultBranchIri"/>) is used. A structurally
 /// invalid header value results in an immediate 400 Bad Request response. The effective
 /// branch IRI is echoed as <c>X-Forge-Effective-BranchIri</c> on the response.
-/// See Execution.Http ADR-0001.
+/// See Branch.Http ADR-0002.
 /// </summary>
 internal sealed class BranchScopeMiddleware
 {

@@ -1,7 +1,6 @@
 using Forge.Aspects.Abstractions;
 using Forge.Capability;
 using Forge.Execution;
-using Forge.Authorization;
 using NSubstitute;
 using Shouldly;
 
@@ -152,16 +151,15 @@ public sealed class CapabilityHandlerTests
     [Fact]
     public async Task Handler_reads_agent_token_from_context_established_by_dispatcher()
     {
-        // Arrange: host code establishes the ambient scope before calling DispatchAsync.
+        // Arrange: inject an IAgentTokenAccessor stub that returns the agent token.
         var engine = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IMessageAspectEngine>();
         var store = NSubstitute.Substitute.For<Forge.Aspects.Abstractions.IAspectStore>();
-        var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(new PingHandler(), engine, store);
+        var tokenAccessor = NSubstitute.Substitute.For<IAgentTokenAccessor>();
+        tokenAccessor.GetAgentToken().Returns("user-007");
+        var dispatcher = new CapabilityDispatcher<PingCommand, PingResponse>(
+            new PingHandler(), engine, store, tokenAccessor: tokenAccessor);
 
-        ExecutionResult<PingResponse> result;
-        using (AuthorizationContext.Use("user-007"))
-        {
-            result = await dispatcher.DispatchAsync(new PingCommand("ping"));
-        }
+        var result = await dispatcher.DispatchAsync(new PingCommand("ping"));
 
         // Assert: the handler received the agent token through CapabilityContext.
         var ok = result.ShouldBeOfType<ExecutionResult<PingResponse>.Ok>();

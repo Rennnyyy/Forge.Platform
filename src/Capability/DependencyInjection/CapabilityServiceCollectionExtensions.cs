@@ -1,5 +1,6 @@
 using System.Reflection;
 using Forge.Aspects.Abstractions;
+using Forge.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -112,7 +113,8 @@ public static class CapabilityServiceCollectionExtensions
                 var engine = sp.GetRequiredService<IMessageAspectEngine>();
                 var store = sp.GetRequiredService<IAspectStore>();
                 var guard = sp.GetRequiredService<IAspectGuard>();
-                return Activator.CreateInstance(dispatcherImplType, handler, engine, store, guard)!;
+                var tokenAccessor = sp.GetService<IAgentTokenAccessor>();
+                return Activator.CreateInstance(dispatcherImplType, handler, engine, store, guard, tokenAccessor)!;
             },
             ServiceLifetime.Transient));
     }

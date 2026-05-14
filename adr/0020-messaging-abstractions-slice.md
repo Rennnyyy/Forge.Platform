@@ -73,7 +73,15 @@ public interface IMessageProducer<TKey, TValue>
         MessageEnvelope<TValue> envelope,
         CancellationToken cancellationToken = default);
 }
+```
 
+> **Implementation note (ADR-0009 inline update):** The shipped `IMessageProducer<TKey, TValue>`
+> simplified `ProduceAsync` to accept only `(MessageEnvelope<TValue> envelope, CancellationToken)`.
+> The `string topic`, `TKey key`, and `TValue value` parameters listed above were dropped before
+> the first release — they duplicate information already carried inside `MessageEnvelope<TValue>`,
+> and their presence would force callers to decompose and re-specify data the envelope already holds.
+
+```csharp
 // Consume messages as an async stream. Application owns the hosting loop.
 public interface IMessageConsumer<TKey, TValue>
 {
@@ -108,10 +116,12 @@ channels, and reset between test runs. No external process required.
 
 - All platform messaging uses `MessageEnvelope<TValue>` as its wire contract — consistent
   with the shared-contract principle of ADR-0017.
-- Feature slices (`Forge.EntityEvents`, `Forge.Capability.Messaging`) depend on
+- Feature slices (`Forge.Entity.Messaging`, `Forge.Capability.Messaging`) depend on
   `Forge.Messaging.Abstractions` only; no Kafka reference leaks into those slices.
 - Tests in any feature slice run against `InMemoryMessageBroker` via DI swap.
 - Applications that need a broker other than Kafka can implement
   `IMessageProducer` / `IMessageConsumer` without touching platform code.
 - `SchemaVersion` in the envelope is a forward-compatibility seam; v1 uses plain JSON;
   Avro or Protobuf migration can increment the version without a breaking API change.
+
+> *`Forge.EntityEvents` renamed to `Forge.Entity.Messaging` due to ADR-0024.*

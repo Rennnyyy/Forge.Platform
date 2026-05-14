@@ -13,3 +13,4 @@ See also the [root ADR index](../../../adr/README.md).
 ## Slice-local ADRs
 
 - [0001 — Branch HTTP carrier: X-Forge-BranchIri header and BranchScopeMiddleware](0001-branch-http-carrier.md)
+- [0002 — BranchScopeMiddleware and carrier types move to Forge.Branch.Http](0002-branch-scope-middleware-moves-to-branch-http.md)

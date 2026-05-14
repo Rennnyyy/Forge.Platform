@@ -13,3 +13,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0005 — Branch lineage and the `DerivedFrom` predicate](0005-branch-lineage-derived-from.md)
 - [0006 — Merge planner and topological sort (`IMergePlanner`)](0006-merge-planner.md)
 - [0007 — Branch merge service (`BranchMergeService`)](0007-branch-merge-service.md)
+- [0008 — Orphaned-graph warning log in BranchSeedingService](0008-orphaned-graph-warning-log.md)

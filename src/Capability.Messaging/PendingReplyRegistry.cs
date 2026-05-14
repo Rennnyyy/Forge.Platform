@@ -21,7 +21,7 @@ internal sealed class PendingReplyRegistry<TCommand, TResponse>
     where TCommand : class
     where TResponse : class
 {
-    private readonly ConcurrentDictionary<Guid, TaskCompletionSource<ExecutionResult<TResponse>>>
+    private readonly ConcurrentDictionary<Guid, (TaskCompletionSource<ExecutionResult<TResponse>> Tcs, CancellationTokenRegistration Registration)>
         _pending = new();
 
     /// <summary>
@@ -35,13 +35,16 @@ internal sealed class PendingReplyRegistry<TCommand, TResponse>
         var tcs = new TaskCompletionSource<ExecutionResult<TResponse>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
-        _pending[executionId] = tcs;
-
-        cancellationToken.Register(() =>
+        var registration = cancellationToken.Register(() =>
         {
             if (_pending.TryRemove(executionId, out var removed))
-                removed.TrySetCanceled(cancellationToken);
+            {
+                removed.Registration.Dispose();
+                removed.Tcs.TrySetCanceled(cancellationToken);
+            }
         });
+
+        _pending[executionId] = (tcs, registration);
 
         return tcs.Task;
     }
@@ -53,9 +56,10 @@ internal sealed class PendingReplyRegistry<TCommand, TResponse>
     /// </summary>
     public bool TryComplete(Guid executionId, ExecutionResult<TResponse> result)
     {
-        if (_pending.TryRemove(executionId, out var tcs))
+        if (_pending.TryRemove(executionId, out var entry))
         {
-            tcs.TrySetResult(result);
+            entry.Registration.Dispose();
+            entry.Tcs.TrySetResult(result);
             return true;
         }
 

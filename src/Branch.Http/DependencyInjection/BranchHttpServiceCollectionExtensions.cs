@@ -17,6 +17,25 @@ public static class BranchHttpServiceCollectionExtensions
     private const string ManagementStoreKey = "forge.branch.management";
 
     /// <summary>
+    /// Registers branch-scope infrastructure required by <see cref="BranchScopeMiddleware"/>.
+    /// Binds <see cref="BranchOptions"/> from <paramref name="configuration"/> under
+    /// <c>Forge:Branch</c> and registers <see cref="HeaderBranchIriProvider"/> as the
+    /// singleton <see cref="IBranchIriProvider"/>.
+    /// Call <c>UseBranchScope()</c> on the pipeline builder to activate the middleware.
+    /// See Branch.Http ADR-0002.
+    /// </summary>
+    public static IServiceCollection AddBranchHttp(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.Configure<BranchOptions>(configuration.GetSection("Forge:Branch"));
+        services.AddSingleton<IBranchIriProvider, HeaderBranchIriProvider>();
+        return services;
+    }
+
+    /// <summary>
     /// Registers all Branch infrastructure (<see cref="BranchServiceCollectionExtensions.AddForgeBranch"/>)
     /// and additionally wires <c>AspectEnforcingTransactionalStore</c> on the management
     /// keyed store (obligation 2 of root ADR-0019).

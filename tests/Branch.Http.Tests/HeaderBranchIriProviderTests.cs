@@ -1,8 +1,8 @@
-using Forge.Execution.Http;
+using Forge.Branch.Http;
 using Microsoft.AspNetCore.Http;
 using Shouldly;
 
-namespace Forge.Execution.Http.Tests;
+namespace Forge.Branch.Http.Tests;
 
 /// <summary>
 /// Behavioural spec for <see cref="HeaderBranchIriProvider"/>.

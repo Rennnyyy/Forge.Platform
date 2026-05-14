@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aspects.Abstractions\Forge.Aspects.Abstractions.csproj" />
-    <ProjectReference Include="..\Authorization\Forge.Authorization.csproj" />
     <ProjectReference Include="..\Execution\Forge.Execution.csproj" />
   </ItemGroup>
 

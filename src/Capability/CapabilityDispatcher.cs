@@ -1,5 +1,4 @@
 using Forge.Aspects.Abstractions;
-using Forge.Authorization;
 using Forge.Execution;
 
 namespace Forge.Capability;
@@ -24,12 +23,14 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
     private readonly IMessageAspectEngine _engine;
     private readonly IAspectStore _store;
     private readonly IAspectGuard _guard;
+    private readonly IAgentTokenAccessor? _tokenAccessor;
 
     public CapabilityDispatcher(
         ICapabilityHandler<TCommand, TResponse> handler,
         IMessageAspectEngine engine,
         IAspectStore store,
-        IAspectGuard? guard = null)
+        IAspectGuard? guard = null,
+        IAgentTokenAccessor? tokenAccessor = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(engine);
@@ -39,6 +40,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
         _engine = engine;
         _store = store;
         _guard = guard ?? AllowAllAspectGuard.Instance;
+        _tokenAccessor = tokenAccessor;
     }
 
     /// <inheritdoc/>
@@ -61,7 +63,7 @@ internal sealed class CapabilityDispatcher<TCommand, TResponse> : ICapabilityDis
         var responseAspect = ResolveMessageAspect(capAspect?.ResponseAspectIri);
 
         // ② Capture the ambient agent token.
-        var agentToken = AuthorizationContext.CurrentAgentToken;
+        var agentToken = _tokenAccessor?.GetAgentToken();
         var agentTokenForGuard = agentToken ?? string.Empty;
 
         // ③ Authorize command — guard runs before SHACL. See Capability ADR-0009.

@@ -270,6 +270,76 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>Chapter 16 — Branch aspect demo (see <see cref="BrunoIntegrationTests.Bruno_16_branch_aspect_demo_requests_all_pass"/>).</summary>
+    [SkippableFact]
+    public async Task Bruno_16_branch_aspect_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("16-branch-aspect-demo");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>Chapter 17 — Entity messaging demo (see <see cref="BrunoIntegrationTests.Bruno_17_entity_messaging_demo_requests_all_pass"/>).</summary>
+    [SkippableFact]
+    public async Task Bruno_17_entity_messaging_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("17-entity-messaging-demo");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>Chapter 18 — Async capability demo (see <see cref="BrunoIntegrationTests.Bruno_18_async_capability_demo_requests_all_pass"/>).</summary>
+    [SkippableFact]
+    public async Task Bruno_18_async_capability_demo_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("18-async-capability-demo");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>Chapter 19 — Track masters (see <see cref="BrunoIntegrationTests.Bruno_19_track_masters_requests_all_pass"/>).</summary>
+    [SkippableFact]
+    public async Task Bruno_19_track_masters_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("19-track-masters");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>Chapter 20 — Branch merge.</summary>
+    [SkippableFact]
+    public async Task Bruno_20_branch_merge_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("20-branch-merge");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static (string CollectionRoot, string ChapterDir) ResolvePaths(string chapter)

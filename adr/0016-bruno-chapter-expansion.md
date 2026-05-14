@@ -1,16 +1,16 @@
-# 0016 — Bruno collection expanded to 14 chapters
+# 0016 — Bruno collection expanded to 20 chapters
 
 - **Status**: accepted; amends [0013](0013-bruno-collection-story-structure.md)
-- **Date**: 2026-05-04
+- **Date**: 2026-05-11
 - **Author**: agent
 
 ## Context
 
 ADR-0013 defined the story-chapter structure for the Bruno integration collection and
 documented four chapters (`01-greeting` through `04-catalog`). Since that ADR was accepted,
-nine additional chapters were added to `samples/Application.Sample/bruno/` and matching
+fifteen additional chapters were added to `samples/Application.Sample/bruno/` and matching
 `[SkippableFact]` tests were added to `BrunoIntegrationTests.cs`. The ADR was never
-updated, leaving the documented chapter list nine chapters out of date.
+updated, leaving the documented chapter list fifteen chapters out of date.
 
 ## Decision
 
@@ -36,6 +36,11 @@ The complete chapter inventory, including the nine chapters added after ADR-0013
 | 13 | `13-featured-artists/` | Generated CRUD for `FeaturedArtist` (many-to-many relationship entity) |
 | 14 | `14-branches/` | Branch CRUD; branch-scoped entity writes; data isolation and cascade delete |
 | 15 | `15-snapshots/` | Snapshot creation + seeding; immutability guard (CUD rejected); semver lookup; drop |
+| 16 | `16-branch-aspect-demo/` | Branch-scoped SHACL aspects enforced via aspect IRI header |
+| 17 | `17-entity-messaging-demo/` | Entity change events published via `Forge.Entity.Messaging` |
+| 18 | `18-async-capability-demo/` | Async capability dispatch via command bus (`Forge.Capability.Messaging`) |
+| 19 | `19-track-masters/` | Object storage: upload/download/lock/delete blobs with branch-scope isolation |
+| 20 | `20-branch-merge/` | Branch diff and merge; conflict detection; cascade delete on merge |
 
 ### Integration test alignment
 
@@ -58,6 +63,11 @@ Each chapter maps to one `[SkippableFact]` in `BrunoIntegrationTests.cs`:
 | `Bruno_13_featured_artists_requests_all_pass` | `13-featured-artists/` |
 | `Bruno_14_branches_requests_all_pass` | `14-branches/` |
 | `Bruno_15_snapshots_requests_all_pass` | `15-snapshots/` |
+| `Bruno_16_branch_aspect_demo_requests_all_pass` | `16-branch-aspect-demo/` |
+| `Bruno_17_entity_messaging_demo_requests_all_pass` | `17-entity-messaging-demo/` |
+| `Bruno_18_async_capability_demo_requests_all_pass` | `18-async-capability-demo/` |
+| `Bruno_19_track_masters_requests_all_pass` | `19-track-masters/` |
+| `Bruno_20_branch_merge_requests_all_pass` | `20-branch-merge/` |
 
 ## Amendment to ADR-0013
 

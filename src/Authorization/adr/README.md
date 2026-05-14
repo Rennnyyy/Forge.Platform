@@ -13,3 +13,4 @@ Format and rules: see [root ADR README](../../../adr/README.md).
 - [0004 — `IAspectGuard` unifies authorization; supersedes `IOperationGuard`](0004-iaspect-guard-unifies-operation-guard.md)
 - [0005 — Register `IAspectGuard` in the DI container](0005-iaspect-guard-registered-in-di.md)
 - [0006 — Guard `ICollectionLoader.LoadCollectionIrisAsync` to close deferred-load bypass](0006-guard-collection-loader.md)
+- [0007 — AllowAllAspectGuard startup log warning](0007-allowall-guard-startup-warning.md)
