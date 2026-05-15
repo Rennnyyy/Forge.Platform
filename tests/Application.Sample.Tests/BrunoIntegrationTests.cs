@@ -592,6 +592,37 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 22 — Car build demo: pure-structure 150&amp;#37; tree with two milestone sub-trees.
+    /// <list type="bullet">
+    ///   <item>POST <c>api/capabilities/car/demo/populate</c> — seeds 44 nodes and 43 unconditional
+    ///         edges in a single call; returns landmark IRIs for subsequent queries</item>
+    ///   <item>GET configured-tree from Car root (44 nodes), Initial milestone (17 nodes),
+    ///         Update-1 milestone (26 nodes) — demonstrates structural variance via topology</item>
+    ///   <item>GET sub-tree from Initial EV Package (5 nodes), Update-1 EV Package (7 nodes),
+    ///         Update-1 Gearbox (3 nodes) — demonstrates any-node-as-head and milestone evolution</item>
+    ///   <item>GET <c>api/entities/structure-nodes</c> — reads the Car root node via CRUD endpoint</item>
+    /// </list>
+    /// See Sample ADR-0013 and root ADR-0016.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_22_car_build_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "22-car-build");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

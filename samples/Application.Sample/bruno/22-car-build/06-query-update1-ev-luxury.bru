@@ -1,0 +1,71 @@
+meta {
+  name: Car demo - update-1 era + EV + luxury trim → 16 nodes
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "enumerationOptions": {
+      "{{drivetrainDimIri}}": "urn:forge:car:drivetrain/ev",
+      "{{trimDimIri}}": "urn:forge:car:trim/luxury"
+    },
+    "referenceDate": "2026-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // drivetrain=ev  → EV Package included, ICE Package excluded
+  // trim=luxury    → Luxury Interior/Leather/Panorama included; Base and Sport excluded
+  // date=2026      → Aluminium Frame, Thermal Management, Rear Motor all present
+  //                  Race Edition Pack ABSENT (expired)
+  //                  Luxury Interior PRESENT (combined: trim=luxury AND 2026+, both satisfied)
+  // Expected: Car + Chassis + Steel Frame + Aluminium Frame + Powertrain + EV Package
+  //           + Battery Pack + BMS + Thermal Management + E-Machine + Front Motor + Rear Motor
+  //           + Interior + Luxury Interior + Leather Seats + Panorama Roof  = 16 nodes
+  test("Update-1 EV-luxury slice has 16 nodes", () => {
+    expect(iris.length).to.equal(16);
+  });
+
+  test("Aluminium Frame present (update-1)", () => {
+    expect(iris).to.include(bru.getVar("alumFrameIri"));
+  });
+
+  test("Thermal Management present (update-1 EV)", () => {
+    expect(iris).to.include(bru.getVar("thermalMgmtIri"));
+  });
+
+  test("Rear Motor present (update-1 EV)", () => {
+    expect(iris).to.include(bru.getVar("rearMotorIri"));
+  });
+
+  test("Luxury Interior present (luxury trim + update-1 era)", () => {
+    expect(iris).to.include(bru.getVar("luxInteriorIri"));
+  });
+
+  test("ICE Package excluded (drivetrain=ev)", () => {
+    expect(iris).to.not.include(bru.getVar("icePackageIri"));
+  });
+
+  test("Race Edition Pack absent (update-1 era, expired)", () => {
+    expect(iris).to.not.include(bru.getVar("raceEditionIri"));
+  });
+}

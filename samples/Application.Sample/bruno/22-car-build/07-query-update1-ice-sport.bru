@@ -1,0 +1,66 @@
+meta {
+  name: Car demo - update-1 era + ICE + sport trim → 14 nodes
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "enumerationOptions": {
+      "{{drivetrainDimIri}}": "urn:forge:car:drivetrain/ice",
+      "{{trimDimIri}}": "urn:forge:car:trim/sport"
+    },
+    "referenceDate": "2026-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // drivetrain=ice → ICE Package included, EV Package excluded
+  // trim=sport     → Sport Interior/Seats included; Base and Luxury excluded
+  // date=2026      → Aluminium Frame, Turbocharger, Manual Clutch, Auto Transmission all present
+  //                  Race Edition Pack ABSENT (expired)
+  // Expected: Car + Chassis + Steel Frame + Aluminium Frame + Powertrain + ICE Package
+  //           + Combustion Engine + Turbocharger + Gearbox + Manual Clutch + Automatic Transmission
+  //           + Interior + Sport Interior + Sport Seats  = 14 nodes
+  test("Update-1 ICE-sport slice has 14 nodes", () => {
+    expect(iris.length).to.equal(14);
+  });
+
+  test("ICE Package present", () => {
+    expect(iris).to.include(bru.getVar("icePackageIri"));
+  });
+
+  test("Turbocharger present (update-1 ICE)", () => {
+    expect(iris).to.include(bru.getVar("turboIri"));
+  });
+
+  test("EV Package excluded (drivetrain=ice)", () => {
+    expect(iris).to.not.include(bru.getVar("evPackageIri"));
+  });
+
+  test("Race Edition Pack absent (update-1 era, expired)", () => {
+    expect(iris).to.not.include(bru.getVar("raceEditionIri"));
+  });
+
+  test("Luxury Interior absent (trim=sport selected)", () => {
+    expect(iris).to.not.include(bru.getVar("luxInteriorIri"));
+  });
+}

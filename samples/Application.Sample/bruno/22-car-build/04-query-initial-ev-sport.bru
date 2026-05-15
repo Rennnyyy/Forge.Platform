@@ -1,0 +1,61 @@
+meta {
+  name: Car demo - initial era + EV + sport trim → 14 nodes
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "enumerationOptions": {
+      "{{drivetrainDimIri}}": "urn:forge:car:drivetrain/ev",
+      "{{trimDimIri}}": "urn:forge:car:trim/sport"
+    },
+    "referenceDate": "2025-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // drivetrain=ev  → EV Package included, ICE Package excluded
+  // trim=sport     → Sport Interior/Seats included; Base and Luxury excluded
+  // date=2025      → no update-1 additions; Race Edition Pack present
+  // Expected: Car + Chassis + Steel Frame + Powertrain + EV Package + Battery Pack
+  //           + BMS + E-Machine + Front Motor + Interior + Sport Interior + Sport Seats
+  //           + Race Edition Pack + Roll Cage  = 14 nodes
+  test("Initial EV-sport slice has 14 nodes", () => {
+    expect(iris.length).to.equal(14);
+  });
+
+  test("EV Package present", () => {
+    expect(iris).to.include(bru.getVar("evPackageIri"));
+  });
+
+  test("ICE Package excluded (drivetrain=ev)", () => {
+    expect(iris).to.not.include(bru.getVar("icePackageIri"));
+  });
+
+  test("Race Edition Pack present (initial era)", () => {
+    expect(iris).to.include(bru.getVar("raceEditionIri"));
+  });
+
+  test("Rear Motor excluded (update-1 era only)", () => {
+    expect(iris).to.not.include(bru.getVar("rearMotorIri"));
+  });
+}

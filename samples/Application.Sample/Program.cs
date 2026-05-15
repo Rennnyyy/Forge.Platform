@@ -143,12 +143,22 @@ builder.Services.AddOperationEndpointsHttp(typeof(Node).Assembly);
 builder.Services.AddForgeObjectStorageInMemory();
 builder.Services.AddForgeObjectStorageHttpFromAssemblyContaining<TrackMaster>();
 
+// ── Dev-only CORS ─────────────────────────────────────────────────────────────
+// Allows any browser origin (file://, localhost:*, etc.) to call the API.
+// Active only in the Development environment so it is never deployed.
+const string DevCorsPolicyName = "dev-allow-all";
+builder.Services.AddCors(opts => opts.AddPolicy(DevCorsPolicyName, p =>
+    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
 var app = builder.Build();
 
 // ── 6b. Branch scope middleware ───────────────────────────────────────────────
 // Reads X-Forge-BranchIri request header and activates BranchScope.Current for
 // all downstream handlers. Must be registered before MapCapabilities/MapOperations.
 // Echoes the effective IRI in X-Forge-Effective-BranchIri response header.
+if (app.Environment.IsDevelopment())
+    app.UseCors(DevCorsPolicyName);
+
 app.UseBranchScope();
 
 // ── 6c. Snapshot immutability guard (HTTP translation) ───────────────────────

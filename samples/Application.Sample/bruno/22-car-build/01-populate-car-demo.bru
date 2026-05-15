@@ -1,0 +1,44 @@
+meta {
+  name: Car demo - populate tree (28 nodes, conditions-based)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/car/demo/populate
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branchIri": "https://forge-it.net/branches/main"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.carIri: isDefined
+  res.body.drivetrainDimensionIri: isDefined
+  res.body.trimDimensionIri: isDefined
+}
+
+script:post-response {
+  bru.setVar("branchIri",             res.body.branchIri);
+  bru.setVar("carIri",                res.body.carIri);
+  bru.setVar("drivetrainDimIri",      res.body.drivetrainDimensionIri);
+  bru.setVar("trimDimIri",            res.body.trimDimensionIri);
+  // landmark IRIs for presence/absence assertions
+  bru.setVar("evPackageIri",          res.body.evPackageIri);
+  bru.setVar("icePackageIri",         res.body.icePackageIri);
+  bru.setVar("alumFrameIri",          res.body.aluminiumFrameIri);
+  bru.setVar("thermalMgmtIri",        res.body.thermalManagementIri);
+  bru.setVar("rearMotorIri",          res.body.rearMotorIri);
+  bru.setVar("turboIri",              res.body.turbochargerIri);
+  bru.setVar("luxInteriorIri",        res.body.luxuryInteriorIri);
+  bru.setVar("raceEditionIri",        res.body.raceEditionPackIri);
+}

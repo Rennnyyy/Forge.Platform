@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Car Demo Structure Tree</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 2rem;
+      align-items: flex-end;
+      background: #f0f4f8;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; }
+    .filter-group label { font-size: .8rem; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+    .filter-group select {
+      padding: .35rem .75rem;
+      border: 1px solid #b0bec5;
+      border-radius: 5px;
+      font-size: .9rem;
+      background: #fff;
+      cursor: pointer;
+      min-width: 160px;
+    }
+    .filter-info {
+      font-size: .85rem;
+      color: #555;
+      background: #eef4fb;
+      border-left: 3px solid #3b82f6;
+      padding: .5rem .9rem;
+      border-radius: 0 5px 5px 0;
+      margin-bottom: 1rem;
+    }
+    #chart-container {
+      width: 100%;
+      height: 840px;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      background: #fafbfc;
+      margin-bottom: 1.5rem;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1.5rem;
+      margin: .5rem 0 1.5rem;
+      font-size: .85rem;
+    }
+    .legend-item { display: flex; align-items: center; gap: .4rem; }
+    .swatch { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link active" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+    <span class="nav-sep"></span>
+    <a class="nav-link nav-link-demo active" href="car-demo.html">Car Demo</a>
+    <a class="nav-link nav-link-demo" href="car-demo-live.html">Live ⚡</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Car Demo — Condition-Filtered Structure Tree</h1>
+    <p class="lead">The Demo Car tree demonstrates all three <code>Forge.Structure</code> condition types in one model: <strong>time effectivity</strong> (milestone eras via <code>TimeCondition</code>) and <strong>feature variants</strong> (drivetrain + interior trim via <code>EnumerationOptionCondition</code>). Use the filters below to see how the configured-tree query slices the 150&nbsp;% model down to a specific valid configuration. Have a running server? Try the <a href="car-demo-live.html">live version</a> instead.</p>
+  </div>
+
+  <!-- ── Interactive filters ── -->
+  <section id="filters">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Milestone era</label>
+        <select id="sel-era">
+          <option value="all">All eras (150&nbsp;% time view)</option>
+          <option value="initial" selected>Initial era (2025)</option>
+          <option value="update1">Update-1 era (2026+)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Drivetrain</label>
+        <select id="sel-drivetrain">
+          <option value="all" selected>All (open-world)</option>
+          <option value="ev">EV</option>
+          <option value="ice">ICE</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Interior trim</label>
+        <select id="sel-trim">
+          <option value="all" selected>All (open-world)</option>
+          <option value="base">Base</option>
+          <option value="sport">Sport</option>
+          <option value="luxury">Luxury</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-info" id="filter-info">Loading…</div>
+  </section>
+
+  <!-- ── Colour legend ── -->
+  <div class="legend">
+    <span class="legend-item"><span class="swatch" style="background:#1a4a7e"></span> Car root</span>
+    <span class="legend-item"><span class="swatch" style="background:#5a6a7a"></span> Structural (unconditional)</span>
+    <span class="legend-item"><span class="swatch" style="background:#238b45"></span> EV / electric</span>
+    <span class="legend-item"><span class="swatch" style="background:#c26400"></span> ICE / combustion</span>
+    <span class="legend-item"><span class="swatch" style="background:#6a3a8c"></span> Interior</span>
+    <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition ★</span>
+    <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive ◆</span>
+    <span class="legend-item"><span class="swatch" style="background:#888"></span> Filtered out (greyed)</span>
+  </div>
+
+  <!-- ── Chart ── -->
+  <div id="chart-container"></div>
+
+  <!-- ── How it works ── -->
+  <section id="how-it-works">
+    <h2 class="section-title">How the Conditions Work</h2>
+
+    <h3>Time effectivity (milestone eras)</h3>
+    <p><code>TimeCondition</code> is set on Usage edges. Edges with <code>ValidFrom = 2026-01-01</code> are only traversed when the query carries a <code>referenceDate ≥ 2026</code>. The Race Edition Pack edge uses <code>ValidTo = 2025-12-31</code> — it vanishes once the update-1 era begins. <em>This is what "milestone" means in the product-structure world: a time window of applicability for a structural element, not a separate duplicate sub-tree.</em></p>
+
+    <h3>Feature variants (drivetrain + trim)</h3>
+    <p><code>EnumerationOptionCondition</code> guards the variant branch edges (<code>Powertrain → EV Package</code> and <code>Powertrain → ICE Package</code>; the three interior edges). Both dimensions use <strong>open-world</strong> (<code>IsRequired = false</code>): omitting the dimension key from the query returns all variants simultaneously — the 150&nbsp;% view for that axis.</p>
+
+    <h3>Combined AND condition</h3>
+    <p>The <code>Interior → Luxury Interior</code> edge carries a <code>ConditionSet</code> with <em>two</em> conditions: <code>EnumerationOptionCondition(trim=luxury)</code> AND <code>TimeCondition(from 2026)</code>. Both must be satisfied simultaneously. A luxury configuration in the initial era (2025) still excludes this node.</p>
+
+    <h3>Open-world vs closed-world queries</h3>
+    <table>
+      <thead><tr><th>Query</th><th>Drivetrain filter</th><th>Trim filter</th><th>Date</th><th>Nodes</th></tr></thead>
+      <tbody>
+        <tr><td>Initial era 150&nbsp;%</td><td>absent (open)</td><td>absent (open)</td><td>2025-06-01</td><td>19</td></tr>
+        <tr><td>Update-1 era 150&nbsp;%</td><td>absent (open)</td><td>absent (open)</td><td>2026-06-01</td><td>26</td></tr>
+        <tr><td>Initial · EV · sport</td><td>ev</td><td>sport</td><td>2025-06-01</td><td>14</td></tr>
+        <tr><td>Initial · ICE · base</td><td>ice</td><td>base</td><td>2025-06-01</td><td>12</td></tr>
+        <tr><td>Update-1 · EV · luxury</td><td>ev</td><td>luxury</td><td>2026-06-01</td><td>16</td></tr>
+        <tr><td>Update-1 · ICE · sport</td><td>ice</td><td>sport</td><td>2026-06-01</td><td>14</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── Bruno chapter ── -->
+  <section id="bruno-chapter">
+    <h2 class="section-title">Bruno Chapter 22 Requests</h2>
+    <table>
+      <thead><tr><th>Seq</th><th>File</th><th>Configuration</th><th>Expected nodes</th></tr></thead>
+      <tbody>
+        <tr><td>01</td><td><code>01-populate-car-demo.bru</code></td><td>Seeds 28 nodes + 27 conditioned edges; saves dimension IRIs</td><td>—</td></tr>
+        <tr><td>02</td><td><code>02-query-initial-era-150pct.bru</code></td><td>No variant filter · date=2025</td><td>19</td></tr>
+        <tr><td>03</td><td><code>03-query-update1-era-150pct.bru</code></td><td>No variant filter · date=2026</td><td>26</td></tr>
+        <tr><td>04</td><td><code>04-query-initial-ev-sport.bru</code></td><td>drivetrain=ev · trim=sport · date=2025</td><td>14</td></tr>
+        <tr><td>05</td><td><code>05-query-initial-ice-base.bru</code></td><td>drivetrain=ice · trim=base · date=2025</td><td>12</td></tr>
+        <tr><td>06</td><td><code>06-query-update1-ev-luxury.bru</code></td><td>drivetrain=ev · trim=luxury · date=2026</td><td>16</td></tr>
+        <tr><td>07</td><td><code>07-query-update1-ice-sport.bru</code></td><td>drivetrain=ice · trim=sport · date=2026</td><td>14</td></tr>
+        <tr><td>08</td><td><code>08-read-car-node.bru</code></td><td>CRUD entity read of the Car root node</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── Full 150% tree definition ─────────────────────────────────────────────
+  // Each node has: id, label, parent, color, conditions[]
+  // Conditions are evaluated client-side to mirror the C# ConditionSet logic.
+  //
+  // Condition types:
+  //   { type: 'time',  validFrom: 'YYYY', validTo: 'YYYY' }  — null = open
+  //   { type: 'enum',  dimension: 'drivetrain'|'trim', value: string }
+
+  var UPDATE1_START = 2026;
+  var INITIAL_END   = 2025;
+
+  var C = {
+    root:      '#1a4a7e',
+    struct:    '#5a6a7a',
+    ev:        '#238b45',
+    ice:       '#c26400',
+    interior:  '#6a3a8c',
+    update1:   '#c43c35',   // update-1 era addition
+    initial:   '#d4860a',   // initial era exclusive
+    grey:      '#b0bab8',
+  };
+
+  // All 28 nodes (id, label, colour)
+  var NODES = {
+    car:          { label: 'Demo Car',                color: C.root },
+    chassis:      { label: 'Chassis',                 color: C.struct },
+    steelFrame:   { label: 'Steel Frame',             color: C.struct },
+    alumFrame:    { label: 'Aluminium Space Frame ★', color: C.update1 },
+    powertrain:   { label: 'Powertrain',              color: C.struct },
+    evPkg:        { label: 'EV Package',              color: C.ev },
+    battPack:     { label: 'Battery Pack',            color: C.ev },
+    bms:          { label: 'Battery Mgmt System',     color: C.ev },
+    thermalMgmt:  { label: 'Thermal Management ★',   color: C.update1 },
+    eMachine:     { label: 'E-Machine',               color: C.ev },
+    frontMotor:   { label: 'Front Motor',             color: C.ev },
+    rearMotor:    { label: 'Rear Motor ★',            color: C.update1 },
+    icePkg:       { label: 'ICE Package',             color: C.ice },
+    combEngine:   { label: 'Combustion Engine',       color: C.ice },
+    turbo:        { label: 'Turbocharger ★',          color: C.update1 },
+    gearbox:      { label: 'Gearbox',                 color: C.ice },
+    manClutch:    { label: 'Manual Clutch ★',         color: C.update1 },
+    autoTrans:    { label: 'Automatic Transmission ★',color: C.update1 },
+    interior:     { label: 'Interior',                color: C.interior },
+    baseInt:      { label: 'Base Interior',           color: C.interior },
+    clothSeats:   { label: 'Cloth Seats',             color: C.interior },
+    sportInt:     { label: 'Sport Interior',          color: C.interior },
+    sportSeats:   { label: 'Sport Seats',             color: C.interior },
+    luxInt:       { label: 'Luxury Interior ★',       color: C.update1 },
+    leatherSeats: { label: 'Leather Seats ★',         color: C.update1 },
+    panoramaRoof: { label: 'Panorama Roof ★',         color: C.update1 },
+    raceEdition:  { label: 'Race Edition Pack ◆',     color: C.initial },
+    rollCage:     { label: 'Roll Cage',               color: C.initial },
+  };
+
+  // All 27 edges (parent → child, conditions[])
+  var EDGES = [
+    { p: 'car',        c: 'chassis',      conds: [] },
+    { p: 'chassis',    c: 'steelFrame',   conds: [] },
+    { p: 'chassis',    c: 'alumFrame',    conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'car',        c: 'powertrain',   conds: [] },
+    { p: 'powertrain', c: 'evPkg',        conds: [{ type: 'enum', dimension: 'drivetrain', value: 'ev' }] },
+    { p: 'evPkg',      c: 'battPack',     conds: [] },
+    { p: 'battPack',   c: 'bms',          conds: [] },
+    { p: 'battPack',   c: 'thermalMgmt',  conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'evPkg',      c: 'eMachine',     conds: [] },
+    { p: 'eMachine',   c: 'frontMotor',   conds: [] },
+    { p: 'eMachine',   c: 'rearMotor',    conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'powertrain', c: 'icePkg',       conds: [{ type: 'enum', dimension: 'drivetrain', value: 'ice' }] },
+    { p: 'icePkg',     c: 'combEngine',   conds: [] },
+    { p: 'combEngine', c: 'turbo',        conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'icePkg',     c: 'gearbox',      conds: [] },
+    { p: 'gearbox',    c: 'manClutch',    conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'gearbox',    c: 'autoTrans',    conds: [{ type: 'time', validFrom: UPDATE1_START, validTo: null }] },
+    { p: 'car',        c: 'interior',     conds: [] },
+    { p: 'interior',   c: 'baseInt',      conds: [{ type: 'enum', dimension: 'trim', value: 'base' }] },
+    { p: 'baseInt',    c: 'clothSeats',   conds: [] },
+    { p: 'interior',   c: 'sportInt',     conds: [{ type: 'enum', dimension: 'trim', value: 'sport' }] },
+    { p: 'sportInt',   c: 'sportSeats',   conds: [] },
+    // Luxury Interior: AND-conditions (trim=luxury AND date>=2026)
+    { p: 'interior',   c: 'luxInt',       conds: [
+        { type: 'enum', dimension: 'trim', value: 'luxury' },
+        { type: 'time', validFrom: UPDATE1_START, validTo: null }
+      ]},
+    { p: 'luxInt',     c: 'leatherSeats', conds: [] },
+    { p: 'luxInt',     c: 'panoramaRoof', conds: [] },
+    { p: 'car',        c: 'raceEdition',  conds: [{ type: 'time', validFrom: null, validTo: INITIAL_END }] },
+    { p: 'raceEdition',c: 'rollCage',     conds: [] },
+  ];
+
+  // ── Condition evaluation ──────────────────────────────────────────────────
+  function edgeSatisfied(edge, config) {
+    for (var i = 0; i < edge.conds.length; i++) {
+      var cond = edge.conds[i];
+      if (cond.type === 'time') {
+        // 'all' era = show everything regardless of time
+        if (config.era === 'all') continue;
+        var year = config.era === 'update1' ? 2026 : 2025;
+        if (cond.validFrom !== null && year < cond.validFrom) return false;
+        if (cond.validTo   !== null && year > cond.validTo)   return false;
+      } else if (cond.type === 'enum') {
+        var sel = config[cond.dimension]; // 'all', 'ev', 'ice', 'base', 'sport', 'luxury'
+        if (sel === 'all') continue;      // open-world: absent dimension = satisfied
+        if (sel !== cond.value) return false;
+      }
+    }
+    return true;
+  }
+
+  // Build reachable-node set via DFS from 'car'
+  function reachableNodes(config) {
+    // Build adjacency: parent → [children where edge is satisfied]
+    var adj = {};
+    for (var i = 0; i < EDGES.length; i++) {
+      var e = EDGES[i];
+      if (edgeSatisfied(e, config)) {
+        if (!adj[e.p]) adj[e.p] = [];
+        adj[e.p].push(e.c);
+      }
+    }
+    var visited = {};
+    var stack = ['car'];
+    while (stack.length) {
+      var n = stack.pop();
+      if (visited[n]) continue;
+      visited[n] = true;
+      var kids = adj[n] || [];
+      for (var j = 0; j < kids.length; j++) stack.push(kids[j]);
+    }
+    return visited;
+  }
+
+  // Build ECharts tree data recursively
+  function buildTree(nodeId, reachable, config) {
+    var node = NODES[nodeId];
+    var active = !!reachable[nodeId];
+
+    // Find satisfied child edges
+    var childEdges = EDGES.filter(function (e) {
+      return e.p === nodeId && edgeSatisfied(e, config);
+    });
+
+    // Children that are reachable
+    var children = childEdges.map(function (e) {
+      return buildTree(e.c, reachable, config);
+    });
+
+    return {
+      name: node.label,
+      itemStyle: {
+        color: active ? node.color : C.grey,
+        borderColor: active ? darken(node.color) : '#aaa',
+        borderWidth: 2,
+        opacity: active ? 1.0 : 0.35,
+      },
+      label: {
+        color: active ? '#1a202c' : '#aaa',
+        opacity: active ? 1 : 0.4,
+      },
+      children: children,
+    };
+  }
+
+  function darken(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.max(0, ((n >> 16) & 0xff) - 40);
+    var g = Math.max(0, ((n >> 8)  & 0xff) - 40);
+    var b = Math.max(0, (n         & 0xff) - 40);
+    return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+  }
+
+  // ── Chart setup ───────────────────────────────────────────────────────────
+  var chart = echarts.init(document.getElementById('chart-container'));
+
+  function render() {
+    var era       = document.getElementById('sel-era').value;
+    var drivetrain= document.getElementById('sel-drivetrain').value;
+    var trim      = document.getElementById('sel-trim').value;
+
+    var config = { era: era, drivetrain: drivetrain, trim: trim };
+    var reachable = reachableNodes(config);
+    var count = Object.keys(reachable).length;
+
+    var treeData = buildTree('car', reachable, config);
+
+    // Describe the active configuration
+    var parts = [];
+    if (era === 'initial')  parts.push('era: 2025 (initial)');
+    if (era === 'update1')  parts.push('era: 2026+ (update-1)');
+    if (era === 'all')      parts.push('era: all (150% time view)');
+    if (drivetrain !== 'all') parts.push('drivetrain: ' + drivetrain.toUpperCase());
+    if (trim !== 'all')       parts.push('trim: ' + trim);
+    var infoEl = document.getElementById('filter-info');
+    infoEl.textContent = parts.join(' · ') + '  →  ' + count + ' node' + (count === 1 ? '' : 's') + ' reachable from Car root';
+
+    chart.setOption({
+      tooltip: {
+        trigger: 'item',
+        formatter: function (p) { return '<strong>' + p.name + '</strong>'; }
+      },
+      series: [{
+        type: 'tree',
+        data: [treeData],
+        layout: 'orthogonal',
+        orient: 'LR',
+        symbol: 'circle',
+        symbolSize: 9,
+        initialTreeDepth: -1,
+        expandAndCollapse: false,
+        top: '2%', bottom: '2%', left: '2%', right: '22%',
+        edgeShape: 'curve',
+        label: {
+          position: 'right',
+          verticalAlign: 'middle',
+          align: 'left',
+          fontSize: 12,
+        },
+        leaves: {
+          label: {
+            position: 'right',
+            verticalAlign: 'middle',
+            align: 'left',
+            fontSize: 12,
+          }
+        },
+        lineStyle: { width: 1.5, color: '#aab4be' },
+        emphasis: {
+          focus: 'descendant',
+          label: { fontWeight: 'bold' }
+        },
+        animationDurationUpdate: 450,
+        roam: true,
+      }]
+    }, true);
+  }
+
+  // Bind filter controls
+  ['sel-era', 'sel-drivetrain', 'sel-trim'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', render);
+  });
+
+  window.addEventListener('resize', function () { chart.resize(); });
+
+  // Initial render
+  render();
+}());
+</script>
+
+</body>
+</html>

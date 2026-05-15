@@ -1,0 +1,64 @@
+meta {
+  name: Car demo - initial era 150% (no variant filter, date=2025) → 19 nodes
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "referenceDate": "2025-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{carIri}}
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // No variant filter → open-world: both EV and ICE visible, Base and Sport trim visible.
+  // TimeCondition: date=2025 excludes all update-1 additions and Luxury Interior.
+  // Race Edition Pack IS included (valid until 2025-12-31).
+  // Expected: 19 nodes
+  test("Initial era 150% tree has 19 nodes", () => {
+    expect(iris.length).to.equal(19);
+  });
+
+  test("EV Package present (open-world drivetrain)", () => {
+    expect(iris).to.include(bru.getVar("evPackageIri"));
+  });
+
+  test("ICE Package present (open-world drivetrain)", () => {
+    expect(iris).to.include(bru.getVar("icePackageIri"));
+  });
+
+  test("Race Edition Pack present in initial era", () => {
+    expect(iris).to.include(bru.getVar("raceEditionIri"));
+  });
+
+  test("Aluminium Frame absent in initial era", () => {
+    expect(iris).to.not.include(bru.getVar("alumFrameIri"));
+  });
+
+  test("Thermal Management absent in initial era", () => {
+    expect(iris).to.not.include(bru.getVar("thermalMgmtIri"));
+  });
+
+  test("Luxury Interior absent in initial era", () => {
+    expect(iris).to.not.include(bru.getVar("luxInteriorIri"));
+  });
+}

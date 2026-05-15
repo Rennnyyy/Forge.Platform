@@ -1,0 +1,64 @@
+meta {
+  name: Car demo - update-1 era 150% (no variant filter, date=2026) → 26 nodes
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "referenceDate": "2026-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{carIri}}
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // No variant filter → open-world: EV+ICE visible, all trim grades visible.
+  // TimeCondition: date=2026 includes all update-1 additions.
+  // Race Edition Pack is EXCLUDED (expired after 2025-12-31).
+  // Expected: 26 nodes
+  test("Update-1 era 150% tree has 26 nodes", () => {
+    expect(iris.length).to.equal(26);
+  });
+
+  test("Aluminium Frame present in update-1 era", () => {
+    expect(iris).to.include(bru.getVar("alumFrameIri"));
+  });
+
+  test("Thermal Management present in update-1 era", () => {
+    expect(iris).to.include(bru.getVar("thermalMgmtIri"));
+  });
+
+  test("Rear Motor present in update-1 era", () => {
+    expect(iris).to.include(bru.getVar("rearMotorIri"));
+  });
+
+  test("Turbocharger present in update-1 era", () => {
+    expect(iris).to.include(bru.getVar("turboIri"));
+  });
+
+  test("Luxury Interior present in update-1 era (open-world trim)", () => {
+    expect(iris).to.include(bru.getVar("luxInteriorIri"));
+  });
+
+  test("Race Edition Pack absent in update-1 era (expired)", () => {
+    expect(iris).to.not.include(bru.getVar("raceEditionIri"));
+  });
+}

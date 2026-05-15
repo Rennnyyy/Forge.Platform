@@ -21,6 +21,9 @@
     <a class="nav-link" href="testing.html">Testing</a>
     <a class="nav-link active" href="sample.html">Sample</a>
     <a class="nav-link" href="adr.html">ADRs</a>
+    <span class="nav-sep"></span>
+    <a class="nav-link nav-link-demo" href="car-demo.html">Car Demo</a>
+    <a class="nav-link nav-link-demo" href="car-demo-live.html">Live ⚡</a>
   </div>
 </nav>
 
@@ -59,6 +62,10 @@
         <h3>Object storage</h3>
         <p><code>TrackMaster</code> is an <code>[ObjectBearing]</code> entity. Its binary asset (track master audio file) is managed via eight HTTP routes under <code>api/objects/track-masters</code>. An in-memory blob store is wired by <code>AddForgeObjectStorageInMemory()</code>.</p>
       </div>
+      <div class="card">
+        <h3>Car Structure demo (Chapter 22)</h3>
+        <p>A single <code>car.demo.populate</code> capability seeds a condition-based 150&nbsp;% product tree: 28 <code>Node</code> entities and 27 <code>Usage</code> edges with real <code>TimeCondition</code> and <code>EnumerationOptionCondition</code> entries. Milestones are time-effectivity windows; drivetrain (EV/ICE) and interior trim (Base/Sport/Luxury) are enumeration axes — era + drivetrain + trim govern which slice the API returns. See the <a href="#sample-car-structure">Car Structure section</a>, the <a href="car-demo.html">static tree</a>, or the <a href="car-demo-live.html">live server view</a>.</p>
+      </div>
     </div>
   </section>
 
@@ -86,6 +93,7 @@
     PatchItemHandler.cs          — PATCH api/capabilities/demo/catalog/items/patch
     TriggerFaultHandler.cs       — POST api/capabilities/demo/fault (always 422)
     AspectDemoHandler.cs         — POST api/capabilities/demo/aspect
+    CarDemoCapability.cs         — POST api/capabilities/car/demo/populate (PopulateCarDemoHandler)
 
   Messaging/
     BookHistoryConsumerService.cs  — consumes forge.entities.book.history → EntityEventLog
@@ -346,6 +354,152 @@ public partial class TrackMaster
         <tr><td>GET</td><td><code>api/diagnostics/entity-events/latest?iri=…</code></td><td>Latest event for a Book IRI from <code>EntityStateCache</code></td></tr>
       </tbody>
     </table>
+  </section>
+
+  <!-- ── Car Structure demo ── -->
+  <section id="sample-car-structure">
+    <h2 class="section-title">Car Structure Demo — Chapter 22</h2>
+    <p>
+      The <strong>car-build chapter</strong> (Bruno <code>22-car-build</code>) demonstrates the
+      <code>Forge.Structure</code> slice through a realistic car product-structure scenario.
+      A single <code>car.demo.populate</code> capability call seeds 28 <code>Node</code> entities
+      and 27 conditioned <code>Usage</code> edges in one shot.
+      <strong>Milestones are time-effectivity windows</strong> — a single tree is filtered by
+      <code>TimeCondition</code> on each edge, not by duplicating the topology.
+      Two enumeration dimensions (drivetrain: EV / ICE; interior trim: Base / Sport / Luxury)
+      add a second and third axis of variance via <code>EnumerationOptionCondition</code>.
+      See the <a href="car-demo.html">interactive ECharts tree visualization</a> for the full picture.
+    </p>
+
+    <div class="card-grid" style="margin-bottom:2rem">
+      <div class="card">
+        <h3><code>car.demo.populate</code> — POST</h3>
+        <p>Creates 2 <code>Dimension</code> entities, 28 <code>Node</code> entities, and 27
+           <code>Usage</code> edges with real <code>ConditionSet</code> entries. Returns
+           dimension IRIs and landmark node IRIs for all subsequent queries.</p>
+      </div>
+      <div class="card">
+        <h3>Full 150&nbsp;% tree (no filter)</h3>
+        <p>Omitting dimension keys returns the open-world view. Initial era (date=2025)
+           → 19 nodes; update-1 era (date=2026) → 26 nodes; no time filter → all 28.</p>
+      </div>
+      <div class="card">
+        <h3>Milestone as time effectivity</h3>
+        <p>Edges carry <code>TimeCondition(ValidFrom/ValidTo)</code>. Six edges are update-1-only
+           (ValidFrom=2026); one edge (Race Edition Pack) is initial-only (ValidTo=2025-12-31).</p>
+      </div>
+      <div class="card">
+        <h3>Drivetrain axis (EV / ICE)</h3>
+        <p><code>Car → EV Package</code> edge carries <code>drivetrain=ev</code>;
+           <code>Car → ICE Package</code> carries <code>drivetrain=ice</code>.
+           Omitting the dimension returns both branches simultaneously.</p>
+      </div>
+      <div class="card">
+        <h3>Interior trim axis (Base / Sport / Luxury)</h3>
+        <p>Three sibling edges under <code>Interior</code> each carry an
+           <code>EnumerationOptionCondition</code> on the trim dimension.
+           Luxury also requires ValidFrom=2026 — AND semantics in one <code>ConditionSet</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Combined AND condition</h3>
+        <p><code>Interior → Luxury Interior</code> carries both <code>trim=luxury</code> AND
+           <code>TimeCondition(ValidFrom=2026)</code> in a single <code>ConditionSet</code>.
+           Both must be satisfied simultaneously; querying 2025+luxury returns 0 luxury nodes.</p>
+      </div>
+    </div>
+
+    <!-- ── ECharts 150% product tree ── -->
+    <h3 style="margin-bottom:0.75rem">150% Product Tree — Demo Car (full open-world view)</h3>
+    <p style="margin-bottom:0.5rem">
+      The tree below shows all 28 nodes — the open-world (no filter) snapshot.
+      Node colours indicate the condition type on the incoming edge:
+    </p>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.85rem">
+      <span><span style="display:inline-block;width:12px;height:12px;background:#1a4a7e;border-radius:50%;vertical-align:middle"></span> Always visible</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#238b45;border-radius:50%;vertical-align:middle"></span> EV drivetrain only</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#c26400;border-radius:50%;vertical-align:middle"></span> ICE drivetrain only</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#6a3a8c;border-radius:50%;vertical-align:middle"></span> Interior trim variant</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#0e7fa8;border-radius:50%;vertical-align:middle"></span> Update-1 era (ValidFrom=2026)</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:#b03060;border-radius:50%;vertical-align:middle"></span> Initial era only (ValidTo=2025)</span>
+    </div>
+    <div id="car-tree-chart" style="width:100%;height:680px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc"></div>
+    <p style="margin-top:0.5rem;font-size:0.82rem;color:#64748b">
+      See the <a href="car-demo.html">interactive car-demo page</a> to filter by era, drivetrain, and trim live.
+    </p>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+    (function () {
+      var C = { always: '#1a4a7e', ev: '#238b45', ice: '#c26400', trim: '#6a3a8c', u1: '#0e7fa8', init: '#b03060' };
+      function n(name, color, children) {
+        var o = { name: name, itemStyle: { color: color } };
+        if (children) o.children = children;
+        return o;
+      }
+      var treeData = n('Car', C.always, [
+        n('Chassis', C.always, [
+          n('Steel Frame', C.always),
+          n('Aluminium Space Frame [2026+]', C.u1)
+        ]),
+        n('Powertrain', C.always, [
+          n('EV Package [ev]', C.ev, [
+            n('Battery Pack', C.ev, [
+              n('Battery Management System', C.ev),
+              n('Thermal Management [2026+]', C.u1)
+            ]),
+            n('E-Machine', C.ev, [
+              n('Front Motor', C.ev),
+              n('Rear Motor [2026+]', C.u1)
+            ])
+          ]),
+          n('ICE Package [ice]', C.ice, [
+            n('Combustion Engine', C.ice, [
+              n('Turbocharger [2026+]', C.u1)
+            ]),
+            n('Gearbox', C.ice, [
+              n('Manual Clutch [2026+]', C.u1),
+              n('Automatic Transmission [2026+]', C.u1)
+            ])
+          ])
+        ]),
+        n('Interior', C.always, [
+          n('Base Interior [base]', C.trim, [
+            n('Cloth Seats', C.trim)
+          ]),
+          n('Sport Interior [sport]', C.trim, [
+            n('Sport Seats', C.trim)
+          ]),
+          n('Luxury Interior [luxury+2026+]', C.trim, [
+            n('Leather Seats', C.trim),
+            n('Panorama Roof', C.trim)
+          ])
+        ]),
+        n('Race Edition Pack [\u22652025]', C.init, [
+          n('Roll Cage', C.init)
+        ])
+      ]);
+
+      var chart = echarts.init(document.getElementById('car-tree-chart'));
+      chart.setOption({
+        tooltip: { trigger: 'item', formatter: function (p) { return '<b>' + p.name + '</b>'; } },
+        series: [{
+          type: 'tree',
+          data: [treeData],
+          top: '2%', left: '2%', bottom: '2%', right: '28%',
+          symbolSize: 8,
+          orient: 'LR',
+          initialTreeDepth: -1,
+          expandAndCollapse: false,
+          label: { position: 'right', verticalAlign: 'middle', align: 'left', fontSize: 11, color: '#1a202c' },
+          leaves: { label: { position: 'right', verticalAlign: 'middle', align: 'left', fontSize: 11 } },
+          animationDuration: 400,
+          lineStyle: { color: '#aab4be', width: 1.5 },
+          roam: true
+        }]
+      });
+      window.addEventListener('resize', function () { chart.resize(); });
+    })();
+    </script>
   </section>
 
   <!-- ── Key decisions ── -->

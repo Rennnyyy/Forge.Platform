@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge.Platform — Car Demo Live</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    /* ── Connection panel ── */
+    .connect-panel {
+      background: #f0f4f8;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .connect-panel h3 { margin: 0 0 .75rem; font-size: .95rem; color: #1a202c; }
+    .connect-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1.25rem;
+      align-items: flex-end;
+    }
+    .connect-field { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 200px; }
+    .connect-field label { font-size: .78rem; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+    .connect-field input {
+      padding: .38rem .75rem;
+      border: 1px solid #b0bec5;
+      border-radius: 5px;
+      font-size: .9rem;
+      background: #fff;
+      font-family: monospace;
+    }
+    .connect-field input:focus { outline: 2px solid #3b82f6; border-color: transparent; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: .42rem 1.1rem;
+      border: none;
+      border-radius: 5px;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+      align-self: flex-end;
+    }
+    .btn-primary { background: #1a4a7e; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #163d6a; }
+    .btn-primary:disabled { background: #9ab0c8; cursor: not-allowed; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #a93226; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      font-size: .84rem;
+      padding: .4rem .9rem;
+      border-radius: 5px;
+      border-left: 3px solid #ccc;
+      background: #f8fafc;
+      margin: .5rem 0 1rem;
+      min-height: 2em;
+      word-break: break-all;
+    }
+    .status-bar.idle   { border-color: #9ca3af; color: #6b7280; }
+    .status-bar.ok     { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+    .status-bar.err    { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+    .status-bar.busy   { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+
+    /* ── State summary ── */
+    .state-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem .75rem;
+      font-size: .78rem;
+      margin-bottom: .75rem;
+    }
+    .state-tag {
+      background: #e2e8f0;
+      border-radius: 4px;
+      padding: .2rem .55rem;
+      font-family: monospace;
+      color: #334155;
+    }
+    .state-tag.dim { background: #dbeafe; color: #1e40af; }
+    .state-tag.iri { background: #dcfce7; color: #166534; }
+
+    /* ── Filter bar (same as car-demo.html) ── */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 2rem;
+      align-items: flex-end;
+      background: #f0f4f8;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; }
+    .filter-group label { font-size: .8rem; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+    .filter-group select {
+      padding: .35rem .75rem;
+      border: 1px solid #b0bec5;
+      border-radius: 5px;
+      font-size: .9rem;
+      background: #fff;
+      cursor: pointer;
+      min-width: 160px;
+    }
+    .filter-group select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+
+    .filter-info {
+      font-size: .85rem;
+      color: #555;
+      background: #eef4fb;
+      border-left: 3px solid #3b82f6;
+      padding: .5rem .9rem;
+      border-radius: 0 5px 5px 0;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Chart ── */
+    #chart-container {
+      width: 100%;
+      height: 840px;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      background: #fafbfc;
+      margin-bottom: 1.5rem;
+    }
+    #chart-placeholder {
+      width: 100%;
+      height: 840px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #b0bec5;
+      border-radius: 8px;
+      color: #9ca3af;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1.5rem;
+      margin: .5rem 0 1.5rem;
+      font-size: .85rem;
+    }
+    .legend-item { display: flex; align-items: center; gap: .4rem; }
+    .swatch { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">Forge.Platform</a>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Index</a>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+    <a class="nav-link" href="projects.html">Projects</a>
+    <a class="nav-link" href="architecture.html">Architecture</a>
+    <a class="nav-link" href="api-reference.html">API Reference</a>
+    <a class="nav-link" href="cookbook.html">Cookbook</a>
+    <a class="nav-link" href="configuration.html">Configuration</a>
+    <a class="nav-link" href="testing.html">Testing</a>
+    <a class="nav-link active" href="sample.html">Sample</a>
+    <a class="nav-link" href="adr.html">ADRs</a>
+    <span class="nav-sep"></span>
+    <a class="nav-link nav-link-demo" href="car-demo.html">Car Demo</a>
+    <a class="nav-link nav-link-demo active" href="car-demo-live.html">Live ⚡</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="page-header">
+    <h1>Car Demo — Live Server</h1>
+    <p class="lead">Connect to a running Forge.Platform sample server, populate the car demo tree, and query it interactively. The ECharts visualisation is built from real API responses — the same data the Bruno chapter 22 tests exercise. See <a href="car-demo.html">car-demo.html</a> for the static reference version with the full condition explanation.</p>
+  </div>
+
+  <!-- ── Connection panel ── -->
+  <section id="connect">
+    <div class="connect-panel">
+      <h3>Server connection</h3>
+      <div class="connect-row">
+        <div class="connect-field" style="flex:2">
+          <label>Base URL</label>
+          <input id="inp-base-url" type="url" value="http://localhost:5000" placeholder="http://localhost:5000" spellcheck="false">
+        </div>
+        <div class="connect-field" style="flex:3">
+          <label>Branch IRI</label>
+          <input id="inp-branch-iri" type="text" value="https://forge-it.net/branches/main" spellcheck="false">
+        </div>
+        <button class="btn btn-primary" id="btn-populate" onclick="runPopulate()">Populate</button>
+        <button class="btn btn-danger" id="btn-reset" onclick="resetState()" title="Clear local state (does not delete server data)">Reset</button>
+      </div>
+    </div>
+    <div class="status-bar idle" id="status-bar">Not connected — enter the server URL and click Populate.</div>
+
+    <!-- State summary (hidden until populated) -->
+    <div id="state-summary" style="display:none">
+      <div class="state-summary" id="state-tags"></div>
+    </div>
+  </section>
+
+  <!-- ── Filters ── -->
+  <section id="filters">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Milestone era</label>
+        <select id="sel-era" onchange="onFilterChange()" disabled>
+          <option value="current">Current date (server default)</option>
+          <option value="initial">Initial era (2025-06-01)</option>
+          <option value="update1">Update-1 era (2026-06-01)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Drivetrain</label>
+        <select id="sel-drivetrain" onchange="onFilterChange()" disabled>
+          <option value="all" selected>All (open-world)</option>
+          <option value="ev">EV</option>
+          <option value="ice">ICE</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Interior trim</label>
+        <select id="sel-trim" onchange="onFilterChange()" disabled>
+          <option value="all" selected>All (open-world)</option>
+          <option value="base">Base</option>
+          <option value="sport">Sport</option>
+          <option value="luxury">Luxury</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-info" id="filter-info">Populate the tree first to enable queries.</div>
+  </section>
+
+  <!-- ── Legend ── -->
+  <div class="legend">
+    <span class="legend-item"><span class="swatch" style="background:#1a4a7e"></span> Car root</span>
+    <span class="legend-item"><span class="swatch" style="background:#5a6a7a"></span> Structural</span>
+    <span class="legend-item"><span class="swatch" style="background:#238b45"></span> EV / electric</span>
+    <span class="legend-item"><span class="swatch" style="background:#c26400"></span> ICE / combustion</span>
+    <span class="legend-item"><span class="swatch" style="background:#6a3a8c"></span> Interior</span>
+    <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition</span>
+    <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive</span>
+  </div>
+
+  <!-- ── Chart / placeholder ── -->
+  <div id="chart-placeholder">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+    <span>Tree will appear here after Populate</span>
+  </div>
+  <div id="chart-container" style="display:none"></div>
+
+</main>
+
+<script>
+(function () {
+'use strict';
+
+// ── Colours ──────────────────────────────────────────────────────────────────
+var C = {
+  root:     '#1a4a7e',
+  struct:   '#5a6a7a',
+  ev:       '#238b45',
+  ice:      '#c26400',
+  interior: '#6a3a8c',
+  update1:  '#c43c35',
+  init:     '#d4860a',
+};
+
+// ── Application state ─────────────────────────────────────────────────────────
+var state = {
+  populated:            false,
+  carIri:               null,
+  branchIri:            null,
+  drivetrainDimIri:     null,
+  trimDimIri:           null,
+  evPackageIri:         null,
+  icePackageIri:        null,
+  aluminiumFrameIri:    null,
+  thermalManagementIri: null,
+  rearMotorIri:         null,
+  turbochargerIri:      null,
+  luxuryInteriorIri:    null,
+  raceEditionPackIri:   null,
+  iriToName:            {},
+  update1Iris:          new Set(),
+  initExclusiveIris:    new Set(),
+};
+
+var chart = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function baseUrl() {
+  return document.getElementById('inp-base-url').value.replace(/\/$/, '');
+}
+
+function setStatus(msg, cls) {
+  var el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar ' + cls;
+}
+
+function setFiltersEnabled(enabled) {
+  ['sel-era', 'sel-drivetrain', 'sel-trim'].forEach(function (id) {
+    document.getElementById(id).disabled = !enabled;
+  });
+}
+
+function labelFor(iri) {
+  return state.iriToName[iri] || iri.split('/').pop();
+}
+
+// ── Color resolution ─────────────────────────────────────────────────────────
+// Assigns a display colour to each node. Landmark IRIs get explicit colours;
+// all other nodes inherit their parent's group colour.
+function colorForIri(iri, parentColor) {
+  if (iri === state.carIri)               return C.root;
+  if (iri === state.evPackageIri)         return C.ev;
+  if (iri === state.icePackageIri)        return C.ice;
+  if (iri === state.raceEditionPackIri)   return C.init;
+  if (iri === state.aluminiumFrameIri)    return C.update1;
+  if (iri === state.thermalManagementIri) return C.update1;
+  if (iri === state.rearMotorIri)         return C.update1;
+  if (iri === state.turbochargerIri)      return C.update1;
+  if (iri === state.luxuryInteriorIri)    return C.interior;
+  // Name-based heuristics for non-landmark intermediates
+  var name = (state.iriToName[iri] || '').toLowerCase();
+  if (name === 'chassis' || name === 'powertrain') return C.struct;
+  if (name.includes('interior') || name.includes('seat') || name.includes('roof')) return C.interior;
+  // Fall through: inherit parent group
+  return parentColor || C.struct;
+}
+
+// ── Convert API tree DTO to ECharts tree node ──────────────────────────────
+function toEChartsNode(dto, parentColor) {
+  var color = colorForIri(dto.iri, parentColor);
+  var node = {
+    name: labelFor(dto.iri),
+    itemStyle: { color: color },
+  };
+  if (dto.children && dto.children.length > 0) {
+    node.children = dto.children.map(function (c) { return toEChartsNode(c, color); });
+  }
+  return node;
+}
+
+// ── Render ECharts ────────────────────────────────────────────────────────────
+function renderTree(root, nodeCount) {
+  var placeholder = document.getElementById('chart-placeholder');
+  var container   = document.getElementById('chart-container');
+  placeholder.style.display = 'none';
+  container.style.display   = 'block';
+
+  if (!chart) {
+    chart = echarts.init(container);
+    window.addEventListener('resize', function () { chart.resize(); });
+  }
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: function (params) {
+        return '<b>' + params.name + '</b>';
+      }
+    },
+    series: [{
+      type: 'tree',
+      data: [toEChartsNode(root, C.root)],
+      top: '2%', left: '2%', bottom: '2%', right: '26%',
+      symbolSize: 8,
+      orient: 'LR',
+      initialTreeDepth: -1,
+      expandAndCollapse: false,
+      label: {
+        position: 'right',
+        verticalAlign: 'middle',
+        align: 'left',
+        fontSize: 11,
+        color: '#1a202c',
+      },
+      leaves: {
+        label: { position: 'right', verticalAlign: 'middle', align: 'left', fontSize: 11 },
+      },
+      animationDuration: 400,
+      lineStyle: { color: '#aab4be', width: 1.5 },
+      roam: true,
+    }]
+  });
+}
+
+// ── Populate ──────────────────────────────────────────────────────────────────
+window.runPopulate = async function () {
+  var branchIri = document.getElementById('inp-branch-iri').value.trim();
+  if (!branchIri) { setStatus('Branch IRI must not be empty.', 'err'); return; }
+
+  document.getElementById('btn-populate').disabled = true;
+  setStatus('Populating…', 'busy');
+
+  try {
+    var resp = await fetch(baseUrl() + '/api/capabilities/car/demo/populate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branchIri: branchIri }),
+    });
+
+    if (!resp.ok) {
+      var txt = await resp.text();
+      throw new Error('HTTP ' + resp.status + ' — ' + txt.slice(0, 200));
+    }
+
+    var data = await resp.json();
+
+    // Store state
+    state.populated            = true;
+    state.branchIri            = branchIri;
+    state.carIri               = data.carIri;
+    state.drivetrainDimIri     = data.drivetrainDimensionIri;
+    state.trimDimIri           = data.trimDimensionIri;
+    state.evPackageIri         = data.evPackageIri;
+    state.icePackageIri        = data.icePackageIri;
+    state.aluminiumFrameIri    = data.aluminiumFrameIri;
+    state.thermalManagementIri = data.thermalManagementIri;
+    state.rearMotorIri         = data.rearMotorIri;
+    state.turbochargerIri      = data.turbochargerIri;
+    state.luxuryInteriorIri    = data.luxuryInteriorIri;
+    state.raceEditionPackIri   = data.raceEditionPackIri;
+
+    setStatus('Populated ✓  —  fetching node names…', 'busy');
+    await fetchNodeNames();
+
+    showStateSummary();
+    setFiltersEnabled(true);
+    setStatus('Ready — tree populated. Adjust filters to query.', 'ok');
+    await queryTree();
+
+  } catch (e) {
+    setStatus('Populate failed: ' + e.message, 'err');
+  } finally {
+    document.getElementById('btn-populate').disabled = false;
+  }
+};
+
+// ── Fetch all node names ──────────────────────────────────────────────────────
+async function fetchNodeNames() {
+  var resp = await fetch(baseUrl() + '/api/entities/structure-nodes', {
+    headers: { 'X-Forge-BranchIri': state.branchIri },
+  });
+  if (!resp.ok) throw new Error('Could not fetch node list (HTTP ' + resp.status + ')');
+  var items = await resp.json();
+  state.iriToName = {};
+  (Array.isArray(items) ? items : (items.items || items.value || [])).forEach(function (n) {
+    if (n.iri && n.name) state.iriToName[n.iri] = n.name;
+  });
+}
+
+// ── Show populated-state summary ──────────────────────────────────────────────
+function showStateSummary() {
+  var tags = document.getElementById('state-tags');
+  var summary = document.getElementById('state-summary');
+
+  function tag(label, cls) {
+    var el = document.createElement('span');
+    el.className = 'state-tag ' + (cls || '');
+    el.textContent = label;
+    return el;
+  }
+
+  tags.innerHTML = '';
+  tags.appendChild(tag('car: ' + shorten(state.carIri), 'iri'));
+  tags.appendChild(tag('drivetrain dim: ' + shorten(state.drivetrainDimIri), 'dim'));
+  tags.appendChild(tag('trim dim: ' + shorten(state.trimDimIri), 'dim'));
+  tags.appendChild(tag('branch: ' + shorten(state.branchIri)));
+  summary.style.display = 'block';
+}
+
+function shorten(iri) {
+  if (!iri) return '—';
+  var parts = iri.split(/[/#]/);
+  return '…/' + parts.slice(-2).join('/');
+}
+
+// ── Query tree ───────────────────────────────────────────────────────────────
+window.onFilterChange = function () {
+  if (state.populated) queryTree();
+};
+
+async function queryTree() {
+  var era       = document.getElementById('sel-era').value;
+  var drivetrain = document.getElementById('sel-drivetrain').value;
+  var trim      = document.getElementById('sel-trim').value;
+
+  var body = {
+    structureHeadIri: state.carIri,
+    branchIri:        state.branchIri,
+  };
+
+  if      (era === 'initial') body.referenceDate = '2025-06-01T00:00:00Z';
+  else if (era === 'update1') body.referenceDate = '2026-06-01T00:00:00Z';
+  // 'current' → omit referenceDate; server uses DateTime.UtcNow
+
+  var enumOptions = {};
+  if (drivetrain !== 'all') enumOptions[state.drivetrainDimIri] = 'urn:forge:car:drivetrain/' + drivetrain;
+  if (trim       !== 'all') enumOptions[state.trimDimIri]       = 'urn:forge:car:trim/'       + trim;
+  if (Object.keys(enumOptions).length > 0) body.enumerationOptions = enumOptions;
+
+  var eraLabel = { current: 'current date', initial: '2025 (initial era)', update1: '2026+ (update-1 era)' }[era];
+  document.getElementById('filter-info').textContent =
+    'Querying: era=' + eraLabel +
+    ', drivetrain=' + (drivetrain === 'all' ? 'open' : drivetrain) +
+    ', trim=' + (trim === 'all' ? 'open' : trim) + '  …';
+
+  try {
+    var resp = await fetch(baseUrl() + '/api/capabilities/structure/configured-tree/get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      var txt = await resp.text();
+      throw new Error('HTTP ' + resp.status + ' — ' + txt.slice(0, 200));
+    }
+    var data = await resp.json();
+    var nodeCount = data.allNodeIris ? data.allNodeIris.length : '?';
+
+    document.getElementById('filter-info').textContent =
+      'era=' + eraLabel +
+      ' · drivetrain=' + (drivetrain === 'all' ? 'open-world' : drivetrain) +
+      ' · trim=' + (trim === 'all' ? 'open-world' : trim) +
+      '  →  ' + nodeCount + ' node' + (nodeCount === 1 ? '' : 's');
+
+    renderTree(data.root, nodeCount);
+
+  } catch (e) {
+    document.getElementById('filter-info').textContent = 'Query failed: ' + e.message;
+    setStatus('Query failed: ' + e.message, 'err');
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+window.resetState = function () {
+  Object.assign(state, {
+    populated: false, carIri: null, branchIri: null,
+    drivetrainDimIri: null, trimDimIri: null,
+    evPackageIri: null, icePackageIri: null,
+    aluminiumFrameIri: null, thermalManagementIri: null,
+    rearMotorIri: null, turbochargerIri: null,
+    luxuryInteriorIri: null, raceEditionPackIri: null,
+    iriToName: {},
+  });
+  setFiltersEnabled(false);
+  setStatus('State reset — enter the server URL and click Populate.', 'idle');
+  document.getElementById('filter-info').textContent = 'Populate the tree first to enable queries.';
+  document.getElementById('state-summary').style.display = 'none';
+  document.getElementById('chart-container').style.display = 'none';
+  document.getElementById('chart-placeholder').style.display = 'flex';
+  if (chart) { chart.dispose(); chart = null; }
+};
+
+})();
+</script>
+
+</body>
+</html>

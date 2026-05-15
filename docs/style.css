@@ -91,6 +91,17 @@ nav {
   border-bottom: 2px solid var(--accent);
 }
 
+.nav-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 .25rem;
+}
+.nav-link-demo        { color: #0e7fa8; }
+.nav-link-demo:hover  { color: #0a5f80; text-decoration: none; }
+.nav-link-demo.active { color: #0a5f80; border-bottom: 2px solid #0e7fa8; }
+
 /* ── Main content ─────────────────────────────────────────────────────────── */
 main {
   max-width: 1100px;
