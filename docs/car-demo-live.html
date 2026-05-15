@@ -125,10 +125,8 @@
     #chart-container {
       width: 100%;
       height: 840px;
-      border: 1px solid #d0dce8;
-      border-radius: 8px;
       background: #fafbfc;
-      margin-bottom: 1.5rem;
+      margin-bottom: 0;
     }
     #chart-placeholder {
       width: 100%;
@@ -155,7 +153,118 @@
     }
     .legend-item { display: flex; align-items: center; gap: .4rem; }
     .swatch { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+    .swatch-diamond {
+      width: 13px; height: 13px; transform: rotate(45deg); flex-shrink: 0;
+      border: 2px solid currentColor;
+    }
+    /* ── Geometry assembly canvas ── */
+    #geo-section {
+      margin-top: 1.5rem;
+    }
+    #geo-canvas-wrap {
+      max-width: 560px;
+      margin: .75rem 0 1rem;
+    }
+    #geo-canvas-wrap svg {
+      width: 100%; height: auto;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      background: #f8faff;
+    }
+    #geo-placeholder {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: .9rem;
+      border: 1px dashed #d0dce8;
+      border-radius: 8px;
+      margin: .75rem 0;
+    }
+    /* ── Collapsible panels ── */
+    .panel {
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      margin: 1.25rem 0;
+      overflow: hidden;
+    }
+    .panel > summary {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      padding: .65rem 1rem;
+      background: #f0f4f8;
+      border-bottom: 1px solid transparent;
+      font-size: .9rem;
+      font-weight: 600;
+      color: #1a202c;
+      transition: background .15s;
+    }
+    .panel > summary::-webkit-details-marker { display: none; }
+    .panel > summary::marker { display: none; }
+    .panel[open] > summary {
+      border-bottom-color: #d0dce8;
+    }
+    .panel > summary:hover { background: #e4edf6; }
+    .panel-chevron {
+      display: inline-block;
+      width: 16px; height: 16px;
+      flex-shrink: 0;
+      transition: transform .2s;
+      color: #5a6a7a;
+    }
+    .panel[open] .panel-chevron { transform: rotate(90deg); }
+    .panel-body {
+      padding: 1rem 1rem .5rem;
+    }
+    /* ── Geometry toggle pill ── */
+    .geo-toggle {
+      padding: .3rem .7rem;
+      border-radius: 5px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background .15s, color .15s;
+      line-height: 1.4;
+    }
+    .geo-toggle:disabled { opacity: .45; cursor: not-allowed; }
+    .geo-toggle.on  { background: #dceeff; color: #1e6295; border-color: #1e6295; }
+    .geo-toggle.off { background: #f1f5f9; color: #888;    border-color: #b0bec5; }
+    /* ── 3D canvas wrapper ── */
+    .geo3d-canvas-wrap {
+      width: 100%; height: 420px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d1117;
+      border: 1px solid #d0dce8;
+      position: relative;
+    }
+    .geo3d-canvas-wrap canvas { display: block; }
+    #geo3d-placeholder {
+      height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: .5rem;
+      color: #9ca3af;
+      font-size: .9rem;
+      border-radius: 8px;
+      border: 1px dashed #b0bec5;
+      background: #0d1117;
+    }
   </style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+} }
+</script>
 </head>
 <body>
 
@@ -238,6 +347,10 @@
           <option value="luxury">Luxury</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label>Geometry in tree</label>
+        <button class="geo-toggle off" id="btn-geo-tree" type="button" onclick="toggleGeoInTree()" disabled>&#9671;&nbsp;Hidden</button>
+      </div>
     </div>
     <div class="filter-info" id="filter-info">Populate the tree first to enable queries.</div>
   </section>
@@ -251,14 +364,72 @@
     <span class="legend-item"><span class="swatch" style="background:#6a3a8c"></span> Interior</span>
     <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition</span>
     <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive</span>
+    <span class="legend-item"><span class="swatch-diamond" style="color:#1e6295"></span> Geometry node ◇</span>
   </div>
 
-  <!-- ── Chart / placeholder ── -->
-  <div id="chart-placeholder">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-    <span>Tree will appear here after Populate</span>
-  </div>
-  <div id="chart-container" style="display:none"></div>
+  <!-- ── Structure tree panel ── -->
+  <details id="panel-tree" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      Structure Tree
+    </summary>
+    <div class="panel-body">
+      <div id="chart-placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <span>Tree will appear here after Populate</span>
+      </div>
+      <div id="chart-container" style="display:none"></div>
+    </div>
+  </details>
+
+  <!-- ── Geometry assembly panel ── -->
+  <details id="panel-geo" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      Geometry Assembly
+    </summary>
+    <div class="panel-body">
+    <p style="font-size:.88rem;color:#555;margin:.4rem 0 .6rem">
+      2D top-down diagram assembled from <code>Geometry</code> nodes linked to the
+      active structural tree via <code>GeometryUsage</code> edges.
+      Each edge carries a matrix <code>[a,&thinsp;b,&thinsp;c,&thinsp;d,&thinsp;e,&thinsp;f]</code>;
+      <em>G→G</em> edges compose the matrix of the parent to position sub-geometries
+      (e.g. wheel pairs relative to the car body outline).
+    </p>
+    <div id="geo-placeholder">Populate the tree first to enable the geometry view.</div>
+    <div id="geo-canvas-wrap" style="display:none">
+      <svg id="geo-svg" viewBox="0 0 560 230" xmlns="http://www.w3.org/2000/svg"
+           aria-label="Car geometry assembly diagram"></svg>
+    </div>
+    </div>
+  </details>
+
+  <!-- ── 3D Geometry Assembly panel ── -->
+  <details id="panel-geo3d" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      3D Geometry Assembly
+    </summary>
+    <div class="panel-body">
+      <p style="font-size:.88rem;color:#555;margin:.4rem 0 .8rem">
+        3D schematic assembled from <code>Geometry3D</code> nodes
+        (<a href="https://en.wikipedia.org/wiki/Wavefront_.obj_file" target="_blank">OBJ format</a>
+        — plain ASCII, text-editable) and
+        <code>GeometryUsage3D</code> edges, each carrying a
+        <strong>4×4 column-major matrix</strong>. One <em>wheel</em> node is reused
+        for all four positions via different placement matrices. Drag to orbit · scroll to zoom.
+      </p>
+      <div id="geo3d-placeholder"
+           style="display:flex">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span>3D view will appear after Populate</span>
+      </div>
+      <div class="geo3d-canvas-wrap" id="geo3d-canvas-wrap" style="display:none">
+        <canvas id="geo3d-canvas"></canvas>
+      </div>
+    </div>
+  </details>
 
 </main>
 
@@ -275,6 +446,7 @@ var C = {
   interior: '#6a3a8c',
   update1:  '#c43c35',
   init:     '#d4860a',
+  geom:     '#1e6295',
 };
 
 // ── Application state ─────────────────────────────────────────────────────────
@@ -295,9 +467,49 @@ var state = {
   iriToName:            {},
   update1Iris:          new Set(),
   initExclusiveIris:    new Set(),
+  // geometry layer
+  geoNodes:             {},   // iri → { name, svgContent }
+  geoUsages:            [],   // [{ parentIri, childGeometryIri, matrix }]
+  // cached tree response (for geo-toggle re-render without a new API call)
+  lastTreeRoot:         null,
+  lastNodeCount:        0,
+  // 3D geometry layer
+  geo3dNodes:           {},   // iri → { name, objContent }
+  geo3dUsages:          [],   // [{ parentIri, childGeometry3dIri, matrix3d }]
 };
 
 var chart = null;
+
+// ── Geometry-in-tree toggle ───────────────────────────────────────────────────
+var showGeoInTree = false;
+window.toggleGeoInTree = function () {
+  showGeoInTree = !showGeoInTree;
+  var btn = document.getElementById('btn-geo-tree');
+  btn.textContent = showGeoInTree ? '\u25c7\u00a0Shown' : '\u25c7\u00a0Hidden';
+  btn.className = 'geo-toggle ' + (showGeoInTree ? 'on' : 'off');
+  if (state.lastTreeRoot) renderTree(state.lastTreeRoot, state.lastNodeCount);
+};
+
+// ── 2D matrix helpers ──────────────────────────────────────────────────────
+var IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
+
+// Compose two affine matrices a ∘ b.
+// Convention: [a0,a1,a2,a3,a4,a5] represents | a0 a2 a4 |
+//                                              | a1 a3 a5 |
+function matMul(a, b) {
+  return [
+    a[0]*b[0] + a[2]*b[1],
+    a[1]*b[0] + a[3]*b[1],
+    a[0]*b[2] + a[2]*b[3],
+    a[1]*b[2] + a[3]*b[3],
+    a[0]*b[4] + a[2]*b[5] + a[4],
+    a[1]*b[4] + a[3]*b[5] + a[5],
+  ];
+}
+
+function matrixToCss(m) {
+  return 'matrix(' + m.join(',') + ')';
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function baseUrl() {
@@ -314,6 +526,7 @@ function setFiltersEnabled(enabled) {
   ['sel-era', 'sel-drivetrain', 'sel-trim'].forEach(function (id) {
     document.getElementById(id).disabled = !enabled;
   });
+  document.getElementById('btn-geo-tree').disabled = !enabled;
 }
 
 function labelFor(iri) {
@@ -341,11 +554,43 @@ function colorForIri(iri, parentColor) {
   return parentColor || C.struct;
 }
 
+// ── Geometry tree helpers ────────────────────────────────────────────────────
+// Build a geo sub-tree recursively following G→G GeometryUsage edges.
+function buildGeoSubtree(geoIri) {
+  var node = { iri: geoIri, isGeo: true, children: [] };
+  state.geoUsages.forEach(function (u) {
+    if (u.parentIri === geoIri && state.geoNodes[u.childGeometryIri]) {
+      node.children.push(buildGeoSubtree(u.childGeometryIri));
+    }
+  });
+  return node;
+}
+
+// Augment a structure tree DTO with geometry children (S→G edges)
+// and recursively descend the structure tree.
+function augmentNodeWithGeo(dto) {
+  var result = {
+    iri:      dto.iri,
+    isGeo:    false,
+    children: (dto.children || []).map(augmentNodeWithGeo),
+  };
+  state.geoUsages.forEach(function (u) {
+    // S→G: parent is a structure node (not itself a geo node)
+    if (u.parentIri === dto.iri && !state.geoNodes[dto.iri] && state.geoNodes[u.childGeometryIri]) {
+      result.children.push(buildGeoSubtree(u.childGeometryIri));
+    }
+  });
+  return result;
+}
+
 // ── Convert API tree DTO to ECharts tree node ──────────────────────────────
 function toEChartsNode(dto, parentColor) {
-  var color = colorForIri(dto.iri, parentColor);
+  var isGeo = !!dto.isGeo;
+  var color = isGeo ? C.geom : colorForIri(dto.iri, parentColor);
   var node = {
-    name: labelFor(dto.iri),
+    name: isGeo ? (labelFor(dto.iri) + ' \u25c7') : labelFor(dto.iri),
+    symbol: isGeo ? 'diamond' : 'circle',
+    symbolSize: isGeo ? 10 : 8,
     itemStyle: { color: color },
   };
   if (dto.children && dto.children.length > 0) {
@@ -356,14 +601,25 @@ function toEChartsNode(dto, parentColor) {
 
 // ── Render ECharts ────────────────────────────────────────────────────────────
 function renderTree(root, nodeCount) {
+  state.lastTreeRoot    = root;
+  state.lastNodeCount   = nodeCount;
+
   var placeholder = document.getElementById('chart-placeholder');
   var container   = document.getElementById('chart-container');
   placeholder.style.display = 'none';
   container.style.display   = 'block';
 
+  var treeRoot = (showGeoInTree && Object.keys(state.geoNodes).length > 0)
+    ? augmentNodeWithGeo(root)
+    : root;
+
   if (!chart) {
     chart = echarts.init(container);
     window.addEventListener('resize', function () { chart.resize(); });
+    // Resize when the tree panel is re-opened (ECharts needs a nudge after display:none).
+    document.getElementById('panel-tree').addEventListener('toggle', function () {
+      if (this.open && chart) chart.resize();
+    });
   }
 
   chart.setOption({
@@ -375,7 +631,7 @@ function renderTree(root, nodeCount) {
     },
     series: [{
       type: 'tree',
-      data: [toEChartsNode(root, C.root)],
+      data: [toEChartsNode(treeRoot, C.root)],
       top: '2%', left: '2%', bottom: '2%', right: '26%',
       symbolSize: 8,
       orient: 'LR',
@@ -437,6 +693,8 @@ window.runPopulate = async function () {
 
     setStatus('Populated ✓  —  fetching node names…', 'busy');
     await fetchNodeNames();
+    await fetchGeometryLayer();
+    await fetchGeometry3dLayer();
 
     showStateSummary();
     setFiltersEnabled(true);
@@ -450,7 +708,7 @@ window.runPopulate = async function () {
   }
 };
 
-// ── Fetch all node names ──────────────────────────────────────────────────────
+// ── Fetch all node names ────────────────────────────────────────────────────────
 async function fetchNodeNames() {
   var resp = await fetch(baseUrl() + '/api/entities/structure-nodes', {
     headers: { 'X-Forge-BranchIri': state.branchIri },
@@ -460,6 +718,150 @@ async function fetchNodeNames() {
   state.iriToName = {};
   (Array.isArray(items) ? items : (items.items || items.value || [])).forEach(function (n) {
     if (n.iri && n.name) state.iriToName[n.iri] = n.name;
+  });
+}
+// ── Fetch 3D geometry layer ───────────────────────────────────────────────────
+async function fetchGeometry3dLayer() {
+  var headers = { 'X-Forge-BranchIri': state.branchIri };
+  var [nodesResp, usagesResp] = await Promise.all([
+    fetch(baseUrl() + '/api/entities/geometry3d-nodes',  { headers: headers }),
+    fetch(baseUrl() + '/api/entities/geometry3d-usages', { headers: headers }),
+  ]);
+  if (!nodesResp.ok || !usagesResp.ok) {
+    console.warn('3D geometry layer not available');
+    return;
+  }
+  var nodesRaw  = await nodesResp.json();
+  var usagesRaw = await usagesResp.json();
+  state.geo3dNodes = {};
+  (Array.isArray(nodesRaw) ? nodesRaw : (nodesRaw.items || nodesRaw.value || [])).forEach(function (n) {
+    if (n.iri) state.geo3dNodes[n.iri] = { name: n.name || n.iri, objContent: n.objContent || '' };
+  });
+  state.geo3dUsages = [];
+  (Array.isArray(usagesRaw) ? usagesRaw : (usagesRaw.items || usagesRaw.value || [])).forEach(function (u) {
+    if (u.parentIri && u.childGeometry3dIri) {
+      state.geo3dUsages.push({
+        parentIri:          u.parentIri,
+        childGeometry3dIri: u.childGeometry3dIri,
+        matrix3d:           Array.isArray(u.matrix3d) ? u.matrix3d : [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+      });
+    }
+  });
+}
+
+// ── Render 3D layer ──────────────────────────────────────────────────────────────
+function triggerGeo3dRender(reachableIris) {
+  if (Object.keys(state.geo3dNodes).length === 0) return;
+  document.getElementById('geo3d-placeholder').style.display = 'none';
+  document.getElementById('geo3d-canvas-wrap').style.display = 'block';
+  // Queue or call the Three.js render function exposed by the module script.
+  if (typeof window.renderGeo3d === 'function') {
+    window.renderGeo3d(state.geo3dNodes, state.geo3dUsages, reachableIris);
+  } else {
+    window._geo3dQueue = window._geo3dQueue || [];
+    window._geo3dQueue.push([state.geo3dNodes, state.geo3dUsages, reachableIris]);
+  }
+}
+// ── Fetch geometry layer ────────────────────────────────────────────────────
+async function fetchGeometryLayer() {
+  var headers = { 'X-Forge-BranchIri': state.branchIri };
+
+  var [nodesResp, usagesResp] = await Promise.all([
+    fetch(baseUrl() + '/api/entities/geometry-nodes',  { headers: headers }),
+    fetch(baseUrl() + '/api/entities/geometry-usages', { headers: headers }),
+  ]);
+
+  if (!nodesResp.ok || !usagesResp.ok) {
+    console.warn('Geometry layer not available (HTTP ' + nodesResp.status + '/' + usagesResp.status + ')');
+    return;
+  }
+
+  var nodesRaw  = await nodesResp.json();
+  var usagesRaw = await usagesResp.json();
+
+  state.geoNodes = {};
+  (Array.isArray(nodesRaw) ? nodesRaw : (nodesRaw.items || nodesRaw.value || [])).forEach(function (n) {
+    if (n.iri) {
+      state.geoNodes[n.iri] = { name: n.name || n.iri, svgContent: n.svgContent || '' };
+      if (n.name) state.iriToName[n.iri] = n.name;
+    }
+  });
+
+  state.geoUsages = [];
+  (Array.isArray(usagesRaw) ? usagesRaw : (usagesRaw.items || usagesRaw.value || [])).forEach(function (u) {
+    if (u.parentIri && u.childGeometryIri) {
+      state.geoUsages.push({
+        parentIri:        u.parentIri,
+        childGeometryIri: u.childGeometryIri,
+        matrix:           Array.isArray(u.matrix) ? u.matrix : [1, 0, 0, 1, 0, 0],
+      });
+    }
+  });
+}
+
+// ── Render geometry assembly ───────────────────────────────────────────────
+function renderGeometry(reachableStructureIris) {
+  var svgEl   = document.getElementById('geo-svg');
+  var placeholder = document.getElementById('geo-placeholder');
+  var canvasWrap  = document.getElementById('geo-canvas-wrap');
+
+  if (!svgEl || Object.keys(state.geoNodes).length === 0) {
+    placeholder.style.display = 'flex';
+    canvasWrap.style.display  = 'none';
+    return;
+  }
+
+  placeholder.style.display = 'none';
+  canvasWrap.style.display  = 'block';
+
+  // Build parentIri → [usage] lookup.
+  var byParent = {};
+  state.geoUsages.forEach(function (u) {
+    if (!byParent[u.parentIri]) byParent[u.parentIri] = [];
+    byParent[u.parentIri].push(u);
+  });
+
+  var svgNs = 'http://www.w3.org/2000/svg';
+
+  // Clear previous rendering.
+  while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+
+  // Palette for geometry groups, cycling through hues.
+  var palette = ['#1e6295', '#2a7e8c', '#1a8c55', '#7c5ea0', '#a05020', '#8c1a1a'];
+  var paletteIndex = 0;
+
+  // Recursively render a geometry node at the given absolute matrix.
+  function renderGeoNode(geoIri, absMatrix, depth) {
+    var geo = state.geoNodes[geoIri];
+    if (!geo || !geo.svgContent) return;
+
+    var g = document.createElementNS(svgNs, 'g');
+    g.setAttribute('transform', matrixToCss(absMatrix));
+    g.setAttribute('color', palette[paletteIndex % palette.length]);
+    paletteIndex++;
+
+    // Parse and append child SVG elements.
+    var wrapper = document.createElementNS(svgNs, 'svg');
+    wrapper.innerHTML = geo.svgContent;
+    while (wrapper.firstChild) g.appendChild(wrapper.firstChild);
+
+    svgEl.appendChild(g);
+
+    // Recurse for G→G sub-geometries.
+    var children = byParent[geoIri] || [];
+    children.forEach(function (usage) {
+      var childMatrix = matMul(absMatrix, usage.matrix);
+      renderGeoNode(usage.childGeometryIri, childMatrix, depth + 1);
+    });
+  }
+
+  // Start from all S→G edges whose parent structure IRI is reachable.
+  var reachableSet = new Set(reachableStructureIris);
+  state.geoUsages.forEach(function (usage) {
+    // Only top-level S→G entries: parent is NOT a geometry node.
+    if (reachableSet.has(usage.parentIri) && !state.geoNodes[usage.parentIri]) {
+      renderGeoNode(usage.childGeometryIri, usage.matrix, 0);
+    }
   });
 }
 
@@ -539,6 +941,8 @@ async function queryTree() {
       '  →  ' + nodeCount + ' node' + (nodeCount === 1 ? '' : 's');
 
     renderTree(data.root, nodeCount);
+    renderGeometry(data.allNodeIris || []);
+    triggerGeo3dRender(data.allNodeIris || []);
 
   } catch (e) {
     document.getElementById('filter-info').textContent = 'Query failed: ' + e.message;
@@ -555,7 +959,9 @@ window.resetState = function () {
     aluminiumFrameIri: null, thermalManagementIri: null,
     rearMotorIri: null, turbochargerIri: null,
     luxuryInteriorIri: null, raceEditionPackIri: null,
-    iriToName: {},
+    iriToName: {}, geoNodes: {}, geoUsages: [],
+    lastTreeRoot: null, lastNodeCount: 0,
+    geo3dNodes: {}, geo3dUsages: [],
   });
   setFiltersEnabled(false);
   setStatus('State reset — enter the server URL and click Populate.', 'idle');
@@ -563,11 +969,142 @@ window.resetState = function () {
   document.getElementById('state-summary').style.display = 'none';
   document.getElementById('chart-container').style.display = 'none';
   document.getElementById('chart-placeholder').style.display = 'flex';
+  document.getElementById('geo-canvas-wrap').style.display = 'none';
+  document.getElementById('geo-placeholder').style.display = 'flex';
+  document.getElementById('geo3d-placeholder').style.display = 'flex';
+  document.getElementById('geo3d-canvas-wrap').style.display = 'none';
   if (chart) { chart.dispose(); chart = null; }
 };
 
 })();
 </script>
 
-</body>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── OBJ parser (handles v, f; fan-triangulates quads) ─────────────────────────
+function parseOBJ(text) {
+  const pos = [], idx = [];
+  for (const line of text.split('\n')) {
+    const t = line.trim().split(/\s+/);
+    if (t[0] === 'v') { pos.push(+t[1], +t[2], +t[3]); }
+    else if (t[0] === 'f') {
+      const i = t.slice(1).map(x => +x.split('/')[0] - 1);
+      for (let j = 1; j < i.length - 1; j++) idx.push(i[0], i[j], i[j + 1]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// ── Palette for unknown node types ───────────────────────────────────────────────
+const PALETTE = [0x5a6a7a, 0x238b45, 0x1e6295, 0xc26400, 0x6a3a8c, 0xc43c35, 0xd4860a];
+let paletteIdx = 0;
+const iriColor = {};
+function colorFor(iri) {
+  if (!iriColor[iri]) iriColor[iri] = PALETTE[paletteIdx++ % PALETTE.length];
+  return iriColor[iri];
+}
+
+// ── Scene state ───────────────────────────────────────────────────────────────────
+let renderer3d = null, scene3d = null, camera3d = null, controls3d = null;
+
+function initRenderer() {
+  const wrap   = document.getElementById('geo3d-canvas-wrap');
+  const canvas = document.getElementById('geo3d-canvas');
+  renderer3d = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer3d.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  camera3d = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 50);
+  camera3d.position.set(3.5, 2.5, 4.5);
+
+  controls3d = new OrbitControls(camera3d, renderer3d.domElement);
+  controls3d.enableDamping = true;
+  controls3d.dampingFactor = 0.08;
+  controls3d.target.set(0, 0, 0);
+
+  new ResizeObserver(() => {
+    if (!wrap.offsetWidth) return;
+    renderer3d.setSize(wrap.clientWidth, wrap.clientHeight);
+    camera3d.aspect = wrap.clientWidth / wrap.clientHeight;
+    camera3d.updateProjectionMatrix();
+  }).observe(wrap);
+
+  document.getElementById('panel-geo3d').addEventListener('toggle', function () {
+    if (this.open && renderer3d) {
+      renderer3d.setSize(wrap.clientWidth, wrap.clientHeight);
+      camera3d.aspect = wrap.clientWidth / wrap.clientHeight;
+      camera3d.updateProjectionMatrix();
+    }
+  });
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    controls3d.update();
+    if (renderer3d && scene3d) renderer3d.render(scene3d, camera3d);
+  })();
+}
+
+// Build 3D scene recursively from the usage graph.
+function buildScene3d(scene, parentIri, parentWorld, nodes, usages) {
+  for (const u of usages) {
+    if (u.parentIri !== parentIri || !nodes[u.childGeometry3dIri]) continue;
+    const nodeData = nodes[u.childGeometry3dIri];
+    const local    = new THREE.Matrix4().fromArray(u.matrix3d);
+    const world    = new THREE.Matrix4().multiplyMatrices(parentWorld, local);
+    const mesh     = new THREE.Mesh(
+      parseOBJ(nodeData.objContent || ''),
+      new THREE.MeshPhongMaterial({ color: colorFor(u.childGeometry3dIri), side: THREE.DoubleSide })
+    );
+    mesh.applyMatrix4(world);
+    scene.add(mesh);
+    buildScene3d(scene, u.childGeometry3dIri, world, nodes, usages); // G3D→G3D
+  }
+}
+
+// ── Public API called by main non-module script ───────────────────────────────
+window.renderGeo3d = function (nodes, usages, reachableIris) {
+  const reachable = reachableIris && reachableIris.length > 0
+    ? new Set(reachableIris)
+    : null;  // null = show everything
+  paletteIdx = 0;
+  Object.keys(iriColor).forEach(k => delete iriColor[k]);
+
+  if (!renderer3d) initRenderer();
+
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x0d1117);
+  scene3d.fog        = new THREE.Fog(0x0d1117, 10, 30);
+  scene3d.add(new THREE.AmbientLight(0xccddff, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+  sun.position.set(5, 8, 3);
+  scene3d.add(sun);
+  const grid = new THREE.GridHelper(8, 16, 0x223344, 0x1a2233);
+  grid.position.y = -0.5;
+  scene3d.add(grid);
+
+  // Walk S→G3D root usages (parents that are NOT themselves geo3d nodes);
+  // only include roots whose structure node is in the active reachable set.
+  const geoIris = new Set(Object.keys(nodes));
+  const rootParents = new Set(
+    usages.filter(u => !geoIris.has(u.parentIri)).map(u => u.parentIri)
+  );
+  rootParents.forEach(parentIri => {
+    if (!reachable || reachable.has(parentIri)) {
+      buildScene3d(scene3d, parentIri, new THREE.Matrix4(), nodes, usages);
+    }
+  });
+};
+
+// Process any calls queued before this module finished loading.
+if (window._geo3dQueue) {
+  window._geo3dQueue.forEach(args => window.renderGeo3d(...args));
+  window._geo3dQueue = null;
+}
+</script>
 </html>

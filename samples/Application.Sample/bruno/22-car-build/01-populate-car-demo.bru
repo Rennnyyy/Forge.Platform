@@ -25,6 +25,10 @@ assert {
   res.body.carIri: isDefined
   res.body.drivetrainDimensionIri: isDefined
   res.body.trimDimensionIri: isDefined
+  res.body.geometryNodeCount: eq 10
+  res.body.geometryUsageCount: eq 10
+  res.body.geometry3dNodeCount: eq 5
+  res.body.geometry3dUsageCount: eq 12
 }
 
 script:post-response {

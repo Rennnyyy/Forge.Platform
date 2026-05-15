@@ -41,10 +41,8 @@
     #chart-container {
       width: 100%;
       height: 840px;
-      border: 1px solid #d0dce8;
-      border-radius: 8px;
       background: #fafbfc;
-      margin-bottom: 1.5rem;
+      margin-bottom: 0;
     }
     .legend {
       display: flex;
@@ -55,7 +53,91 @@
     }
     .legend-item { display: flex; align-items: center; gap: .4rem; }
     .swatch { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+    .swatch-diamond {
+      width: 13px; height: 13px; transform: rotate(45deg); flex-shrink: 0;
+      border: 2px solid currentColor;
+    }
+    /* ── Geometry assembly canvas ── */
+    #geo-container {
+      width: 100%;
+      max-width: 560px;
+      margin: 1rem 0 1.5rem;
+    }
+    #geo-container svg {
+      width: 100%; height: auto;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      background: #f8faff;
+    }
+    /* ── Collapsible panels ── */
+    .panel {
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      margin: 1.25rem 0;
+      overflow: hidden;
+    }
+    .panel > summary {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      padding: .65rem 1rem;
+      background: #f0f4f8;
+      border-bottom: 1px solid transparent;
+      font-size: .9rem;
+      font-weight: 600;
+      color: #1a202c;
+      transition: background .15s;
+    }
+    .panel > summary::-webkit-details-marker { display: none; }
+    .panel > summary::marker { display: none; }
+    .panel[open] > summary {
+      border-bottom-color: #d0dce8;
+    }
+    .panel > summary:hover { background: #e4edf6; }
+    .panel-chevron {
+      display: inline-block;
+      width: 16px; height: 16px;
+      flex-shrink: 0;
+      transition: transform .2s;
+      color: #5a6a7a;
+    }
+    .panel[open] .panel-chevron { transform: rotate(90deg); }
+    .panel-body {
+      padding: 1rem 1rem .5rem;
+    }
+    /* ── Geometry toggle pill ── */
+    .geo-toggle {
+      padding: .3rem .7rem;
+      border-radius: 5px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background .15s, color .15s;
+      line-height: 1.4;
+    }
+    .geo-toggle.on  { background: #dceeff; color: #1e6295; border-color: #1e6295; }
+    .geo-toggle.off { background: #f1f5f9; color: #888;    border-color: #b0bec5; }
+    /* ── 3D canvas wrapper ── */
+    .geo3d-canvas-wrap {
+      width: 100%; height: 420px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d1117;
+      border: 1px solid #d0dce8;
+      position: relative;
+    }
+    .geo3d-canvas-wrap canvas { display: block; }
   </style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+} }
+</script>
 </head>
 <body>
 
@@ -82,7 +164,7 @@
 
   <div class="page-header">
     <h1>Car Demo — Condition-Filtered Structure Tree</h1>
-    <p class="lead">The Demo Car tree demonstrates all three <code>Forge.Structure</code> condition types in one model: <strong>time effectivity</strong> (milestone eras via <code>TimeCondition</code>) and <strong>feature variants</strong> (drivetrain + interior trim via <code>EnumerationOptionCondition</code>). Use the filters below to see how the configured-tree query slices the 150&nbsp;% model down to a specific valid configuration. Have a running server? Try the <a href="car-demo-live.html">live version</a> instead.</p>
+    <p class="lead">The Demo Car tree demonstrates all three <code>Forge.Structure</code> condition types in one model: <strong>time effectivity</strong> (milestone eras via <code>TimeCondition</code>) and <strong>feature variants</strong> (drivetrain + interior trim via <code>EnumerationOptionCondition</code>). Use the filters below to see how the configured-tree query slices the 150&nbsp;% model down to a specific valid configuration. A <strong>geometry layer</strong> extends each key structural node with a 2D SVG shape — see the assembly preview below and the <a href="car-demo-live.html">live demo</a> for the interactive version. Have a running server? Try the <a href="car-demo-live.html">live version</a> instead.</p>
   </div>
 
   <!-- ── Interactive filters ── -->
@@ -113,24 +195,145 @@
           <option value="luxury">Luxury</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label>Geometry nodes</label>
+        <button class="geo-toggle on" id="btn-geo" type="button" onclick="toggleGeo()">◇&nbsp;Shown</button>
+      </div>
     </div>
     <div class="filter-info" id="filter-info">Loading…</div>
   </section>
 
-  <!-- ── Colour legend ── -->
-  <div class="legend">
-    <span class="legend-item"><span class="swatch" style="background:#1a4a7e"></span> Car root</span>
-    <span class="legend-item"><span class="swatch" style="background:#5a6a7a"></span> Structural (unconditional)</span>
-    <span class="legend-item"><span class="swatch" style="background:#238b45"></span> EV / electric</span>
-    <span class="legend-item"><span class="swatch" style="background:#c26400"></span> ICE / combustion</span>
-    <span class="legend-item"><span class="swatch" style="background:#6a3a8c"></span> Interior</span>
-    <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition ★</span>
-    <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive ◆</span>
-    <span class="legend-item"><span class="swatch" style="background:#888"></span> Filtered out (greyed)</span>
-  </div>
+  <!-- ── Structure tree panel ── -->
+  <details id="panel-tree" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      Structure Tree
+    </summary>
+    <div class="panel-body">
+      <!-- Colour legend -->
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#1a4a7e"></span> Car root</span>
+        <span class="legend-item"><span class="swatch" style="background:#5a6a7a"></span> Structural (unconditional)</span>
+        <span class="legend-item"><span class="swatch" style="background:#238b45"></span> EV / electric</span>
+        <span class="legend-item"><span class="swatch" style="background:#c26400"></span> ICE / combustion</span>
+        <span class="legend-item"><span class="swatch" style="background:#6a3a8c"></span> Interior</span>
+        <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition ★</span>
+        <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive ◆</span>
+        <span class="legend-item"><span class="swatch" style="background:#888"></span> Filtered out (greyed)</span>
+        <span class="legend-item"><span class="swatch-diamond" style="color:#1e6295"></span> Geometry node ◇</span>
+      </div>
+      <div id="chart-container"></div>
+    </div>
+  </details>
 
-  <!-- ── Chart ── -->
-  <div id="chart-container"></div>
+  <!-- ── Geometry Assembly Preview ── -->
+  <details id="panel-geo" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      Geometry Assembly Preview
+    </summary>
+    <div class="panel-body">
+  <p>The geometry layer renders a 2D top-down diagram assembled from
+    <strong>10 <code>Geometry</code> nodes</strong> and
+    <strong>10 <code>GeometryUsage</code> edges</strong>.
+    Each <code>GeometryUsage</code> carries a 2D affine matrix
+    <code>[a,&thinsp;b,&thinsp;c,&thinsp;d,&thinsp;e,&thinsp;f]</code> that positions the
+    child geometry in the parent’s coordinate space.</p>
+    <p>The canvas below shows the <em>full 150&nbsp;%</em> assembly – all geometry nodes
+    simultaneously, regardless of the active filter.
+    In the <a href="car-demo-live.html">live demo</a> the canvas reflects the active
+    configuration: only geometry whose structural parent is reachable in the current
+    configured tree is rendered.</p>
+    <div id="geo-container">
+      <!-- viewBox 0 0 560 230; car body from (10,20) to (550,220) -->
+      <svg viewBox="0 0 560 230" xmlns="http://www.w3.org/2000/svg" aria-label="Car geometry assembly diagram">
+        <!-- Steel car body outline (S&rarr;G from steelFrame) at (10,20) -->
+        <g transform="translate(10,20)" color="#5a6a7a" opacity="0.9">
+          <rect x="0" y="0" width="540" height="200" rx="30" fill="none" stroke="currentColor" stroke-width="3"/>
+          <line x1="90" y1="4" x2="90" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>
+          <line x1="450" y1="4" x2="450" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>
+          <!-- G&rarr;G: front wheels at (420,-18) relative to this body -->
+          <g transform="translate(420,-18)" color="#3a5a7a">
+            <ellipse cx="30" cy="20" rx="28" ry="18" fill="none" stroke="currentColor" stroke-width="2"/>
+            <ellipse cx="30" cy="20" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="1"/>
+            <line x1="30" y1="38" x2="30" y2="162" stroke="currentColor" stroke-width="2.5"/>
+            <ellipse cx="30" cy="180" rx="28" ry="18" fill="none" stroke="currentColor" stroke-width="2"/>
+            <ellipse cx="30" cy="180" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="1"/>
+          </g>
+          <!-- G&rarr;G: rear wheels at (60,-18) relative to this body -->
+          <g transform="translate(60,-18)" color="#3a5a7a">
+            <ellipse cx="30" cy="20" rx="28" ry="18" fill="none" stroke="currentColor" stroke-width="2"/>
+            <ellipse cx="30" cy="20" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="1"/>
+            <line x1="30" y1="38" x2="30" y2="162" stroke="currentColor" stroke-width="2.5"/>
+            <ellipse cx="30" cy="180" rx="28" ry="18" fill="none" stroke="currentColor" stroke-width="2"/>
+            <ellipse cx="30" cy="180" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="1"/>
+          </g>
+        </g>
+        <!-- EV floor battery (S&rarr;G from battPack) at (150,70) -->
+        <g transform="translate(150,70)" color="#238b45">
+          <rect x="0" y="0" width="240" height="90" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="48" y1="0" x2="48" y2="90" stroke="currentColor" stroke-width="1"/>
+          <line x1="96" y1="0" x2="96" y2="90" stroke="currentColor" stroke-width="1"/>
+          <line x1="144" y1="0" x2="144" y2="90" stroke="currentColor" stroke-width="1"/>
+          <line x1="192" y1="0" x2="192" y2="90" stroke="currentColor" stroke-width="1"/>
+          <line x1="0" y1="45" x2="240" y2="45" stroke="currentColor" stroke-width="1"/>
+        </g>
+        <!-- ICE engine block (S&rarr;G from combEngine) at (455,30) -->
+        <g transform="translate(455,30)" color="#c26400">
+          <rect x="0" y="0" width="80" height="140" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="10" y="10" width="60" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="10" y="42" width="60" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="10" y="74" width="60" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="10" y="106" width="60" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        <!-- Passenger cabin (S&rarr;G from interior) at (135,15) -->
+        <g transform="translate(135,15)" color="#6a3a8c">
+          <rect x="0" y="0" width="240" height="190" rx="5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="8,4"/>
+          <rect x="12" y="15" width="40" height="55" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="12" y="80" width="40" height="55" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="105" y="10" width="125" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="105" y="100" width="125" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        <!-- Roll cage (S&rarr;G from rollCage) at (135,15) — initial era only -->
+        <g transform="translate(135,15)" color="#d4860a" opacity="0.6">
+          <rect x="0" y="0" width="240" height="190" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="0" y1="0" x2="240" y2="190" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="240" y1="0" x2="0" y2="190" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="60" y1="0" x2="60" y2="190" stroke="currentColor" stroke-width="2"/>
+          <line x1="180" y1="0" x2="180" y2="190" stroke="currentColor" stroke-width="2"/>
+        </g>
+        <!-- Labels -->
+        <text x="280" y="13" text-anchor="middle" font-size="9" fill="#5a6a7a" font-family="monospace">steel body (S→G)</text>
+        <text x="490" y="128" text-anchor="middle" font-size="9" fill="#c26400" font-family="monospace">engine (S→G)</text>
+        <text x="270" y="68" text-anchor="middle" font-size="9" fill="#238b45" font-family="monospace">battery (S→G)</text>
+        <text x="255" y="212" text-anchor="middle" font-size="9" fill="#6a3a8c" font-family="monospace">cabin (S→G)</text>
+        <text x="460" y="4" text-anchor="middle" font-size="9" fill="#3a5a7a" font-family="monospace">wheels (G→G)</text>
+        <text x="90" y="4" text-anchor="middle" font-size="9" fill="#3a5a7a" font-family="monospace">wheels (G→G)</text>
+      </svg>
+    </div>
+    </div>
+  </details>
+
+  <!-- ── 3D Geometry Assembly panel ── -->
+  <details id="panel-geo3d" class="panel" open>
+    <summary>
+      <svg class="panel-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5,3 11,8 5,13"/></svg>
+      3D Geometry Assembly
+    </summary>
+    <div class="panel-body">
+      <p style="font-size:.88rem;color:#555;margin:.4rem 0 .8rem">
+        3D schematic assembled from <strong>3 <code>Geometry3D</code> nodes</strong>
+        (OBJ format — plain ASCII, text-editable) and
+        <strong>6 <code>GeometryUsage3D</code> edges</strong>, each carrying a
+        <strong>4×4 column-major matrix</strong> (WebGL/glTF convention).
+        One <em>wheel</em> node is reused for all four wheel positions via
+        different placement matrices. Drag to orbit &middot; scroll to zoom.
+      </p>
+      <div class="geo3d-canvas-wrap" id="geo3d-canvas-wrap">
+        <canvas id="geo3d-canvas"></canvas>
+      </div>
+    </div>
+  </details>
 
   <!-- ── How it works ── -->
   <section id="how-it-works">
@@ -157,6 +360,29 @@
         <tr><td>Update-1 · ICE · sport</td><td>ice</td><td>sport</td><td>2026-06-01</td><td>14</td></tr>
       </tbody>
     </table>
+
+    <h3>Geometry layer</h3>
+    <p>Each structural node (leaf or near-leaf) can own one or more <code>Geometry</code>
+    nodes, connected via <code>GeometryUsage</code> edges. A <code>GeometryUsage</code> edge
+    carries a 2D affine transformation matrix <code>[a,&thinsp;b,&thinsp;c,&thinsp;d,&thinsp;e,&thinsp;f]</code>
+    and appears in two roles:</p>
+    <ul>
+      <li><strong>Structure → Geometry (S→G)</strong>: the parent is a structural
+      <code>Node</code>; the matrix positions the geometry on the shared assembly canvas
+      (<code>viewBox="0 0 560 230"</code>).</li>
+      <li><strong>Geometry → Geometry (G→G)</strong>: the parent is itself a
+      <code>Geometry</code> node; the matrix positions the child <em>relative to
+      the parent’s local coordinate space</em>, enabling hierarchical composition.
+      In this demo the wheel pairs are sub-geometries of both car body outlines.
+      </li>
+    </ul>
+    <p>The geometry layer is queried separately from the structure tree
+    (<code>GET /api/entities/geometry-nodes</code> and
+    <code>GET /api/entities/geometry-usages</code>)
+    and assembled client-side. Geometry nodes implement <code>IStructure</code>
+    but are <em>not</em> returned by <code>structure.configured-tree.get</code>,
+    which only traverses <code>Usage</code> edges. In the tree diagram above they are
+    shown as <strong>diamond (◇)</strong> nodes to distinguish them from structural circles.</p>
   </section>
 
   <!-- ── Bruno chapter ── -->
@@ -165,7 +391,7 @@
     <table>
       <thead><tr><th>Seq</th><th>File</th><th>Configuration</th><th>Expected nodes</th></tr></thead>
       <tbody>
-        <tr><td>01</td><td><code>01-populate-car-demo.bru</code></td><td>Seeds 28 nodes + 27 conditioned edges; saves dimension IRIs</td><td>—</td></tr>
+        <tr><td>01</td><td><code>01-populate-car-demo.bru</code></td><td>Seeds 28 structure nodes + 27 conditioned edges + 10 geometry nodes + 10 geometry usages; saves dimension IRIs</td><td>—</td></tr>
         <tr><td>02</td><td><code>02-query-initial-era-150pct.bru</code></td><td>No variant filter · date=2025</td><td>19</td></tr>
         <tr><td>03</td><td><code>03-query-update1-era-150pct.bru</code></td><td>No variant filter · date=2026</td><td>26</td></tr>
         <tr><td>04</td><td><code>04-query-initial-ev-sport.bru</code></td><td>drivetrain=ev · trim=sport · date=2025</td><td>14</td></tr>
@@ -203,6 +429,7 @@
     update1:   '#c43c35',   // update-1 era addition
     initial:   '#d4860a',   // initial era exclusive
     grey:      '#b0bab8',
+    geom:      '#1e6295',   // geometry nodes (all eras)
   };
 
   // All 28 nodes (id, label, colour)
@@ -236,6 +463,22 @@
     raceEdition:  { label: 'Race Edition Pack ◆',     color: C.initial },
     rollCage:     { label: 'Roll Cage',               color: C.initial },
   };
+
+  // Geometry nodes (10) — diamond symbol, always visible when parent is reachable.
+  var GEO_NODES = {
+    geoSteelBody:  { label: 'Car Body Outline (Steel) ◇',  color: C.geom },
+    geoAlumBody:   { label: 'Car Body Outline (Alum) ◇',   color: C.geom },
+    geoFWheelsSt:  { label: 'Front Wheels ◇',             color: C.geom },
+    geoRWheelsSt:  { label: 'Rear Wheels ◇',              color: C.geom },
+    geoFWheelsAl:  { label: 'Front Wheels ◇',             color: C.geom },
+    geoRWheelsAl:  { label: 'Rear Wheels ◇',              color: C.geom },
+    geoBattery:    { label: 'Floor Battery Pack ◇',       color: C.geom },
+    geoEngine:     { label: 'Engine Block ◇',             color: C.geom },
+    geoCabin:      { label: 'Passenger Cabin ◇',          color: C.geom },
+    geoRollCage:   { label: 'Roll Cage Frame ◇',          color: C.geom },
+  };
+  // Merge geometry nodes into NODES for reachability / tree-building.
+  for (var k in GEO_NODES) NODES[k] = Object.assign({ isGeo: true }, GEO_NODES[k]);
 
   // All 27 edges (parent → child, conditions[])
   var EDGES = [
@@ -272,6 +515,20 @@
     { p: 'raceEdition',c: 'rollCage',     conds: [] },
   ];
 
+  // Geometry usage edges (10) — no conditions; visibility is inherited from parent.
+  // S→G
+  EDGES.push({ p: 'steelFrame',   c: 'geoSteelBody',  conds: [] });
+  EDGES.push({ p: 'alumFrame',    c: 'geoAlumBody',   conds: [] });
+  EDGES.push({ p: 'battPack',     c: 'geoBattery',    conds: [] });
+  EDGES.push({ p: 'combEngine',   c: 'geoEngine',     conds: [] });
+  EDGES.push({ p: 'interior',     c: 'geoCabin',      conds: [] });
+  EDGES.push({ p: 'rollCage',     c: 'geoRollCage',   conds: [] });
+  // G→G (sub-geometries of the car body outlines)
+  EDGES.push({ p: 'geoSteelBody', c: 'geoFWheelsSt',  conds: [] });
+  EDGES.push({ p: 'geoSteelBody', c: 'geoRWheelsSt',  conds: [] });
+  EDGES.push({ p: 'geoAlumBody',  c: 'geoFWheelsAl',  conds: [] });
+  EDGES.push({ p: 'geoAlumBody',  c: 'geoRWheelsAl',  conds: [] });
+
   // ── Condition evaluation ──────────────────────────────────────────────────
   function edgeSatisfied(edge, config) {
     for (var i = 0; i < edge.conds.length; i++) {
@@ -297,7 +554,7 @@
     var adj = {};
     for (var i = 0; i < EDGES.length; i++) {
       var e = EDGES[i];
-      if (edgeSatisfied(e, config)) {
+      if (edgeSatisfied(e, config) && (config.showGeo || !NODES[e.c].isGeo)) {
         if (!adj[e.p]) adj[e.p] = [];
         adj[e.p].push(e.c);
       }
@@ -321,7 +578,7 @@
 
     // Find satisfied child edges
     var childEdges = EDGES.filter(function (e) {
-      return e.p === nodeId && edgeSatisfied(e, config);
+      return e.p === nodeId && edgeSatisfied(e, config) && (config.showGeo || !NODES[e.c].isGeo);
     });
 
     // Children that are reachable
@@ -331,6 +588,8 @@
 
     return {
       name: node.label,
+      symbol: node.isGeo ? 'diamond' : 'circle',
+      symbolSize: node.isGeo ? 10 : 9,
       itemStyle: {
         color: active ? node.color : C.grey,
         borderColor: active ? darken(node.color) : '#aaa',
@@ -353,6 +612,16 @@
     return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
   }
 
+  // ── Geometry toggle ──────────────────────────────────────────────────────
+  var showGeo = true;
+  window.toggleGeo = function () {
+    showGeo = !showGeo;
+    var btn = document.getElementById('btn-geo');
+    btn.textContent = showGeo ? '\u25c7\u00a0Shown' : '\u25c7\u00a0Hidden';
+    btn.className = 'geo-toggle ' + (showGeo ? 'on' : 'off');
+    render();
+  };
+
   // ── Chart setup ───────────────────────────────────────────────────────────
   var chart = echarts.init(document.getElementById('chart-container'));
 
@@ -361,7 +630,7 @@
     var drivetrain= document.getElementById('sel-drivetrain').value;
     var trim      = document.getElementById('sel-trim').value;
 
-    var config = { era: era, drivetrain: drivetrain, trim: trim };
+    var config = { era: era, drivetrain: drivetrain, trim: trim, showGeo: showGeo };
     var reachable = reachableNodes(config);
     var count = Object.keys(reachable).length;
 
@@ -416,6 +685,9 @@
         roam: true,
       }]
     }, true);
+
+    // Sync 3D scene with current filter (filter changes propagate to Three.js scene).
+    if (window.rebuildGeo3d) window.rebuildGeo3d(reachable);
   }
 
   // Bind filter controls
@@ -425,10 +697,285 @@
 
   window.addEventListener('resize', function () { chart.resize(); });
 
+  // Resize chart when the tree panel is re-opened (ECharts needs a nudge after display:none).
+  document.getElementById('panel-tree').addEventListener('toggle', function () {
+    if (this.open) chart.resize();
+  });
+
   // Initial render
   render();
 }());
 </script>
 
-</body>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Static demo 3D data ───────────────────────────────────────────────────────────
+const OBJ_CAR_BODY = `
+# Forge 3D — car body (3.0 × 0.55 × 1.2 m, centred at origin)
+v -1.500 -0.275 -0.600
+v  1.500 -0.275 -0.600
+v  1.500 -0.275  0.600
+v -1.500 -0.275  0.600
+v -1.500  0.275 -0.600
+v  1.500  0.275 -0.600
+v  1.500  0.275  0.600
+v -1.500  0.275  0.600
+f 1 4 3 2
+f 5 6 7 8
+f 1 2 6 5
+f 2 3 7 6
+f 3 4 8 7
+f 4 1 5 8`;
+
+const OBJ_WHEEL = `
+# Forge 3D — wheel disc (r=0.35 h=0.28 m, axis=Z, 8 segments)
+v  0.350  0.000 -0.140
+v  0.247  0.247 -0.140
+v  0.000  0.350 -0.140
+v -0.247  0.247 -0.140
+v -0.350  0.000 -0.140
+v -0.247 -0.247 -0.140
+v  0.000 -0.350 -0.140
+v  0.247 -0.247 -0.140
+v  0.350  0.000  0.140
+v  0.247  0.247  0.140
+v  0.000  0.350  0.140
+v -0.247  0.247  0.140
+v -0.350  0.000  0.140
+v -0.247 -0.247  0.140
+v  0.000 -0.350  0.140
+v  0.247 -0.247  0.140
+v  0.000  0.000 -0.140
+v  0.000  0.000  0.140
+f  2  1  9 10
+f  3  2 10 11
+f  4  3 11 12
+f  5  4 12 13
+f  6  5 13 14
+f  7  6 14 15
+f  8  7 15 16
+f  1  8 16  9
+f 17  1  2
+f 17  2  3
+f 17  3  4
+f 17  4  5
+f 17  5  6
+f 17  6  7
+f 17  7  8
+f 17  8  1
+f 18 10  9
+f 18 11 10
+f 18 12 11
+f 18 13 12
+f 18 14 13
+f 18 15 14
+f 18 16 15
+f 18  9 16`;
+
+const OBJ_BATTERY = `
+# Forge 3D — EV battery pack (1.2 × 0.15 × 0.8 m, centred at origin)
+v -0.600 -0.075 -0.400
+v  0.600 -0.075 -0.400
+v  0.600 -0.075  0.400
+v -0.600 -0.075  0.400
+v -0.600  0.075 -0.400
+v  0.600  0.075 -0.400
+v  0.600  0.075  0.400
+v -0.600  0.075  0.400
+f 1 4 3 2
+f 5 6 7 8
+f 1 2 6 5
+f 2 3 7 6
+f 3 4 8 7
+f 4 1 5 8`;
+
+const OBJ_ALUM_BODY = `
+# Forge 3D — aluminium chassis body (3.2 × 0.50 × 1.25 m, centred at origin)
+# Longer, lower and wider than the steel body — visible in update-1 era only.
+v -1.600 -0.250 -0.625
+v  1.600 -0.250 -0.625
+v  1.600 -0.250  0.625
+v -1.600 -0.250  0.625
+v -1.600  0.250 -0.625
+v  1.600  0.250 -0.625
+v  1.600  0.250  0.625
+v -1.600  0.250  0.625
+f 1 4 3 2
+f 5 6 7 8
+f 1 2 6 5
+f 2 3 7 6
+f 3 4 8 7
+f 4 1 5 8`;
+
+const OBJ_EXHAUST_PIPE = `
+# Forge 3D — ICE single right-side exhaust pipe, rear exit
+# Main pipe: 0.05 × 0.04 m cross-section, runs X [+0.20, +1.48] under right body sill
+# Exit flare: slightly wider (0.07 × 0.06 m), extends to X+1.65 past rear bumper
+# Coords: X = car length (rear = +1.5), Y = up, Z = width (right side = +Z)
+v  0.200 -0.225  0.520
+v  1.480 -0.225  0.520
+v  1.480 -0.225  0.570
+v  0.200 -0.225  0.570
+v  0.200 -0.265  0.520
+v  1.480 -0.265  0.520
+v  1.480 -0.265  0.570
+v  0.200 -0.265  0.570
+f 1 2 3 4
+f 8 7 6 5
+f 1 5 6 2
+f 2 6 7 3
+f 3 7 8 4
+f 4 8 5 1
+v  1.480 -0.215  0.510
+v  1.650 -0.215  0.510
+v  1.650 -0.215  0.580
+v  1.480 -0.215  0.580
+v  1.480 -0.275  0.510
+v  1.650 -0.275  0.510
+v  1.650 -0.275  0.580
+v  1.480 -0.275  0.580
+f  9 10 11 12
+f 16 15 14 13
+f  9 13 14 10
+f 10 14 15 11
+f 11 15 16 12
+f 12 16 13  9`;
+
+const G3D_NODES = {
+  'carBody3d':    { obj: OBJ_CAR_BODY,     color: 0x5a6a7a, label: 'Car Body (Steel)' },
+  'alumBody3d':   { obj: OBJ_ALUM_BODY,    color: 0x8899bb, label: 'Car Body (Alum)' },
+  'wheel3d':      { obj: OBJ_WHEEL,        color: 0x2a3040, label: 'Wheel Disc' },
+  'battery3d':    { obj: OBJ_BATTERY,      color: 0x238b45, label: 'Battery Pack' },
+  'exhaust3d':    { obj: OBJ_EXHAUST_PIPE, color: 0x706858, label: 'Exhaust Pipe' },
+};
+// p=parentId, c=childId, m=4×4 column-major matrix.
+// Structural parents (steelFrame, alumFrame) are filtered by the active configuration.
+const G3D_USAGES = [
+  { p: 'steelFrame', c: 'carBody3d',  m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.0, 0.0, 0.0,1] },
+  { p: 'carBody3d',  c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0, -1.1,-0.2,-0.70,1] },
+  { p: 'carBody3d',  c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0, -1.1,-0.2, 0.70,1] },
+  { p: 'carBody3d',  c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  1.1,-0.2,-0.70,1] },
+  { p: 'carBody3d',  c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  1.1,-0.2, 0.70,1] },
+  { p: 'carBody3d',  c: 'battery3d', m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.3, 0.0, 0.0, 1] },
+  // alumFrame subtree — only rendered when alumFrame is reachable (update-1 era)
+  { p: 'alumFrame',  c: 'alumBody3d', m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.0, 0.0, 0.0,1] },
+  { p: 'alumBody3d', c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0, -1.2,-0.2,-0.75,1] },
+  { p: 'alumBody3d', c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0, -1.2,-0.2, 0.75,1] },
+  { p: 'alumBody3d', c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  1.2,-0.2,-0.75,1] },
+  { p: 'alumBody3d', c: 'wheel3d',   m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  1.2,-0.2, 0.75,1] },
+  // combEngine subtree — only rendered when drivetrain=ice (combEngine is reachable)
+  { p: 'combEngine', c: 'exhaust3d', m: [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.0, 0.0, 0.0, 1] },
+];
+
+// ── OBJ parser ───────────────────────────────────────────────────────────────────────
+function parseOBJ(text) {
+  const pos = [], idx = [];
+  for (const line of text.split('\n')) {
+    const t = line.trim().split(/\s+/);
+    if (t[0] === 'v') { pos.push(+t[1], +t[2], +t[3]); }
+    else if (t[0] === 'f') {
+      const i = t.slice(1).map(x => +x.split('/')[0] - 1);
+      for (let j = 1; j < i.length - 1; j++) idx.push(i[0], i[j], i[j + 1]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// ── Scene assembly ───────────────────────────────────────────────────────────────────────
+// Tracks dynamically added meshes so they can be removed on rebuild.
+let sceneMeshes = [];
+
+function buildScene(parentId, parentWorld) {
+  for (const u of G3D_USAGES) {
+    if (u.p !== parentId || !G3D_NODES[u.c]) continue;
+    const local = new THREE.Matrix4().fromArray(u.m);
+    const world = new THREE.Matrix4().multiplyMatrices(parentWorld, local);
+    const mesh  = new THREE.Mesh(
+      parseOBJ(G3D_NODES[u.c].obj),
+      new THREE.MeshPhongMaterial({ color: G3D_NODES[u.c].color, side: THREE.DoubleSide })
+    );
+    mesh.applyMatrix4(world);
+    scene.add(mesh);
+    sceneMeshes.push(mesh);
+    buildScene(u.c, world); // recurse G3D→G3D
+  }
+}
+
+// Structural root IDs: usage parents that are not themselves G3D nodes.
+const structRoots = new Set(G3D_USAGES.filter(u => !G3D_NODES[u.p]).map(u => u.p));
+
+// Rebuild the 3D scene showing only subtrees whose structural root is in
+// the reachable set (the same reachable dict produced by reachableNodes()).
+// Pass null / undefined to show everything (initial 150% view).
+window.rebuildGeo3d = function (reachable) {
+  for (const m of sceneMeshes) { m.geometry.dispose(); m.material.dispose(); scene.remove(m); }
+  sceneMeshes = [];
+  structRoots.forEach(pid => {
+    if (!reachable || reachable[pid]) buildScene(pid, new THREE.Matrix4());
+  });
+};
+
+// ── Three.js init ─────────────────────────────────────────────────────────────────────
+const wrap    = document.getElementById('geo3d-canvas-wrap');
+const canvas3d = document.getElementById('geo3d-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 10, 30);
+
+const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 50);
+camera.position.set(3.5, 2.5, 4.5);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xccddff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(5, 8, 3);
+scene.add(sun);
+
+// Grid floor for spatial reference
+const grid = new THREE.GridHelper(8, 16, 0x223344, 0x1a2233);
+grid.position.y = -0.5;
+scene.add(grid);
+
+// Initial 150% view — show all structural subtrees.
+window.rebuildGeo3d();
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping  = true;
+controls.dampingFactor  = 0.08;
+controls.autoRotate     = true;
+controls.autoRotateSpeed = 0.6;
+controls.target.set(0, 0, 0);
+
+// Resize observer keeps canvas sharp when panel resizes
+new ResizeObserver(() => {
+  if (!wrap.offsetParent && !wrap.closest('details[open]')) return;
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  camera.aspect = wrap.clientWidth / wrap.clientHeight;
+  camera.updateProjectionMatrix();
+}).observe(wrap);
+
+document.getElementById('panel-geo3d').addEventListener('toggle', function () {
+  if (this.open) {
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    camera.aspect = wrap.clientWidth / wrap.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+});
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
 </html>
