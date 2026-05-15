@@ -215,10 +215,11 @@ public sealed class BrunoGraphDbFixture : IAsyncLifetime
             if (composeExit == 0) return true;
         }
 
-        await RunAsync(ContainerCli, "rm -f forge-graphdb");
-
+        // Fallback: start the container directly when compose is unavailable.
+        // Use the correct container name and port so this container is distinct from
+        // the one used by Repository.GraphDb.Tests (forge-graphdb on 7200).
         int runExit = await RunAsync(ContainerCli,
-            "run -d --name forge-graphdb -p 7200:7200 -e GDB_HEAP_SIZE=512m ontotext/graphdb:10.7.3");
+            "run -d --name forge-graphdb-sample -p 7201:7200 -e GDB_HEAP_SIZE=1g ontotext/graphdb:10.7.3");
 
         if (runExit != 0) return false;
 
@@ -230,8 +231,8 @@ public sealed class BrunoGraphDbFixture : IAsyncLifetime
     {
         if (_usedDirectRun)
         {
-            await RunAsync(ContainerCli, "stop forge-graphdb");
-            await RunAsync(ContainerCli, "rm forge-graphdb");
+            await RunAsync(ContainerCli, "stop forge-graphdb-sample");
+            await RunAsync(ContainerCli, "rm forge-graphdb-sample");
             return;
         }
 

@@ -22,6 +22,7 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
     private readonly BrunoGraphDbFixture _graphDb;
     private Process? _appProcess;
     private string _baseUrl = "";
+    private readonly System.Text.StringBuilder _appLog = new();
 
     public BrunoGraphDbIntegrationTests(BrunoGraphDbFixture graphDb) => _graphDb = graphDb;
 
@@ -40,7 +41,7 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
 
         var port = FindFreePort();
         _baseUrl = $"http://127.0.0.1:{port}";
-        _appProcess = StartSampleApp(port, _graphDb.BaseUrl, _graphDb.RepositoryId);
+        _appProcess = StartSampleApp(port, _graphDb.BaseUrl, _graphDb.RepositoryId, line => _appLog.AppendLine(line));
         await WaitForReadyAsync(_baseUrl);
     }
 
@@ -360,7 +361,7 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
         var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
 
         exitCode.ShouldBe(0,
-            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}\nApp Log:\n{_appLog}");
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -377,7 +378,7 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
         return (collectionRoot, chapterDir);
     }
 
-    private static Process StartSampleApp(int port, string graphDbBaseUrl, string repositoryId)
+    private static Process StartSampleApp(int port, string graphDbBaseUrl, string repositoryId, Action<string>? log = null)
     {
         var dll = FindSampleDll();
 
@@ -398,15 +399,15 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
         var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start the sample app process.");
 
-        process.OutputDataReceived += (_, _) => { };
-        process.ErrorDataReceived += (_, _) => { };
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) log?.Invoke(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) log?.Invoke(e.Data); };
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
         return process;
     }
 
-    private static async Task WaitForReadyAsync(string baseUrl, int timeoutSeconds = 30)
+    private static async Task WaitForReadyAsync(string baseUrl, int timeoutSeconds = 60)
     {
         using var client = new HttpClient();
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);

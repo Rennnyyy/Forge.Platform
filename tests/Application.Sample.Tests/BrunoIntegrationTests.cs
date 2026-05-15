@@ -9,6 +9,7 @@ namespace Forge.Application.Sample.Tests;
 /// Integration tests that start the merged Application.Sample app as a subprocess and
 /// drive it via the committed Bruno collections. See ADR-0012 and ADR-0013.
 /// </summary>
+[Collection("BrunoGraphDb")]
 public sealed class BrunoIntegrationTests : IAsyncLifetime
 {
     private Process? _appProcess;

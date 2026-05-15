@@ -18,6 +18,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- xUnit runner configuration: prevents test collections from running in parallel,
+         avoiding resource contention between the InMemory and GraphDB Bruno suites. -->
+    <EmbeddedResource Include="xunit.runner.json" />
+  </ItemGroup>
+
   <!--
     Build-only reference: ensures the sample DLL is up-to-date when the test runs
     without importing the sample's types into this project.

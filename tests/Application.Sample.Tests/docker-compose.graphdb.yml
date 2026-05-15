@@ -16,7 +16,7 @@ services:
     ports:
       - "7201:7200"
     environment:
-      GDB_HEAP_SIZE: 512m
+      GDB_HEAP_SIZE: 1g
     volumes:
       - graphdb-data:/opt/graphdb/home
     healthcheck:
