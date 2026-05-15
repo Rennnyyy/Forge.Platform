@@ -1,0 +1,53 @@
+meta {
+  name: Structure tree - get tree EV only, no segment (open-world: both interiors included)
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{vehicleRootIri}}",
+    "branchIri": "https://forge-it.net/branches/main",
+    "flagOptions": {
+      "{{evDimensionIri}}": true
+    },
+    "referenceDate": "2026-06-15T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{vehicleRootIri}}
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  test("EV Powertrain is included", () => {
+    expect(iris).to.include(bru.getVar("evPowertrainIri"));
+  });
+
+  // Both interiors are included: segment dimension is absent and isRequired=false
+  // → open-world semantics: the enum condition is satisfied (don't care)
+  test("Luxury Interior is included (open-world optional)", () => {
+    expect(iris).to.include(bru.getVar("luxuryInteriorIri"));
+  });
+  test("Standard Interior is included (open-world optional)", () => {
+    expect(iris).to.include(bru.getVar("standardInteriorIri"));
+  });
+
+  // ICE Powertrain requires ev=false explicitly → excluded
+  test("ICE Powertrain is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("icePowertrainIri"));
+  });
+}

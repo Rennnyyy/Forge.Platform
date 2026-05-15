@@ -1,0 +1,28 @@
+meta {
+  name: Structure tree - register usage Vehicle → Luxury Interior (enum segment=luxury, optional)
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{vehicleRootIri}}",
+    "childStructureIri": "{{luxuryInteriorIri}}",
+    "conditionsJson": "[{\"$type\":\"enumeration\",\"dimensionIri\":\"{{segmentDimensionIri}}\",\"enumerationValueIri\":\"https://forge-it.net/segments/luxury\",\"isRequired\":false}]"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

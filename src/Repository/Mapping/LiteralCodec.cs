@@ -55,6 +55,7 @@ internal static class LiteralCodec
         if (t == typeof(DateTimeOffset)) return DateTimeOffset.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         if (t == typeof(DateOnly)) return DateOnly.ParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         if (t == typeof(Uri)) return new Uri(s);
+        if (t.IsEnum) return Enum.Parse(t, s);
 
         // Fallback: Convert.ChangeType with invariant culture
         return Convert.ChangeType(s, t, CultureInfo.InvariantCulture);

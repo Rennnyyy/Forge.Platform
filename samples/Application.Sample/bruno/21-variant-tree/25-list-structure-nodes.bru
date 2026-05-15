@@ -1,0 +1,37 @@
+meta {
+  name: Structure tree - list all structure nodes
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isDefined
+}
+
+script:post-response {
+  // Verify all 10 created nodes appear in the list (response is { items: [...] })
+  const iris = res.body.items.map(n => n.iri);
+  const expected = [
+    bru.getVar("vehicleRootIri"),
+    bru.getVar("evPowertrainIri"),
+    bru.getVar("icePowertrainIri"),
+    bru.getVar("batterySystemIri"),
+    bru.getVar("electricMotorIri"),
+    bru.getVar("combustionEngineIri"),
+    bru.getVar("gearboxIri"),
+    bru.getVar("luxuryInteriorIri"),
+    bru.getVar("standardInteriorIri"),
+    bru.getVar("raceEditionIri"),
+  ];
+  test("All 10 structure nodes are in the list", () => {
+    for (const iri of expected) {
+      expect(iris).to.include(iri);
+    }
+  });
+}

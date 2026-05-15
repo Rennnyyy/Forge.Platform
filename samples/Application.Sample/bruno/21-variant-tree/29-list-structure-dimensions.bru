@@ -1,0 +1,20 @@
+meta {
+  name: Structure tree - list all dimensions (ev + body segment)
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{baseUrl}}/api/entities/structure-dimensions
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body: isDefined
+}

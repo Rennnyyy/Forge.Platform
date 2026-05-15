@@ -1,0 +1,27 @@
+meta {
+  name: Structure tree - register usage ICE Powertrain → Combustion Engine (unconditional)
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{icePowertrainIri}}",
+    "childStructureIri": "{{combustionEngineIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

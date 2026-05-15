@@ -18,3 +18,5 @@ See [root ADR README](../../../adr/README.md) for format and rules.
 - [0008 — Featured Artist entity: entity type inheritance demonstration](0008-featured-artist-inheritance-demo.md)
 - [0009 — Remove studio-relations capability; move bad-IRI checks to entity endpoint](0009-remove-studio-relations-capability.md)
 - [0010 — Entity messaging demo chapter (Bruno 17-entity-messaging-demo)](0010-entity-messaging-demo-chapter.md)
+- [0011 — Track masters object storage demo (Bruno 19-track-masters)](0011-track-masters-object-storage-demo.md)
+- [0012 — Variant tree demonstration chapter (Bruno 21-variant-tree)](0012-variant-tree-demo.md)

@@ -29,6 +29,8 @@ using Forge.Messaging.InMemory.DependencyInjection;
 using Forge.ObjectStorage.Http;
 using Forge.ObjectStorage.Http.DependencyInjection;
 using Forge.ObjectStorage.InMemory.DependencyInjection;
+using Forge.Structure;
+using Forge.Structure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,11 +98,22 @@ builder.Services.AddForgeBranchHttp(builder.Configuration);
 // binds BranchOptions. UseBranchScope() below activates the middleware.
 builder.Services.AddBranchHttp(builder.Configuration);
 
+// ── 3c. Structure filtering store ────────────────────────────────────────────
+// Wraps the current outermost unkeyed IEntityStore with StructureFilteringStore so
+// that QueryByTypeAsync<Usage>() returns only satisfied edges when StructureScope is
+// active (pure in-memory C# evaluation, no SPARQL).
+// Must be called AFTER AddForgeBranchHttp() so that the final DI chain is:
+// StructureFiltering → EventEmitting → AspectEnforcing → Backend.
+// See Structure ADR-0004.
+builder.Services.AddForgeStructure();
+
 // ── 4. Capability handlers ────────────────────────────────────────────────────
 // Discovers hand-written capability handlers (GreetHandler, CreateItemHandler,
 // UpdateItemHandler, PatchItemHandler, TriggerFaultHandler, AspectDemoHandler) by
 // scanning this assembly. Must be called before AddCapabilityHttp() (Capability ADR-0011).
 builder.Services.AddCapabilityHandlersFromAssemblyContaining<Book>();
+// Also scan Forge.Structure for GetConfiguredTreeHandler.
+builder.Services.AddCapabilityHandlersFromAssemblyContaining<GetConfiguredTreeHandler>();
 
 // ── 5. HTTP transport (capability) ───────────────────────────────────────────
 // Scans the handler registrations above and builds the endpoint metadata used
@@ -119,6 +132,8 @@ builder.Services.AddForgeCapabilityMessaging();
 // Artist) and registers one OperationEndpointDescriptor per entity.
 // MapOperations() wires the five REST endpoints per entity. See Operations.Http ADR-0001.
 builder.Services.AddOperationEndpointsHttpFromAssemblyContaining<Book>();
+// Also scan Forge.Structure for Node, Usage, Dimension.
+builder.Services.AddOperationEndpointsHttp(typeof(Node).Assembly);
 
 // ── 6c. Object storage (in-memory) + HTTP layer ───────────────────────────────
 // Registers the in-memory IObjectStoreProvider (keyed store per StoreKey) and scans

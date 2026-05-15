@@ -1,0 +1,74 @@
+meta {
+  name: Structure tree - get tree EV + luxury (Race Edition excluded, date 2026)
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{vehicleRootIri}}",
+    "branchIri": "https://forge-it.net/branches/main",
+    "flagOptions": {
+      "{{evDimensionIri}}": true
+    },
+    "enumerationOptions": {
+      "{{segmentDimensionIri}}": "https://forge-it.net/segments/luxury"
+    },
+    "referenceDate": "2026-06-15T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{vehicleRootIri}}
+  res.body.allNodeIris: isDefined
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // EV powertrain and its sub-components must be included
+  test("EV Powertrain is included", () => {
+    expect(iris).to.include(bru.getVar("evPowertrainIri"));
+  });
+  test("Battery System is included", () => {
+    expect(iris).to.include(bru.getVar("batterySystemIri"));
+  });
+  test("Electric Motor is included", () => {
+    expect(iris).to.include(bru.getVar("electricMotorIri"));
+  });
+  test("Luxury Interior is included", () => {
+    expect(iris).to.include(bru.getVar("luxuryInteriorIri"));
+  });
+
+  // ICE powertrain must be excluded (flag ev=false, required — does not match ev=true)
+  test("ICE Powertrain is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("icePowertrainIri"));
+  });
+  test("Combustion Engine is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("combustionEngineIri"));
+  });
+  test("Gearbox is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("gearboxIri"));
+  });
+
+  // Standard Interior must be excluded (enum segment=standard, optioal — doesn't match luxury)
+  test("Standard Interior is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("standardInteriorIri"));
+  });
+
+  // Race Edition must be excluded (milestone ends 2025-12-31, date is 2026-06-15)
+  test("Race Edition is excluded (past milestone)", () => {
+    expect(iris).to.not.include(bru.getVar("raceEditionIri"));
+  });
+}

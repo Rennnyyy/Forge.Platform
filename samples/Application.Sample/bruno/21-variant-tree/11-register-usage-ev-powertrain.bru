@@ -1,0 +1,32 @@
+meta {
+  name: Structure tree - register usage Vehicle → EV Powertrain (flag ev=true, required)
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{vehicleRootIri}}",
+    "childStructureIri": "{{evPowertrainIri}}",
+    "conditionsJson": "[{\"$type\":\"flag\",\"dimensionIri\":\"{{evDimensionIri}}\",\"expectedValue\":true,\"isRequired\":true}]"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("usageVehicleToEvIri", res.body.iri);
+}

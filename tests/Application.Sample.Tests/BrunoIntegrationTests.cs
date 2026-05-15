@@ -551,6 +551,46 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 21 — Structure trees: verifies the full structure-tree lifecycle using
+    /// the <c>Forge.Structure</c> slice:
+    /// <list type="bullet">
+    ///   <item>POST <c>api/entities/structure-dimensions</c> × 2 — create EV flag and
+    ///         Body Segment enumeration dimensions; IRIs stored as Bruno variables</item>
+    ///   <item>POST <c>api/entities/structure-nodes</c> × 10 — create structural nodes
+    ///         (Vehicle, EV/ICE Powertrain, Battery, Motor, Engine, Gearbox, Luxury/Standard
+    ///         Interior, Race Edition Package)</item>
+    ///   <item>POST <c>api/entities/structure-usages</c> × 9 — create Usage edges with
+    ///         polymorphic JSON conditions: <see cref="Forge.Structure.FlagOptionCondition"/>
+    ///         (ev required), <see cref="Forge.Structure.EnumerationOptionCondition"/>
+    ///         (segment optional, open-world), and <see cref="Forge.Structure.TimeCondition"/>
+    ///         (2025-only time window)</item>
+    ///   <item>POST <c>api/capabilities/structure/configured-tree/get</c> × 5 — assert
+    ///         correct sub-tree per EV/ICE + luxury/standard + in-/out-of-time-window
+    ///         configurations</item>
+    ///   <item>GET/GET/PUT/DELETE <c>api/entities/structure-nodes</c> — list, read, update,
+    ///         delete; GET <c>api/entities/structure-dimensions</c> — list dimensions</item>
+    /// </list>
+    /// See Structure ADR-0005, Structure ADR-0002, and root ADR-0016.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_21_structure_tree_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "21-variant-tree");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

@@ -1,0 +1,31 @@
+meta {
+  name: Structure tree - create Race Edition Package node
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Race Edition Package",
+    "description": "Limited-time aerodynamic body kit, available 2025 only"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("raceEditionIri", res.body.iri);
+}

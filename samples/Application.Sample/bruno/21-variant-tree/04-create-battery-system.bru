@@ -1,0 +1,31 @@
+meta {
+  name: Structure tree - create Battery System node
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Battery System",
+    "description": "High-voltage battery pack and BMS"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("batterySystemIri", res.body.iri);
+}

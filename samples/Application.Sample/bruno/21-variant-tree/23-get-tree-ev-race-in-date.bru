@@ -1,0 +1,43 @@
+meta {
+  name: Structure tree - get tree EV + referenceDate mid-2025 (Race Edition IN milestone window)
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{vehicleRootIri}}",
+    "branchIri": "https://forge-it.net/branches/main",
+    "flagOptions": {
+      "{{evDimensionIri}}": true
+    },
+    "referenceDate": "2025-06-15T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{vehicleRootIri}}
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  // Race Edition is within the 2025-01-01 → 2025-12-31 milestone window
+  test("Race Edition is included (milestone in-window)", () => {
+    expect(iris).to.include(bru.getVar("raceEditionIri"));
+  });
+  test("EV Powertrain is included", () => {
+    expect(iris).to.include(bru.getVar("evPowertrainIri"));
+  });
+}

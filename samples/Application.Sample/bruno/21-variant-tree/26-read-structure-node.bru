@@ -1,0 +1,16 @@
+meta {
+  name: Structure tree - read structure node (vehicle root)
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{baseUrl}}/api/entities/structure-nodes?iri={{vehicleRootIri}}
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: eq {{vehicleRootIri}}
+  res.body.name: eq Vehicle Configurator
+}

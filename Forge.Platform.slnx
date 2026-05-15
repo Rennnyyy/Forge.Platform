@@ -81,6 +81,9 @@
   <Folder Name="/src/ObjectStorage.Http/">
     <Project Path="src/ObjectStorage.Http/Forge.ObjectStorage.Http.csproj" />
   </Folder>
+  <Folder Name="/src/Structure/">
+    <Project Path="src/Structure/Forge.Structure.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Application.Sample/Forge.Application.Sample.csproj" />
   </Folder>
@@ -113,5 +116,6 @@
     <Project Path="tests/ObjectStorage.Abstractions.Tests/Forge.ObjectStorage.Abstractions.Tests.csproj" />
     <Project Path="tests/ObjectStorage.InMemory.Tests/Forge.ObjectStorage.InMemory.Tests.csproj" />
     <Project Path="tests/ObjectStorage.Http.Tests/Forge.ObjectStorage.Http.Tests.csproj" />
+    <Project Path="tests/Structure.Tests/Forge.Structure.Tests.csproj" />
   </Folder>
 </Solution>

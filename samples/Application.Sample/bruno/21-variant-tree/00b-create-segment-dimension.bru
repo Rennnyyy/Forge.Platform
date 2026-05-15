@@ -1,0 +1,32 @@
+meta {
+  name: Structure tree - create Body Segment enumeration dimension
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-dimensions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Body Segment",
+    "type": "Enumeration",
+    "description": "Market segment: luxury, standard, race — expressed as application-defined IRIs"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("segmentDimensionIri", res.body.iri);
+}

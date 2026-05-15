@@ -1,0 +1,31 @@
+meta {
+  name: Structure tree - create Vehicle Configurator (root node)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Vehicle Configurator",
+    "description": "Root node of the vehicle product variant tree"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("vehicleRootIri", res.body.iri);
+}

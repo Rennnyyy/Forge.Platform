@@ -41,6 +41,7 @@ The complete chapter inventory, including the nine chapters added after ADR-0013
 | 18 | `18-async-capability-demo/` | Async capability dispatch via command bus (`Forge.Capability.Messaging`) |
 | 19 | `19-track-masters/` | Object storage: upload/download/lock/delete blobs with branch-scope isolation |
 | 20 | `20-branch-merge/` | Branch diff and merge; conflict detection; cascade delete on merge |
+| 21 | `21-variant-tree/` | Variant trees: ProductNode CRUD, Usage registration with all three condition types (flag/enum/milestone), configured-tree queries under six VariantConfiguration snapshots |
 
 ### Integration test alignment
 
@@ -68,6 +69,7 @@ Each chapter maps to one `[SkippableFact]` in `BrunoIntegrationTests.cs`:
 | `Bruno_18_async_capability_demo_requests_all_pass` | `18-async-capability-demo/` |
 | `Bruno_19_track_masters_requests_all_pass` | `19-track-masters/` |
 | `Bruno_20_branch_merge_requests_all_pass` | `20-branch-merge/` |
+| `Bruno_21_variant_tree_requests_all_pass` | `21-variant-tree/` |
 
 ## Amendment to ADR-0013
 

@@ -1,0 +1,28 @@
+meta {
+  name: Structure tree - register usage Vehicle → Race Edition Package (time-window 2025-only)
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{vehicleRootIri}}",
+    "childStructureIri": "{{raceEditionIri}}",
+    "conditionsJson": "[{\"$type\":\"time\",\"validFrom\":\"2025-01-01T00:00:00Z\",\"validTo\":\"2025-12-31T23:59:59Z\"}]"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

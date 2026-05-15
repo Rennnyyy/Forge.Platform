@@ -340,6 +340,29 @@ public sealed class BrunoGraphDbIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 21 — Structure trees (GraphDB backend).
+    /// Mirrors <c>BrunoIntegrationTests.Bruno_21_structure_tree_requests_all_pass</c>.
+    /// Note: <see cref="Forge.Structure.Usage.Conditions"/> is not annotated with
+    /// <c>[Predicate]</c> and is therefore not persisted by the RDF backend — condition
+    /// evaluation relies on in-memory object state. This chapter exercises Node/Usage/
+    /// Dimension CRUD via the RDF backend; StructureFilteringStore filtering is validated
+    /// by the InMemory chapter. Skipped if GraphDB is unavailable.
+    /// See Structure ADR-0002 and Structure ADR-0005.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_21_structure_tree_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+        Skip.If(!_graphDb.Available, "GraphDB not available — no container runtime present.");
+
+        var (collectionRoot, chapterDir) = ResolvePaths("21-variant-tree");
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static (string CollectionRoot, string ChapterDir) ResolvePaths(string chapter)

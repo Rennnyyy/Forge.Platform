@@ -1,0 +1,28 @@
+meta {
+  name: Structure tree - register usage Vehicle → Standard Interior (enum segment=standard, optional)
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{vehicleRootIri}}",
+    "childStructureIri": "{{standardInteriorIri}}",
+    "conditionsJson": "[{\"$type\":\"enumeration\",\"dimensionIri\":\"{{segmentDimensionIri}}\",\"enumerationValueIri\":\"https://forge-it.net/segments/standard\",\"isRequired\":false}]"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

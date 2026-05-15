@@ -1,0 +1,31 @@
+meta {
+  name: Structure tree - create Standard Interior node
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Standard Interior",
+    "description": "Fabric seats, standard instrument cluster"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("standardInteriorIri", res.body.iri);
+}

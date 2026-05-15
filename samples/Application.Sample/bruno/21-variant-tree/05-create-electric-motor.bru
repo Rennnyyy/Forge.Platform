@@ -1,0 +1,31 @@
+meta {
+  name: Structure tree - create Electric Motor node
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-nodes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Electric Motor",
+    "description": "Permanent magnet synchronous drive motor"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}
+
+script:post-response {
+  bru.setVar("electricMotorIri", res.body.iri);
+}

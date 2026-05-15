@@ -1,0 +1,27 @@
+meta {
+  name: Structure tree - register usage EV Powertrain → Battery System (unconditional)
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{evPowertrainIri}}",
+    "childStructureIri": "{{batterySystemIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

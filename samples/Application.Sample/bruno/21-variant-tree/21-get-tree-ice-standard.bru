@@ -1,0 +1,68 @@
+meta {
+  name: Structure tree - get tree ICE + standard (date 2026)
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{vehicleRootIri}}",
+    "branchIri": "https://forge-it.net/branches/main",
+    "flagOptions": {
+      "{{evDimensionIri}}": false
+    },
+    "enumerationOptions": {
+      "{{segmentDimensionIri}}": "https://forge-it.net/segments/standard"
+    },
+    "referenceDate": "2026-06-15T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{vehicleRootIri}}
+  res.body.allNodeIris: isDefined
+}
+
+script:post-response {
+  const iris = res.body.allNodeIris;
+
+  test("ICE Powertrain is included", () => {
+    expect(iris).to.include(bru.getVar("icePowertrainIri"));
+  });
+  test("Combustion Engine is included", () => {
+    expect(iris).to.include(bru.getVar("combustionEngineIri"));
+  });
+  test("Gearbox is included", () => {
+    expect(iris).to.include(bru.getVar("gearboxIri"));
+  });
+  test("Standard Interior is included", () => {
+    expect(iris).to.include(bru.getVar("standardInteriorIri"));
+  });
+
+  test("EV Powertrain is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("evPowertrainIri"));
+  });
+  test("Battery System is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("batterySystemIri"));
+  });
+  test("Electric Motor is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("electricMotorIri"));
+  });
+  test("Luxury Interior is excluded", () => {
+    expect(iris).to.not.include(bru.getVar("luxuryInteriorIri"));
+  });
+  test("Race Edition is excluded (past milestone)", () => {
+    expect(iris).to.not.include(bru.getVar("raceEditionIri"));
+  });
+}

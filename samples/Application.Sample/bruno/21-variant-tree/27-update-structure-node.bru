@@ -1,0 +1,27 @@
+meta {
+  name: Structure tree - update structure node (vehicle root) description
+  type: http
+  seq: 27
+}
+
+put {
+  url: {{baseUrl}}/api/entities/structure-nodes?iri={{vehicleRootIri}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Vehicle Configurator",
+    "description": "Root node of the vehicle product variant tree (updated)"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: eq {{vehicleRootIri}}
+}

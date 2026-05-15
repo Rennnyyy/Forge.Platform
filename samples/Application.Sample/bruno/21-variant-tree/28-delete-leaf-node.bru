@@ -1,0 +1,18 @@
+meta {
+  name: Structure tree - delete Race Edition leaf node (cleanup)
+  type: http
+  seq: 28
+}
+
+delete {
+  url: {{baseUrl}}/api/entities/structure-nodes?iri={{raceEditionIri}}
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("raceEditionIri", "");
+}

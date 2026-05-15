@@ -1,0 +1,27 @@
+meta {
+  name: Structure tree - register usage ICE Powertrain → Gearbox (unconditional)
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/entities/structure-usages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "parentStructureIri": "{{icePowertrainIri}}",
+    "childStructureIri": "{{gearboxIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.iri: isDefined
+}

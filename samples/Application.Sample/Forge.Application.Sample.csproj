@@ -53,6 +53,10 @@
     <ProjectReference Include="..\..\src\ObjectStorage.Http\Forge.ObjectStorage.Http.csproj" />
     <!-- In-memory IObjectStore implementation for demos and tests -->
     <ProjectReference Include="..\..\src\ObjectStorage.InMemory\Forge.ObjectStorage.InMemory.csproj" />
+    <!-- Structure slice: Node, Usage, Dimension, GetConfiguredTreeHandler, conditions.
+         AddForgeStructure() wires the filtering store; entity/capability scans are done
+         inline in Program.cs alongside the other assemblies. -->
+    <ProjectReference Include="..\..\src\Structure\Forge.Structure.csproj" />
   </ItemGroup>
 
 </Project>
