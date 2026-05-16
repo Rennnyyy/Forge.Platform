@@ -49,7 +49,16 @@ public partial class Usage
     [Predicate("conditionsJson")]
     [JsonIgnore]
     public string? ConditionsJson { get; set; }
-
+    /// <summary>
+    /// Optional IRI of the named graph (branch or snapshot) from which the child
+    /// structure subtree and its associated context (geometry, metadata, etc.) should
+    /// be resolved. When non-null, <see cref="GetConfiguredTreeHandler"/> annotates the
+    /// child's <see cref="StructureNodeDto.SnapshotBranchIri"/> so callers can switch
+    /// their read context accordingly. Null means "inherit the query's default branch."
+    /// See Structure ADR-0006.
+    /// </summary>
+    [Predicate("snapshotIri")]
+    public string? SnapshotIri { get; set; }
     /// <summary>
     /// The set of applicability conditions (AND semantics). Backed by
     /// <see cref="ConditionsJson"/>: the setter serializes to JSON, the getter

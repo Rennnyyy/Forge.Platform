@@ -1,9 +1,12 @@
 using System.Text;
+using Forge.Branch;
 using Forge.Capability;
 using Forge.Execution;
 using Forge.ObjectStorage;
 using Forge.Repository;
 using Forge.Structure;
+using Microsoft.Extensions.DependencyInjection;
+using BranchEntity = Forge.Branch.Branch;
 
 namespace Forge.Application.Sample;
 
@@ -15,12 +18,12 @@ namespace Forge.Application.Sample;
 // echoes them so each test request can assert which values were populated.
 internal static class CarDemoValueIris
 {
-    public const string DrivetrainEv  = "urn:forge:car:drivetrain/ev";
+    public const string DrivetrainEv = "urn:forge:car:drivetrain/ev";
     public const string DrivetrainIce = "urn:forge:car:drivetrain/ice";
 
-    public const string TrimBase    = "urn:forge:car:trim/base";
-    public const string TrimSport   = "urn:forge:car:trim/sport";
-    public const string TrimLuxury  = "urn:forge:car:trim/luxury";
+    public const string TrimBase = "urn:forge:car:trim/base";
+    public const string TrimSport = "urn:forge:car:trim/sport";
+    public const string TrimLuxury = "urn:forge:car:trim/luxury";
 }
 
 // ── Time-era boundaries ──────────────────────────────────────────────────────
@@ -107,10 +110,14 @@ public sealed record PopulateCarDemoResponse(
     string TurbochargerIri,             // present only when date ≥ 2026
     string LuxuryInteriorIri,           // present only when date ≥ 2026 AND trim=luxury
     string RaceEditionPackIri,          // present only when date ≤ 2025
-    // ── Geometry layer summary ───────────────────────────────────────────────
-    int GeometryNodeCount,              // total number of Geometry nodes seeded
-    int GeometryUsageCount,             // total number of GeometryUsage edges seeded
-    // ── 3D geometry layer summary ──────────────────────────────────
+                                        // ── Snapshot geometry (Structure ADR-0006) ───────────────────────────────
+    string SteelFrameIri,               // IRI of the SteelFrame structure node
+    string GeometrySnapshotBranchIri,   // named graph IRI holding the v1 geometry snapshot (initial era)
+    string GeometryV2SnapshotBranchIri, // named graph IRI holding the v2 geometry snapshot (update-1 era)
+                                        // ── Geometry layer summary ───────────────────────────────────────────────
+    int GeometryNodeCount,              // total number of Geometry nodes seeded (all branches)
+    int GeometryUsageCount,             // total number of GeometryUsage edges seeded (all branches)
+                                        // ── 3D geometry layer summary ──────────────────────────────────
     int Geometry3dNodeCount,            // total number of Geometry3D nodes seeded
     int Geometry3dUsageCount);          // total number of GeometryUsage3D edges seeded
 
@@ -131,17 +138,29 @@ public sealed class PopulateCarDemoHandler
 {
     private readonly IEntityStore _store;
     private readonly IObjectStoreProvider _objectStoreProvider;
+    private readonly IEntityStore _managementStore;
 
-    public PopulateCarDemoHandler(IEntityStore store, IObjectStoreProvider objectStoreProvider)
+    // Branch IRIs for snapshot geometry versions (Structure ADR-0006).
+    // v1 = initial era steel-frame design, v2 = update-1 era aluminium redesign.
+    private const string GeometryV1SnapshotBranchIri =
+        "https://forge-it.net/branches/geometry-v1";
+    private const string GeometryV2SnapshotBranchIri =
+        "https://forge-it.net/branches/geometry-v2";
+
+    public PopulateCarDemoHandler(
+        IEntityStore store,
+        IObjectStoreProvider objectStoreProvider,
+        [FromKeyedServices("forge.branch.management")] IEntityStore managementStore)
     {
         _store = store;
         _objectStoreProvider = objectStoreProvider;
+        _managementStore = managementStore;
     }
 
     public async ValueTask<ExecutionResult<PopulateCarDemoResponse>> HandleAsync(
         PopulateCarDemoCommand command,
-        CapabilityContext        context,
-        CancellationToken        cancellationToken = default)
+        CapabilityContext context,
+        CancellationToken cancellationToken = default)
     {
         // ── ERA condition helpers (no captured locals) ────────────────────────
         // Edges only active from 2026 onward (update-1 additions)
@@ -187,13 +206,13 @@ public sealed class PopulateCarDemoHandler
             cancellationToken);
 
         // ── Chassis ───────────────────────────────────────────────────────────
-        var chassis     = await SaveNodeAsync("Chassis",              "Structural body.",                                                           cancellationToken);
-        var steelFrame  = await SaveNodeAsync("Steel Frame",          "Standard steel monocoque frame (both eras).",                                cancellationToken);
-        var alumFrame   = await SaveNodeAsync("Aluminium Space Frame","Lightweight multi-cell aluminium frame. Available from update-1 era only.", cancellationToken);
+        var chassis = await SaveNodeAsync("Chassis", "Structural body.", cancellationToken);
+        var steelFrame = await SaveNodeAsync("Steel Frame", "Standard steel monocoque frame (both eras).", cancellationToken);
+        var alumFrame = await SaveNodeAsync("Aluminium Space Frame", "Lightweight multi-cell aluminium frame. Available from update-1 era only.", cancellationToken);
 
-        await LinkAsync(car,      chassis,    ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(chassis,  steelFrame, ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(chassis,  alumFrame,  FromUpdateOne(),     cancellationToken); // ★ update-1+
+        await LinkAsync(car, chassis, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(chassis, steelFrame, ConditionSet.Empty, cancellationToken, GeometryV1SnapshotBranchIri); // ★ v1 geometry snapshot — initial era (ADR-0006)
+        await LinkAsync(chassis, alumFrame, FromUpdateOne(), cancellationToken, GeometryV2SnapshotBranchIri); // ★ v2 geometry snapshot — update-1 era (ADR-0006)
 
         // ── Powertrain ────────────────────────────────────────────────────────
         var powertrain = await SaveNodeAsync("Powertrain",
@@ -202,62 +221,62 @@ public sealed class PopulateCarDemoHandler
         await LinkAsync(car, powertrain, ConditionSet.Empty, cancellationToken);
 
         // EV Package sub-tree
-        var evPackage   = await SaveNodeAsync("EV Package",               "Electric drivetrain. Selected via drivetrain=ev.",                        cancellationToken);
-        var battPack    = await SaveNodeAsync("Battery Pack",             "High-voltage traction battery pack.",                                    cancellationToken);
-        var bms         = await SaveNodeAsync("Battery Management System","Per-cell voltage/temperature monitoring.",                               cancellationToken);
-        var thermalMgmt = await SaveNodeAsync("Thermal Management",       "Active cooling/heating for battery. Available from update-1 era only.", cancellationToken);
-        var eMachine    = await SaveNodeAsync("E-Machine",                "Electric motor assembly.",                                               cancellationToken);
-        var frontMotor  = await SaveNodeAsync("Front Motor",              "Front-axle drive unit (both eras).",                                    cancellationToken);
-        var rearMotor   = await SaveNodeAsync("Rear Motor",               "Rear-axle drive unit. Available from update-1 era only. Enables AWD.", cancellationToken);
+        var evPackage = await SaveNodeAsync("EV Package", "Electric drivetrain. Selected via drivetrain=ev.", cancellationToken);
+        var battPack = await SaveNodeAsync("Battery Pack", "High-voltage traction battery pack.", cancellationToken);
+        var bms = await SaveNodeAsync("Battery Management System", "Per-cell voltage/temperature monitoring.", cancellationToken);
+        var thermalMgmt = await SaveNodeAsync("Thermal Management", "Active cooling/heating for battery. Available from update-1 era only.", cancellationToken);
+        var eMachine = await SaveNodeAsync("E-Machine", "Electric motor assembly.", cancellationToken);
+        var frontMotor = await SaveNodeAsync("Front Motor", "Front-axle drive unit (both eras).", cancellationToken);
+        var rearMotor = await SaveNodeAsync("Rear Motor", "Rear-axle drive unit. Available from update-1 era only. Enables AWD.", cancellationToken);
 
-        await LinkAsync(powertrain, evPackage,   Drivetrain(CarDemoValueIris.DrivetrainEv), cancellationToken); // ★ drivetrain=ev
-        await LinkAsync(evPackage,  battPack,    ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(battPack,   bms,         ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(battPack,   thermalMgmt, FromUpdateOne(),     cancellationToken); // ★ update-1+
-        await LinkAsync(evPackage,  eMachine,    ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(eMachine,   frontMotor,  ConditionSet.Empty,  cancellationToken);
-        await LinkAsync(eMachine,   rearMotor,   FromUpdateOne(),     cancellationToken); // ★ update-1+
+        await LinkAsync(powertrain, evPackage, Drivetrain(CarDemoValueIris.DrivetrainEv), cancellationToken); // ★ drivetrain=ev
+        await LinkAsync(evPackage, battPack, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(battPack, bms, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(battPack, thermalMgmt, FromUpdateOne(), cancellationToken); // ★ update-1+
+        await LinkAsync(evPackage, eMachine, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(eMachine, frontMotor, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(eMachine, rearMotor, FromUpdateOne(), cancellationToken); // ★ update-1+
 
         // ICE Package sub-tree
-        var icePackage  = await SaveNodeAsync("ICE Package",           "Internal combustion drivetrain. Selected via drivetrain=ice.",            cancellationToken);
-        var combEngine  = await SaveNodeAsync("Combustion Engine",     "2.0 L petrol engine.",                                                    cancellationToken);
-        var turbo       = await SaveNodeAsync("Turbocharger",          "Twin-scroll turbocharger. Available from update-1 era only.",             cancellationToken);
-        var gearbox     = await SaveNodeAsync("Gearbox",               "Transmission assembly.",                                                  cancellationToken);
-        var manClutch   = await SaveNodeAsync("Manual Clutch",         "6-speed manual clutch. Available from update-1 era only.",               cancellationToken);
-        var autoTrans   = await SaveNodeAsync("Automatic Transmission","8-speed torque-converter auto. Available from update-1 era only.",       cancellationToken);
+        var icePackage = await SaveNodeAsync("ICE Package", "Internal combustion drivetrain. Selected via drivetrain=ice.", cancellationToken);
+        var combEngine = await SaveNodeAsync("Combustion Engine", "2.0 L petrol engine.", cancellationToken);
+        var turbo = await SaveNodeAsync("Turbocharger", "Twin-scroll turbocharger. Available from update-1 era only.", cancellationToken);
+        var gearbox = await SaveNodeAsync("Gearbox", "Transmission assembly.", cancellationToken);
+        var manClutch = await SaveNodeAsync("Manual Clutch", "6-speed manual clutch. Available from update-1 era only.", cancellationToken);
+        var autoTrans = await SaveNodeAsync("Automatic Transmission", "8-speed torque-converter auto. Available from update-1 era only.", cancellationToken);
 
         await LinkAsync(powertrain, icePackage, Drivetrain(CarDemoValueIris.DrivetrainIce), cancellationToken); // ★ drivetrain=ice
         await LinkAsync(icePackage, combEngine, ConditionSet.Empty, cancellationToken);
-        await LinkAsync(combEngine, turbo,      FromUpdateOne(),    cancellationToken); // ★ update-1+
-        await LinkAsync(icePackage, gearbox,    ConditionSet.Empty, cancellationToken);
-        await LinkAsync(gearbox,    manClutch,  FromUpdateOne(),    cancellationToken); // ★ update-1+
-        await LinkAsync(gearbox,    autoTrans,  FromUpdateOne(),    cancellationToken); // ★ update-1+
+        await LinkAsync(combEngine, turbo, FromUpdateOne(), cancellationToken); // ★ update-1+
+        await LinkAsync(icePackage, gearbox, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(gearbox, manClutch, FromUpdateOne(), cancellationToken); // ★ update-1+
+        await LinkAsync(gearbox, autoTrans, FromUpdateOne(), cancellationToken); // ★ update-1+
 
         // ── Interior ──────────────────────────────────────────────────────────
-        var interior     = await SaveNodeAsync("Interior",        "Cabin assembly. Three trim grades: base, sport, luxury (luxury: update-1 era only).", cancellationToken);
-        var baseInterior = await SaveNodeAsync("Base Interior",   "Entry-level interior. Selected via trim=base.",                                       cancellationToken);
-        var clothSeats   = await SaveNodeAsync("Cloth Seats",     "Standard cloth seat set.",                                                            cancellationToken);
-        var sportInterior= await SaveNodeAsync("Sport Interior",  "Sport-tuned interior. Selected via trim=sport.",                                      cancellationToken);
-        var sportSeats   = await SaveNodeAsync("Sport Seats",     "Bolstered bucket sport seats.",                                                       cancellationToken);
-        var luxInterior  = await SaveNodeAsync("Luxury Interior", "Premium interior. Selected via trim=luxury. Available from update-1 era only.",        cancellationToken);
-        var leatherSeats = await SaveNodeAsync("Leather Seats",   "Full-grain leather seat set.",                                                         cancellationToken);
-        var panoramaRoof = await SaveNodeAsync("Panorama Roof",   "Full-width glass panorama roof.",                                                      cancellationToken);
+        var interior = await SaveNodeAsync("Interior", "Cabin assembly. Three trim grades: base, sport, luxury (luxury: update-1 era only).", cancellationToken);
+        var baseInterior = await SaveNodeAsync("Base Interior", "Entry-level interior. Selected via trim=base.", cancellationToken);
+        var clothSeats = await SaveNodeAsync("Cloth Seats", "Standard cloth seat set.", cancellationToken);
+        var sportInterior = await SaveNodeAsync("Sport Interior", "Sport-tuned interior. Selected via trim=sport.", cancellationToken);
+        var sportSeats = await SaveNodeAsync("Sport Seats", "Bolstered bucket sport seats.", cancellationToken);
+        var luxInterior = await SaveNodeAsync("Luxury Interior", "Premium interior. Selected via trim=luxury. Available from update-1 era only.", cancellationToken);
+        var leatherSeats = await SaveNodeAsync("Leather Seats", "Full-grain leather seat set.", cancellationToken);
+        var panoramaRoof = await SaveNodeAsync("Panorama Roof", "Full-width glass panorama roof.", cancellationToken);
 
-        await LinkAsync(car,          interior,      ConditionSet.Empty,           cancellationToken);
-        await LinkAsync(interior,     baseInterior,  Trim(CarDemoValueIris.TrimBase),  cancellationToken); // ★ trim=base
-        await LinkAsync(baseInterior, clothSeats,    ConditionSet.Empty,           cancellationToken);
-        await LinkAsync(interior,     sportInterior, Trim(CarDemoValueIris.TrimSport), cancellationToken); // ★ trim=sport
-        await LinkAsync(sportInterior,sportSeats,    ConditionSet.Empty,           cancellationToken);
-        await LinkAsync(interior,     luxInterior,   TrimLuxuryFromUpdateOne(),    cancellationToken); // ★ trim=luxury AND 2026+
-        await LinkAsync(luxInterior,  leatherSeats,  ConditionSet.Empty,           cancellationToken);
-        await LinkAsync(luxInterior,  panoramaRoof,  ConditionSet.Empty,           cancellationToken);
+        await LinkAsync(car, interior, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(interior, baseInterior, Trim(CarDemoValueIris.TrimBase), cancellationToken); // ★ trim=base
+        await LinkAsync(baseInterior, clothSeats, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(interior, sportInterior, Trim(CarDemoValueIris.TrimSport), cancellationToken); // ★ trim=sport
+        await LinkAsync(sportInterior, sportSeats, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(interior, luxInterior, TrimLuxuryFromUpdateOne(), cancellationToken); // ★ trim=luxury AND 2026+
+        await LinkAsync(luxInterior, leatherSeats, ConditionSet.Empty, cancellationToken);
+        await LinkAsync(luxInterior, panoramaRoof, ConditionSet.Empty, cancellationToken);
 
         // ── Race Edition (initial era exclusive) ──────────────────────────────
-        var raceEdition = await SaveNodeAsync("Race Edition Pack","Track-focused option pack. Available during initial era only (discontinued after 2025).", cancellationToken);
-        var rollCage    = await SaveNodeAsync("Roll Cage",        "FIA-approved roll cage. Sub-component of Race Edition Pack.",                            cancellationToken);
+        var raceEdition = await SaveNodeAsync("Race Edition Pack", "Track-focused option pack. Available during initial era only (discontinued after 2025).", cancellationToken);
+        var rollCage = await SaveNodeAsync("Roll Cage", "FIA-approved roll cage. Sub-component of Race Edition Pack.", cancellationToken);
 
-        await LinkAsync(car,         raceEdition, UntilInitialEnd(), cancellationToken); // ★ until 2025-12-31
-        await LinkAsync(raceEdition, rollCage,    ConditionSet.Empty, cancellationToken);
+        await LinkAsync(car, raceEdition, UntilInitialEnd(), cancellationToken); // ★ until 2025-12-31
+        await LinkAsync(raceEdition, rollCage, ConditionSet.Empty, cancellationToken);
 
         // ── Geometry layer ────────────────────────────────────────────────────
         // Geometry nodes hold 2D SVG fragments in local coordinate space.
@@ -267,17 +286,29 @@ public sealed class PopulateCarDemoHandler
         // Car body local space: 540×200, placed at absolute canvas offset (10,20).
 
         // ── SVG fragments (local coordinate space, stroke="currentColor") ────
-        //   Car body outline — shared shape for steel and alum frames.
-        //   Axle dashes at local x=90 (rear) and x=450 (front).
-        const string SvgBodyBase =
-            """<rect x="0" y="0" width="540" height="200" rx="30" fill="none" stroke="currentColor" stroke-width="3"/>"""
+        //   SvgBodyBase and SvgBodyAlum removed — frame bodies are owned exclusively
+        //   by the v1/v2 snapshot branches (ADR-0006). Having them in the main branch
+        //   caused invisible overlaps at the same canvas position.
+
+        // v1.0 steel body snapshot — dashed silhouette + axle guides. Initial era design.
+        // Stored in the geometry-v1 snapshot branch (Structure ADR-0006).
+        const string SvgBodyV1 =
+            """<rect x="0" y="0" width="540" height="200" rx="30" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8,3"/>"""
             + """<line x1="90" y1="4" x2="90" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>"""
             + """<line x1="450" y1="4" x2="450" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>""";
 
-        const string SvgBodyAlum =
-            """<rect x="0" y="0" width="540" height="200" rx="30" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="14,4"/>"""
+        // v2.0 aluminium body snapshot — angular redesign with front splitter and rear diffuser.
+        // Stored in the geometry-v2 snapshot branch (update-1 era).
+        const string SvgBodyV2 =
+            """<rect x="0" y="0" width="540" height="200" rx="8" fill="none" stroke="currentColor" stroke-width="3"/>"""
             + """<line x1="90" y1="4" x2="90" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>"""
-            + """<line x1="450" y1="4" x2="450" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>""";
+            + """<line x1="450" y1="4" x2="450" y2="196" stroke="currentColor" stroke-width="1" stroke-dasharray="6,4"/>"""
+            + """<rect x="510" y="75" width="30" height="50" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>"""
+            + """<line x1="0" y1="65" x2="28" y2="65" stroke="currentColor" stroke-width="1.5"/>"""
+            + """<line x1="0" y1="100" x2="28" y2="100" stroke="currentColor" stroke-width="1.5"/>"""
+            + """<line x1="0" y1="135" x2="28" y2="135" stroke="currentColor" stroke-width="1.5"/>""";
+
+
 
         //   Wheel pair (top-down): two ellipses + axle shaft, local 60×200.
         //   Placed relative to car body at [1,0,0,1,420,-18] (front) or [1,0,0,1,60,-18] (rear).
@@ -321,35 +352,10 @@ public sealed class PopulateCarDemoHandler
             + """<line x1="60" y1="0" x2="60" y2="190" stroke="currentColor" stroke-width="2"/>"""
             + """<line x1="180" y1="0" x2="180" y2="190" stroke="currentColor" stroke-width="2"/>""";
 
-        // ── Geometry nodes ────────────────────────────────────────────────────
-        var geoSteelBody = await SaveGeometryAsync(
-            "Car Body Outline (Steel)",
-            "Top-down silhouette of the steel monocoque car body. Axle dashes at local x=90/450.",
-            SvgBodyBase, cancellationToken);
-
-        var geoAlumBody = await SaveGeometryAsync(
-            "Car Body Outline (Aluminium)",
-            "Top-down silhouette of the aluminium space-frame car body. Outer stroke dashed.",
-            SvgBodyAlum, cancellationToken);
-
-        // Wheel pairs — four separate entities, same SVG, different G→G placements.
-        var geoFWheelsSt = await SaveGeometryAsync(
-            "Front Wheel Pair (Steel)",
-            "Front axle wheel pair sub-geometry, relative to the steel car body outline.",
-            SvgWheels, cancellationToken);
-        var geoRWheelsSt = await SaveGeometryAsync(
-            "Rear Wheel Pair (Steel)",
-            "Rear axle wheel pair sub-geometry, relative to the steel car body outline.",
-            SvgWheels, cancellationToken);
-        var geoFWheelsAl = await SaveGeometryAsync(
-            "Front Wheel Pair (Aluminium)",
-            "Front axle wheel pair sub-geometry, relative to the aluminium car body outline.",
-            SvgWheels, cancellationToken);
-        var geoRWheelsAl = await SaveGeometryAsync(
-            "Rear Wheel Pair (Aluminium)",
-            "Rear axle wheel pair sub-geometry, relative to the aluminium car body outline.",
-            SvgWheels, cancellationToken);
-
+        // ── Geometry nodes (main branch) ──────────────────────────────────────
+        // Frame bodies and frame wheel pairs live exclusively in the snapshot
+        // branches (v1 / v2). The main branch only holds geometry for structural
+        // items that are not era-specific: battery, engine, cabin, rollcage.
         var geoBattery = await SaveGeometryAsync(
             "Floor Battery Pack",
             "Top-down view of the EV floor-mounted high-voltage battery. Placed in car centre.",
@@ -370,95 +376,166 @@ public sealed class PopulateCarDemoHandler
             "FIA roll cage: outer rect + X-brace + main hoop pillars over the cabin area.",
             SvgRollCage, cancellationToken);
 
-        // ── GeometryUsage edges ───────────────────────────────────────────────
-        // S→G: structure node → geometry node (absolute canvas placement).
-        await PlaceGeometryAsync(steelFrame.Iri, geoSteelBody,  [1, 0, 0, 1,  10, 20], cancellationToken);
-        await PlaceGeometryAsync(alumFrame.Iri,  geoAlumBody,   [1, 0, 0, 1,  10, 20], cancellationToken);
-        await PlaceGeometryAsync(battPack.Iri,   geoBattery,    [1, 0, 0, 1, 150, 70], cancellationToken);
-        await PlaceGeometryAsync(combEngine.Iri, geoEngine,     [1, 0, 0, 1, 455, 30], cancellationToken);
-        await PlaceGeometryAsync(interior.Iri,   geoCabin,      [1, 0, 0, 1, 135, 15], cancellationToken);
-        await PlaceGeometryAsync(rollCage.Iri,   geoRollCage,   [1, 0, 0, 1, 135, 15], cancellationToken);
+        // ── GeometryUsage edges (main branch) ──────────────────────────────────
+        // S→G placements for steelFrame and alumFrame are intentionally absent
+        // from the main branch — their geometry lives in the v1/v2 snapshot
+        // branches so that era changes produce a visible switch in the geometry
+        // assembly (ADR-0006).
 
-        // G→G: geometry node → sub-geometry (placement relative to parent geometry local space).
-        // Front axle: wheel center aligns with car body local x=450 → place at [1,0,0,1,420,-18].
-        // Rear axle:  wheel center aligns with car body local x=90  → place at [1,0,0,1,60,-18].
-        await PlaceGeometryAsync(geoSteelBody.Iri, geoFWheelsSt, [1, 0, 0, 1, 420, -18], cancellationToken);
-        await PlaceGeometryAsync(geoSteelBody.Iri, geoRWheelsSt, [1, 0, 0, 1,  60, -18], cancellationToken);
-        await PlaceGeometryAsync(geoAlumBody.Iri,  geoFWheelsAl, [1, 0, 0, 1, 420, -18], cancellationToken);
-        await PlaceGeometryAsync(geoAlumBody.Iri,  geoRWheelsAl, [1, 0, 0, 1,  60, -18], cancellationToken);
+        // ── Geometry snapshot (v1.0) — stored in the geometry-v1 branch ─────────────
+        // The v1 outline uses a simple dashed rectangle without the axle guide
+        // lines present in the current (v2) SvgBodyBase. The Usage edge from
+        // Chassis → SteelFrame carries SnapshotIri = GeometryV1SnapshotBranchIri,
+        // so the configured-tree response annotates SteelFrame (and its descendants)
+        // with snapshotBranchIri. Clients fetch geometry from that branch to obtain v1.
+        //
+        // A real Branch entity is registered in the management graph so that
+        // BranchScopeMiddleware allows HTTP requests scoped to this named graph.
+        // ── Geometry snapshot v1.0 (initial era, steel frame) ────────────────
+        var geomV1Branch = new BranchEntity
+        {
+            Name = "geometry-v1",
+            Description = "Snapshot branch: v1.0 steel-frame geometry (initial era). Body outline + wheel pairs. Structure ADR-0006.",
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        await _managementStore.SaveAsync(geomV1Branch, cancellationToken: cancellationToken);
+
+        using (BranchScope.Use(GeometryV1SnapshotBranchIri))
+        {
+            // 2D geometry
+            var geoSteelBodyV1 = await SaveGeometryAsync(
+                "Car Body Outline (Steel) v1.0",
+                "Snapshot v1.0 steel monocoque silhouette with axle guides. Stored in the geometry-v1 branch.",
+                SvgBodyV1, cancellationToken);
+            var geoFWheelsV1 = await SaveGeometryAsync(
+                "Front Wheel Pair v1.0",
+                "Front axle wheel pair for the v1.0 steel body snapshot.",
+                SvgWheels, cancellationToken);
+            var geoRWheelsV1 = await SaveGeometryAsync(
+                "Rear Wheel Pair v1.0",
+                "Rear axle wheel pair for the v1.0 steel body snapshot.",
+                SvgWheels, cancellationToken);
+            await PlaceGeometryAsync(steelFrame.Iri, geoSteelBodyV1, [1, 0, 0, 1, 10, 20], cancellationToken);
+            await PlaceGeometryAsync(geoSteelBodyV1.Iri, geoFWheelsV1, [1, 0, 0, 1, 420, -18], cancellationToken);
+            await PlaceGeometryAsync(geoSteelBodyV1.Iri, geoRWheelsV1, [1, 0, 0, 1, 60, -18], cancellationToken);
+
+            // 3D geometry — body same shape as steel sedan; wheels scaled to 0.35 (very small, prototype era).
+            // Scale+translate matrix: [s,0,0,0, 0,s,0,0, 0,0,s,0, tx,ty,tz,1] (column-major 4×4).
+            var geo3dBodyV1 = await SaveGeometry3dAsync(
+                "Car Body 3D v1.0",
+                "Steel sedan body — prototype era snapshot. Same OBJ silhouette as main branch.",
+                ObjCarBody, cancellationToken);
+            var geo3dTinyWheel = await SaveGeometry3dAsync(
+                "Tiny Wheel 3D v1.0",
+                "Prototype-era wheel: standard disc scaled to 35 % — stubby kart-style tires.",
+                ObjWheelDisc, cancellationToken);
+            await PlaceGeometry3dAsync(steelFrame.Iri, geo3dBodyV1,
+                [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], cancellationToken);    // S→G3D identity
+            await PlaceGeometry3dAsync(geo3dBodyV1.Iri, geo3dTinyWheel,
+                [0.35, 0, 0, 0, 0, 0.35, 0, 0, 0, 0, 0.35, 0, 0.85, 0.0, -0.65, 1], cancellationToken); // FL
+            await PlaceGeometry3dAsync(geo3dBodyV1.Iri, geo3dTinyWheel,
+                [0.35, 0, 0, 0, 0, 0.35, 0, 0, 0, 0, 0.35, 0, 0.85, 0.0, 0.65, 1], cancellationToken); // FR
+            await PlaceGeometry3dAsync(geo3dBodyV1.Iri, geo3dTinyWheel,
+                [0.35, 0, 0, 0, 0, 0.35, 0, 0, 0, 0, 0.35, 0, -0.85, 0.0, -0.65, 1], cancellationToken); // RL
+            await PlaceGeometry3dAsync(geo3dBodyV1.Iri, geo3dTinyWheel,
+                [0.35, 0, 0, 0, 0, 0.35, 0, 0, 0, 0, 0.35, 0, -0.85, 0.0, 0.65, 1], cancellationToken); // RR
+        }
+
+        // ── Geometry snapshot v2.0 (update-1 era, aluminium frame redesign) ──
+        var geomV2Branch = new BranchEntity
+        {
+            Name = "geometry-v2",
+            Description = "Snapshot branch: v2.0 aluminium-frame geometry (update-1 era). Angular body redesign with front splitter and rear diffuser + wheel pairs. Structure ADR-0006.",
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        await _managementStore.SaveAsync(geomV2Branch, cancellationToken: cancellationToken);
+
+        using (BranchScope.Use(GeometryV2SnapshotBranchIri))
+        {
+            // 2D geometry
+            var geoAlumBodyV2 = await SaveGeometryAsync(
+                "Car Body Outline (Aluminium) v2.0",
+                "Snapshot v2.0 aluminium redesign: angular silhouette (rx=8) with front splitter and rear diffuser channels. Stored in the geometry-v2 branch.",
+                SvgBodyV2, cancellationToken);
+            var geoFWheelsV2 = await SaveGeometryAsync(
+                "Front Wheel Pair v2.0",
+                "Front axle wheel pair for the v2.0 aluminium body snapshot.",
+                SvgWheels, cancellationToken);
+            var geoRWheelsV2 = await SaveGeometryAsync(
+                "Rear Wheel Pair v2.0",
+                "Rear axle wheel pair for the v2.0 aluminium body snapshot.",
+                SvgWheels, cancellationToken);
+            await PlaceGeometryAsync(alumFrame.Iri, geoAlumBodyV2, [1, 0, 0, 1, 10, 20], cancellationToken);
+            await PlaceGeometryAsync(geoAlumBodyV2.Iri, geoFWheelsV2, [1, 0, 0, 1, 420, -18], cancellationToken);
+            await PlaceGeometryAsync(geoAlumBodyV2.Iri, geoRWheelsV2, [1, 0, 0, 1, 60, -18], cancellationToken);
+
+            // 3D geometry — angular aluminium body; performance wheels scaled to 1.1 (wider look).
+            var geo3dBodyV2 = await SaveGeometry3dAsync(
+                "Car Body 3D v2.0",
+                "Aluminium space-frame body — update-1 era redesign. Same sedan-sports OBJ as main branch.",
+                ObjAlumBody, cancellationToken);
+            var geo3dPerfWheel = await SaveGeometry3dAsync(
+                "Performance Wheel 3D v2.0",
+                "Update-1 era performance wheel: standard disc scaled to 110 % — wider low-profile look.",
+                ObjWheelDisc, cancellationToken);
+            await PlaceGeometry3dAsync(alumFrame.Iri, geo3dBodyV2,
+                [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], cancellationToken);    // S→G3D identity
+            await PlaceGeometry3dAsync(geo3dBodyV2.Iri, geo3dPerfWheel,
+                [1.1, 0, 0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 0, 0.85, 0.0, -0.55, 1], cancellationToken); // FL
+            await PlaceGeometry3dAsync(geo3dBodyV2.Iri, geo3dPerfWheel,
+                [1.1, 0, 0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 0, 0.85, 0.0, 0.55, 1], cancellationToken); // FR
+            await PlaceGeometry3dAsync(geo3dBodyV2.Iri, geo3dPerfWheel,
+                [1.1, 0, 0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 0, -0.85, 0.0, -0.55, 1], cancellationToken); // RL
+            await PlaceGeometry3dAsync(geo3dBodyV2.Iri, geo3dPerfWheel,
+                [1.1, 0, 0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 0, -0.85, 0.0, 0.55, 1], cancellationToken); // RR
+        }
+        await PlaceGeometryAsync(battPack.Iri, geoBattery, [1, 0, 0, 1, 150, 70], cancellationToken);
+        await PlaceGeometryAsync(combEngine.Iri, geoEngine, [1, 0, 0, 1, 455, 30], cancellationToken);
+        await PlaceGeometryAsync(interior.Iri, geoCabin, [1, 0, 0, 1, 135, 15], cancellationToken);
+        await PlaceGeometryAsync(rollCage.Iri, geoRollCage, [1, 0, 0, 1, 135, 15], cancellationToken);
+
+        // Note: G→G wheel sub-placements for frame bodies are in the respective snapshot branches.
         // ── Geometry3D layer ───────────────────────────────────────────────
         // 3 geometry3d nodes: shared shapes (car body, wheel disc, battery)
-        var geo3dBody = await SaveGeometry3dAsync(
-            "Car Body 3D",
-            "Kenney Car Kit sedan (CC0): 2.55×1.3×1.5 m — X=length/±1.275, Y=height/-0.30..1.0, Z=width/±0.75.",
-            ObjCarBody, cancellationToken);
-        var geo3dWheel = await SaveGeometry3dAsync(
-            "Wheel 3D",
-            "Kenney Car Kit wheel-default (CC0): r=0.30 m, tread w=0.40 m, axis along Z (±0.20).",
-            ObjWheelDisc, cancellationToken);
+        // Main branch 3D nodes: battery and exhaust only.
+        // Car body and wheel 3D geometry is owned by the snapshot branches so
+        // era changes produce a visible 3D switch (no duplicate meshes at ±identity).
         var geo3dBattery = await SaveGeometry3dAsync(
             "Battery Pack 3D",
             "EV battery pack: box 1.2×0.15×0.8 m, embedded in the car floor.",
             ObjBatteryPack, cancellationToken);
-        var geo3dAlumBody = await SaveGeometry3dAsync(
-            "Aluminium Chassis Body 3D",
-            "Kenney Car Kit sedan-sports (CC0): 2.55×1.1×1.3 m — lower and narrower than steel, update-1 era.",
-            ObjAlumBody, cancellationToken);
 
-        // 6 geometry3d usage edges
-        // S→G3D: steelFrame → carBody3d  (identity — body centred on frame)
-        await PlaceGeometry3dAsync(steelFrame.Iri, geo3dBody,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], cancellationToken);
-        // G3D→G3D: body → four wheel instances (translation only; cylinder axis = Z = wheel axis)
-        // Kenney sedan: X=front (+), Z=right (+); axles at X≈±0.85, wheel track Z≈±0.65
-        await PlaceGeometry3dAsync(geo3dBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.85,0.0,-0.65,1], cancellationToken); // FL
-        await PlaceGeometry3dAsync(geo3dBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.85,0.0, 0.65,1], cancellationToken); // FR
-        await PlaceGeometry3dAsync(geo3dBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, -0.85,0.0,-0.65,1], cancellationToken); // RL
-        await PlaceGeometry3dAsync(geo3dBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, -0.85,0.0, 0.65,1], cancellationToken); // RR
-        // G3D→G3D: body → battery pack (centred under floor, EV-only visibility handled structurally)
-        await PlaceGeometry3dAsync(geo3dBody.Iri, geo3dBattery,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, 0.0,-0.28,0.0,1], cancellationToken);
-        // S→G3D: alumFrame → alum body (update-1 era only — appears when alumFrame is reachable)
-        await PlaceGeometry3dAsync(alumFrame.Iri, geo3dAlumBody,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], cancellationToken);
-        // G3D→G3D: alum body → four wheels (sedan-sports: narrower track ±0.55 vs sedan ±0.65)
-        await PlaceGeometry3dAsync(geo3dAlumBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.85,0.0,-0.55,1], cancellationToken); // FL
-        await PlaceGeometry3dAsync(geo3dAlumBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0,  0.85,0.0, 0.55,1], cancellationToken); // FR
-        await PlaceGeometry3dAsync(geo3dAlumBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, -0.85,0.0,-0.55,1], cancellationToken); // RL
-        await PlaceGeometry3dAsync(geo3dAlumBody.Iri, geo3dWheel,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, -0.85,0.0, 0.55,1], cancellationToken); // RR
+        // S→G3D: battPack → battery (floor level, Y=-0.28; EV-only visibility handled structurally)
+        await PlaceGeometry3dAsync(battPack.Iri, geo3dBattery,
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.0, -0.28, 0.0, 1], cancellationToken);
         // S→G3D: combEngine → exhaust pipe (ICE only — appears when drivetrain=ice)
         var geo3dExhaust = await SaveGeometry3dAsync(
             "Exhaust Pipe 3D",
             "Single right-side rear exhaust: rectangular main run (0.05×0.04 m, 1.28 m long) with a flared exit tip. Only visible on ICE drivetrain.",
             ObjExhaustPipe, cancellationToken);
         await PlaceGeometry3dAsync(combEngine.Iri, geo3dExhaust,
-            [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], cancellationToken);
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], cancellationToken);
         // ── Return ────────────────────────────────────────────────────────────
         return new ExecutionResult<PopulateCarDemoResponse>.Ok(new PopulateCarDemoResponse(
-            BranchIri:             command.BranchIri,
-            CarIri:                car.Iri,
+            BranchIri: command.BranchIri,
+            CarIri: car.Iri,
             DrivetrainDimensionIri: drivetrainDim.Iri,
-            TrimDimensionIri:      trimDim.Iri,
-            EvPackageIri:          evPackage.Iri,
-            IcePackageIri:         icePackage.Iri,
-            AluminiumFrameIri:     alumFrame.Iri,
-            ThermalManagementIri:  thermalMgmt.Iri,
-            RearMotorIri:          rearMotor.Iri,
-            TurbochargerIri:       turbo.Iri,
-            LuxuryInteriorIri:     luxInterior.Iri,
-            RaceEditionPackIri:    raceEdition.Iri,
-            GeometryNodeCount:     10,
-            GeometryUsageCount:    10,
-            Geometry3dNodeCount:   5,
-            Geometry3dUsageCount:  12));
+            TrimDimensionIri: trimDim.Iri,
+            EvPackageIri: evPackage.Iri,
+            IcePackageIri: icePackage.Iri,
+            AluminiumFrameIri: alumFrame.Iri,
+            ThermalManagementIri: thermalMgmt.Iri,
+            RearMotorIri: rearMotor.Iri,
+            TurbochargerIri: turbo.Iri,
+            LuxuryInteriorIri: luxInterior.Iri,
+            RaceEditionPackIri: raceEdition.Iri,
+            SteelFrameIri: steelFrame.Iri,
+            GeometrySnapshotBranchIri: GeometryV1SnapshotBranchIri,
+            GeometryV2SnapshotBranchIri: GeometryV2SnapshotBranchIri,
+            GeometryNodeCount: 10,   // 4 main + 3 v1-snapshot + 3 v2-snapshot
+            GeometryUsageCount: 10,   // 4 main + 3 v1-snapshot + 3 v2-snapshot
+            Geometry3dNodeCount: 6,    // 2 main (battery + exhaust) + 2 v1-snapshot + 2 v2-snapshot
+            Geometry3dUsageCount: 12)); // 2 main + 5 v1-snapshot + 5 v2-snapshot
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -480,13 +557,15 @@ public sealed class PopulateCarDemoHandler
     }
 
     private async ValueTask LinkAsync(Node parent, Node child,
-        ConditionSet conditions, CancellationToken cancellationToken)
+        ConditionSet conditions, CancellationToken cancellationToken,
+        string? snapshotIri = null)
     {
         var usage = new Usage
         {
             ParentStructureIri = parent.Iri,
-            ChildStructureIri  = child.Iri,
-            Conditions         = conditions,
+            ChildStructureIri = child.Iri,
+            Conditions = conditions,
+            SnapshotIri = snapshotIri,
         };
         await _store.SaveAsync(usage, cancellationToken: cancellationToken);
     }
@@ -506,9 +585,9 @@ public sealed class PopulateCarDemoHandler
     {
         var usage = new GeometryUsage
         {
-            ParentIri        = parentIri,
+            ParentIri = parentIri,
             ChildGeometryIri = child.Iri,
-            Matrix           = matrix,
+            Matrix = matrix,
         };
         await _store.SaveAsync(usage, cancellationToken: cancellationToken);
     }
@@ -528,7 +607,7 @@ public sealed class PopulateCarDemoHandler
             var bytes = Encoding.UTF8.GetBytes(objContent);
             await objectStore.UploadAsync(key, new MemoryStream(bytes), "text/plain", cancellationToken)
                              .ConfigureAwait(false);
-            geo.ObjectKey   = key;
+            geo.ObjectKey = key;
             geo.ContentType = "text/plain";
         }
 
@@ -542,9 +621,9 @@ public sealed class PopulateCarDemoHandler
     {
         var usage = new GeometryUsage3D
         {
-            ParentIri           = parentIri,
-            ChildGeometry3dIri  = child.Iri,
-            Matrix3d            = matrix3d,
+            ParentIri = parentIri,
+            ChildGeometry3dIri = child.Iri,
+            Matrix3d = matrix3d,
         };
         await _store.SaveAsync(usage, cancellationToken: cancellationToken);
     }

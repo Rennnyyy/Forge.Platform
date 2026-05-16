@@ -67,7 +67,7 @@ public sealed class StructureScopeTests
     [Fact]
     public void Scope_restores_previous_configuration_on_dispose()
     {
-        var first  = MakeConfig("https://forge-it.net/branches/first");
+        var first = MakeConfig("https://forge-it.net/branches/first");
         var second = MakeConfig("https://forge-it.net/branches/second");
 
         using var outerScope = StructureScope.Use(first);

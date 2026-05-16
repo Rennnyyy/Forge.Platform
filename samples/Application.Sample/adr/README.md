@@ -20,3 +20,7 @@ See [root ADR README](../../../adr/README.md) for format and rules.
 - [0010 — Entity messaging demo chapter (Bruno 17-entity-messaging-demo)](0010-entity-messaging-demo-chapter.md)
 - [0011 — Track masters object storage demo (Bruno 19-track-masters)](0011-track-masters-object-storage-demo.md)
 - [0012 — Variant tree demonstration chapter (Bruno 21-variant-tree)](0012-variant-tree-demo.md)
+- [0013 — Car demo chapter (Bruno 22-car-build)](0013-car-demo-chapter.md)
+- [0014 — Geometry snapshot demonstration chapter (Bruno 23-geometry-snapshot)](0014-geometry-snapshot-demo.md)
+- [0015 — Big-car sample: 7-level tree, 6 000 leaf nodes, 4 000 geometry shapes (Bruno 24-big-car-sample)](0015-big-car-sample.md)
+- [0016 — Geometry3D bundle download endpoint (`GET api/objects/geometry3d-nodes/bundle`)](0016-geometry-bundle-download.md)

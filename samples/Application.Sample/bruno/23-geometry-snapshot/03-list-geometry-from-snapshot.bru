@@ -1,0 +1,37 @@
+meta {
+  name: Geometry snapshot - list geometry from v1 snapshot branch (count=3)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/entities/geometry-nodes
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{geomSnapshotBranchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}
+
+script:post-response {
+  test("Exactly 3 geometry (2D) nodes in the v1 snapshot branch (body + 2 wheel pairs)", () => {
+    expect(res.body.items.length).to.equal(3);
+  });
+
+  test("The v1 snapshot branch contains the v1.0 steel body outline (2D)", () => {
+    const names = res.body.items.map(n => n.name);
+    expect(names.some(n => n.includes("v1.0") && n.toLowerCase().includes("body"))).to.be.true;
+  });
+
+  test("The v1 snapshot branch contains front and rear wheel pairs (2D)", () => {
+    const names = res.body.items.map(n => n.name);
+    expect(names.some(n => n.toLowerCase().includes("front") && n.includes("v1.0"))).to.be.true;
+    expect(names.some(n => n.toLowerCase().includes("rear")  && n.includes("v1.0"))).to.be.true;
+  });
+}

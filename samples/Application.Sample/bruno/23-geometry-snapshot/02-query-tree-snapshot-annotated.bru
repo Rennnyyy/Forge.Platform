@@ -1,0 +1,56 @@
+meta {
+  name: Geometry snapshot - verify snapshotBranchIri on SteelFrame (v1) and AlumFrame (v2)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "referenceDate": "2025-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{carIri}}
+}
+
+script:post-response {
+  // Walk the tree DFS and find the node matching `targetIri`.
+  function findNode(node, targetIri) {
+    if (node.iri === targetIri) return node;
+    for (const c of (node.children || [])) {
+      const found = findNode(c, targetIri);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // ── Initial era (2025) — SteelFrame must carry geometry-v1 snapshotBranchIri ──
+  const steelFrameNode = findNode(res.body.root, bru.getVar("steelFrameIri"));
+  const v1Branch = bru.getVar("geomSnapshotBranchIri");
+
+  test("SteelFrame node is reachable in the initial-era configured tree", () => {
+    expect(steelFrameNode).to.not.be.null;
+  });
+
+  test("SteelFrame node carries snapshotBranchIri set to the geometry-v1 branch", () => {
+    expect(steelFrameNode?.snapshotBranchIri).to.equal(v1Branch);
+  });
+
+  test("Root car node has no snapshotBranchIri", () => {
+    expect(res.body.root.snapshotBranchIri).to.be.null;
+  });
+}

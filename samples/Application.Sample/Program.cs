@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text.Json;
 using Forge.Application.Sample;
 using Forge.Aspects;
 using Forge.Aspects.Abstractions;
@@ -26,6 +28,7 @@ using Forge.Repository.GraphDb.DependencyInjection;
 using Forge.Repository.InMemory.DependencyInjection;
 using Forge.Entity.Messaging.DependencyInjection;
 using Forge.Messaging.InMemory.DependencyInjection;
+using Forge.ObjectStorage;
 using Forge.ObjectStorage.Http;
 using Forge.ObjectStorage.Http.DependencyInjection;
 using Forge.ObjectStorage.InMemory.DependencyInjection;
@@ -217,6 +220,83 @@ app.MapOperations();
 //
 // See ObjectStorage.Http ADR-0001 and root ADR-0019.
 app.MapObjectOperations();
+
+// ── 8a3. Geometry3D bundle download endpoint ─────────────────────────────────────────
+// Packages all Geometry3D OBJ blobs stored in the current branch into a single
+// ZIP archive (≈ 1 MB for 4 000 standard-part boxes) and serves it as one download.
+// Branch isolation is provided automatically via UseBranchScope() / X-Forge-BranchIri header.
+//
+//   GET  api/objects/geometry3d-nodes/bundle
+//     → application/zip
+//     → Content-Disposition: attachment; filename="geometry3d-bundle.zip"
+//
+// Entities with no ObjectKey (metadata-only) and keys that are missing from the object
+// store are silently skipped. A manifest.json entry inside the ZIP lists every included
+// file with its entity IRI and name. See sample ADR-0016.
+app.MapGet("/api/objects/geometry3d-nodes/bundle", async (
+    HttpContext ctx,
+    IEntityStore store,
+    IObjectStoreProvider objectStoreProvider) =>
+{
+    using var _ops = EntityOperations.Use(store);
+    var objectStore = objectStoreProvider.GetStore(Geometry3D.ForgeObjectStoreKey);
+
+    // Gather all blobs into memory so the ZipArchive can be written to an in-memory
+    // buffer before streaming to the response (avoids seeking constraints on Response.Body).
+    var entries = new List<(string Iri, string Name, string FileName, byte[] Data)>();
+    int index = 0;
+    await foreach (var entity in EntityOperations.ListAsync<Geometry3D>())
+    {
+        if (entity.ObjectKey is null) continue;
+        try
+        {
+            await using var contentStream = await objectStore.DownloadAsync(
+                entity.ObjectKey, ctx.RequestAborted);
+            using var ms = new MemoryStream();
+            await contentStream.CopyToAsync(ms, ctx.RequestAborted);
+            var safeName = SanitizeFileName(entity.Name) + $"_{index:D5}.obj";
+            entries.Add((entity.Iri, entity.Name, safeName, ms.ToArray()));
+            index++;
+        }
+        catch (ObjectNotFoundException)
+        {
+            // Blob missing from store (orphaned key) — skip silently.
+        }
+    }
+
+    // Build ZIP in a MemoryStream then stream it to the client.
+    var zipBuffer = new MemoryStream();
+    using (var zip = new ZipArchive(zipBuffer, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        foreach (var (_, _, fileName, data) in entries)
+        {
+            var zipEntry = zip.CreateEntry(fileName, CompressionLevel.Fastest);
+            await using var es = zipEntry.Open();
+            await es.WriteAsync(data, ctx.RequestAborted);
+        }
+
+        // manifest.json: [{"iri": ..., "name": ..., "fileName": ...}, ...]
+        var manifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
+        await using var mf = manifestEntry.Open();
+        var manifestData = entries.Select(e => new { iri = e.Iri, name = e.Name, fileName = e.FileName });
+        await JsonSerializer.SerializeAsync(mf, manifestData,
+            new JsonSerializerOptions { WriteIndented = false }, ctx.RequestAborted);
+    }
+
+    zipBuffer.Position = 0;
+    return Results.Stream(
+        async outputStream => await zipBuffer.CopyToAsync(outputStream, ctx.RequestAborted),
+        contentType: "application/zip",
+        fileDownloadName: "geometry3d-bundle.zip");
+});
+
+static string SanitizeFileName(string name)
+{
+    var chars = new char[name.Length];
+    for (int i = 0; i < name.Length; i++)
+        chars[i] = char.IsLetterOrDigit(name[i]) ? name[i] : '_';
+    return new string(chars).TrimEnd('_');
+}
 
 // ── 8b. Branch management endpoints ──────────────────────────────────────────
 // Maps five REST endpoints for Branch CRUD under api/branches.

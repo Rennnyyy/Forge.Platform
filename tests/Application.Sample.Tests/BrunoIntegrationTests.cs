@@ -623,6 +623,69 @@ public sealed class BrunoIntegrationTests : IAsyncLifetime
             $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
     }
 
+    /// <summary>
+    /// Chapter 23 — Geometry snapshot demo: per-edge branch annotation via <c>Usage.SnapshotIri</c>.
+    /// <list type="bullet">
+    ///   <item>POST <c>api/capabilities/car/demo/populate</c> — seeds 11 geometry nodes (10 on main
+    ///         + 1 v1.0 steel-outline on the geometry-v1 snapshot branch)</item>
+    ///   <item>POST <c>structure/configured-tree/get</c> — verifies that the SteelFrame node carries
+    ///         <c>snapshotBranchIri</c> equal to the geometry-v1 branch IRI; verifies root is null</item>
+    ///   <item>GET <c>api/entities/geometry-nodes</c> with snapshot branch header — verifies exactly
+    ///         one node (the v1.0 outline) is visible in the snapshot named graph</item>
+    /// </list>
+    /// See Sample ADR-0014 and Structure ADR-0006.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_23_geometry_snapshot_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "23-geometry-snapshot");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
+    /// <summary>
+    /// Chapter 24 — Big-car sample: large-scale geometry with mass download.
+    /// <list type="bullet">
+    ///   <item>POST <c>api/capabilities/car/demo/big/populate</c> — seeds 7 576 structure nodes
+    ///         across 7 levels, 4 000 unique <c>Geometry3D</c> nodes (standard-part boxes), and
+    ///         10 000 <c>GeometryUsage3D</c> placements (average reuse 2.5×).
+    ///         Uses a 120-second per-request timeout because the operation creates ≈ 29 000 entities.</item>
+    ///   <item>POST <c>api/capabilities/structure/configured-tree/get</c> — queries the full
+    ///         7 576-node tree (all unconditional edges) from the big-car root.</item>
+    ///   <item>GET <c>api/objects/geometry3d-nodes/bundle</c> — downloads all 4 000 OBJ blobs as
+    ///         a single ZIP archive; asserts <c>application/zip</c> content-type and the
+    ///         <c>geometry3d-bundle.zip</c> filename in the <c>Content-Disposition</c> header.</item>
+    /// </list>
+    /// See Sample ADR-0015, ADR-0016, and root ADR-0027.
+    /// </summary>
+    [SkippableFact]
+    public async Task Bruno_24_big_car_sample_requests_all_pass()
+    {
+        Skip.If(!IsNpxAvailable(), "npx not found on PATH — install Node.js to enable Bruno integration tests.");
+
+        var repoRoot = FindRepoRoot();
+        var collectionRoot = Path.Combine(repoRoot, "samples", "Application.Sample", "bruno");
+        var chapterDir = Path.Combine(collectionRoot, "24-big-car-sample");
+
+        Directory.Exists(collectionRoot).ShouldBeTrue($"Bruno collection root not found at '{collectionRoot}'.");
+        Directory.Exists(chapterDir).ShouldBeTrue($"Bruno chapter folder not found at '{chapterDir}'.");
+
+        var (exitCode, output) = await RunBrunoAsync(collectionRoot, chapterDir, _baseUrl);
+
+        exitCode.ShouldBe(0,
+            $"Bruno exited with code {exitCode} — one or more requests failed.\nOutput:\n{output}");
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private static Process StartSampleApp(int port)

@@ -6,6 +6,7 @@
   <title>Forge.Platform — Car Demo Live</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
   <style>
     /* ── Connection panel ── */
     .connect-panel {
@@ -258,6 +259,45 @@
       border: 1px dashed #b0bec5;
       background: #0d1117;
     }
+    /* ── Big sample section ── */
+    .big-sample-panel {
+      background: #f0f4f0;
+      border: 1px solid #b8cdb8;
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .big-sample-panel h3 {
+      margin: 0 0 .6rem;
+      font-size: .95rem;
+      color: #1a202c;
+    }
+    .big-sample-panel p {
+      margin: 0 0 .85rem;
+      font-size: .875rem;
+      color: #444;
+      line-height: 1.55;
+    }
+    .big-sample-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .5rem .75rem;
+      margin: .75rem 0 1rem;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid #d0dce8;
+      border-radius: 6px;
+      padding: .55rem .8rem;
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+    }
+    .stat-card .stat-label { font-size: .73rem; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: .04em; }
+    .stat-card .stat-value { font-size: 1.35rem; font-weight: 700; color: #1a4a7e; font-variant-numeric: tabular-nums; }
+    .btn-success { background: #1e6b42; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #185a38; }
+    .btn-success:disabled { background: #7eab94; cursor: not-allowed; }
   </style>
 <script type="importmap">
 { "imports": {
@@ -308,6 +348,8 @@
           <input id="inp-branch-iri" type="text" value="https://forge-it.net/branches/main" spellcheck="false">
         </div>
         <button class="btn btn-primary" id="btn-populate" onclick="runPopulate()">Populate</button>
+        <button class="btn btn-success" id="btn-big-populate" onclick="runBigPopulate()">Big Sample</button>
+        <button class="btn btn-success" id="btn-download-bundle" onclick="downloadBundle()" style="display:none" title="Download all Geometry3D OBJ files as one ZIP">Download ZIP</button>
         <button class="btn btn-danger" id="btn-reset" onclick="resetState()" title="Clear local state (does not delete server data)">Reset</button>
       </div>
     </div>
@@ -326,7 +368,7 @@
         <label>Milestone era</label>
         <select id="sel-era" onchange="onFilterChange()" disabled>
           <option value="current">Current date (server default)</option>
-          <option value="initial">Initial era (2025-06-01)</option>
+          <option value="initial" selected>Initial era (2025-06-01)</option>
           <option value="update1">Update-1 era (2026-06-01)</option>
         </select>
       </div>
@@ -365,6 +407,7 @@
     <span class="legend-item"><span class="swatch" style="background:#c43c35"></span> Update-1 era addition</span>
     <span class="legend-item"><span class="swatch" style="background:#d4860a"></span> Initial era exclusive</span>
     <span class="legend-item"><span class="swatch-diamond" style="color:#1e6295"></span> Geometry node ◇</span>
+    <span class="legend-item"><span class="swatch" style="background:#fff;border:2px dashed #0f766e;box-sizing:border-box"></span> Snapshot-pinned ⏸</span>
   </div>
 
   <!-- ── Structure tree panel ── -->
@@ -431,6 +474,7 @@
     </div>
   </details>
 
+
 </main>
 
 <script>
@@ -462,9 +506,12 @@ var state = {
   thermalManagementIri: null,
   rearMotorIri:         null,
   turbochargerIri:      null,
-  luxuryInteriorIri:    null,
-  raceEditionPackIri:   null,
-  iriToName:            {},
+  luxuryInteriorIri:            null,
+  raceEditionPackIri:           null,
+  steelFrameIri:                null,
+  geometrySnapshotBranchIri:    null,
+  geometryV2SnapshotBranchIri:  null,
+  iriToName:                    {},
   update1Iris:          new Set(),
   initExclusiveIris:    new Set(),
   // geometry layer
@@ -584,15 +631,26 @@ function augmentNodeWithGeo(dto) {
 }
 
 // ── Convert API tree DTO to ECharts tree node ──────────────────────────────
+// Nodes with a snapshotBranchIri get a dashed blue border and a ⌷ suffix to
+// indicate that their geometry is pinned to a separate named-graph branch.
 function toEChartsNode(dto, parentColor) {
-  var isGeo = !!dto.isGeo;
-  var color = isGeo ? C.geom : colorForIri(dto.iri, parentColor);
+  var isGeo    = !!dto.isGeo;
+  var hasSnap  = !isGeo && !!dto.snapshotBranchIri;
+  var color    = isGeo ? C.geom : colorForIri(dto.iri, parentColor);
+  var label    = isGeo ? (labelFor(dto.iri) + ' \u25c7') : labelFor(dto.iri);
+  if (hasSnap) label += ' \u23f8';   // ⏸ pin indicator
   var node = {
-    name: isGeo ? (labelFor(dto.iri) + ' \u25c7') : labelFor(dto.iri),
-    symbol: isGeo ? 'diamond' : 'circle',
-    symbolSize: isGeo ? 10 : 8,
-    itemStyle: { color: color },
+    name:           label,
+    symbol:         isGeo ? 'diamond' : 'circle',
+    symbolSize:     isGeo ? 10 : (hasSnap ? 10 : 8),
+    itemStyle:      { color: color },
+    snapshotBranchIri: dto.snapshotBranchIri || null,  // surfaced in tooltip
   };
+  if (hasSnap) {
+    node.itemStyle.borderColor = '#0f766e';
+    node.itemStyle.borderWidth = 2;
+    node.itemStyle.borderType  = 'dashed';
+  }
   if (dto.children && dto.children.length > 0) {
     node.children = dto.children.map(function (c) { return toEChartsNode(c, color); });
   }
@@ -626,7 +684,12 @@ function renderTree(root, nodeCount) {
     tooltip: {
       trigger: 'item',
       formatter: function (params) {
-        return '<b>' + params.name + '</b>';
+        var html = '<b>' + params.name + '</b>';
+        var snap = params.data && params.data.snapshotBranchIri;
+        if (snap) {
+          html += '<br/><span style="font-size:.8em;color:#0f766e">&#x23f8;&nbsp;geometry branch:&nbsp;' + snap + '</span>';
+        }
+        return html;
       }
     },
     series: [{
@@ -688,8 +751,11 @@ window.runPopulate = async function () {
     state.thermalManagementIri = data.thermalManagementIri;
     state.rearMotorIri         = data.rearMotorIri;
     state.turbochargerIri      = data.turbochargerIri;
-    state.luxuryInteriorIri    = data.luxuryInteriorIri;
-    state.raceEditionPackIri   = data.raceEditionPackIri;
+    state.luxuryInteriorIri         = data.luxuryInteriorIri;
+    state.raceEditionPackIri          = data.raceEditionPackIri;
+    state.steelFrameIri               = data.steelFrameIri || null;
+    state.geometrySnapshotBranchIri   = data.geometrySnapshotBranchIri || null;
+    state.geometryV2SnapshotBranchIri = data.geometryV2SnapshotBranchIri || null;
 
     setStatus('Populated ✓  —  fetching node names…', 'busy');
     await fetchNodeNames();
@@ -721,6 +787,9 @@ async function fetchNodeNames() {
   });
 }
 // ── Fetch 3D geometry layer ───────────────────────────────────────────────────
+// Merges nodes/usages from the main branch, then from snapshot branches so that
+// 3D geometry stored in named snapshot graphs (v1 tiny tires, v2 perf wheels) is
+// also available when the configured tree includes those structure nodes.
 async function fetchGeometry3dLayer() {
   var headers = { 'X-Forge-BranchIri': state.branchIri };
   var [nodesResp, usagesResp] = await Promise.all([
@@ -766,6 +835,56 @@ async function fetchGeometry3dLayer() {
       });
     }
   });
+
+  // Pull 3D geometry from snapshot branches (v1 tiny tires, v2 perf wheels).
+  const snap3dBranches = [state.geometrySnapshotBranchIri, state.geometryV2SnapshotBranchIri]
+    .filter(Boolean);
+  for (const snapBranchIri of snap3dBranches) {
+    var sh = { 'X-Forge-BranchIri': snapBranchIri };
+    var [snNodes, snUsages] = await Promise.all([
+      fetch(baseUrl() + '/api/entities/geometry3d-nodes',  { headers: sh }),
+      fetch(baseUrl() + '/api/entities/geometry3d-usages', { headers: sh }),
+    ]);
+    if (snNodes.ok) {
+      var snNodesRaw = await snNodes.json();
+      var snMetas = (Array.isArray(snNodesRaw) ? snNodesRaw : (snNodesRaw.items || snNodesRaw.value || []));
+      snMetas.forEach(function (n) {
+        if (n.iri && !state.geo3dNodes[n.iri]) {
+          state.geo3dNodes[n.iri] = { name: n.name || n.iri, objContent: '' };
+        }
+      });
+      // Fetch OBJ content for snapshot nodes.
+      await Promise.all(snMetas.map(async function (n) {
+        if (!n.iri || !n.objectKey || state.geo3dNodes[n.iri].objContent) return;
+        try {
+          var r = await fetch(
+            baseUrl() + '/api/objects/geometry3d-nodes/content?iri=' + encodeURIComponent(n.iri),
+            { headers: sh }
+          );
+          if (r.ok) state.geo3dNodes[n.iri].objContent = await r.text();
+        } catch (e) {
+          console.warn('Failed to fetch snapshot OBJ for', n.iri, e);
+        }
+      }));
+    }
+    if (snUsages.ok) {
+      var snUsagesRaw = await snUsages.json();
+      (Array.isArray(snUsagesRaw) ? snUsagesRaw : (snUsagesRaw.items || snUsagesRaw.value || [])).forEach(function (u) {
+        if (u.parentIri && u.childGeometry3dIri) {
+          var already = state.geo3dUsages.some(function (x) {
+            return x.parentIri === u.parentIri && x.childGeometry3dIri === u.childGeometry3dIri;
+          });
+          if (!already) {
+            state.geo3dUsages.push({
+              parentIri:          u.parentIri,
+              childGeometry3dIri: u.childGeometry3dIri,
+              matrix3d:           Array.isArray(u.matrix3d) ? u.matrix3d : [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+            });
+          }
+        }
+      });
+    }
+  }
 }
 
 // ── Render 3D layer ──────────────────────────────────────────────────────────────
@@ -782,12 +901,14 @@ function triggerGeo3dRender(reachableIris) {
   }
 }
 // ── Fetch geometry layer ────────────────────────────────────────────────────
+// Merges nodes/usages from the main branch, then from any snapshot branches
+// so that geometry seeded in a named snapshot graph is also rendered.
 async function fetchGeometryLayer() {
-  var headers = { 'X-Forge-BranchIri': state.branchIri };
+  var mainHeaders = { 'X-Forge-BranchIri': state.branchIri };
 
   var [nodesResp, usagesResp] = await Promise.all([
-    fetch(baseUrl() + '/api/entities/geometry-nodes',  { headers: headers }),
-    fetch(baseUrl() + '/api/entities/geometry-usages', { headers: headers }),
+    fetch(baseUrl() + '/api/entities/geometry-nodes',  { headers: mainHeaders }),
+    fetch(baseUrl() + '/api/entities/geometry-usages', { headers: mainHeaders }),
   ]);
 
   if (!nodesResp.ok || !usagesResp.ok) {
@@ -816,6 +937,43 @@ async function fetchGeometryLayer() {
       });
     }
   });
+
+  // Also pull geometry from snapshot branches so their nodes are visible.
+  const snapBranches = [state.geometrySnapshotBranchIri, state.geometryV2SnapshotBranchIri]
+    .filter(Boolean);
+  for (const snapBranchIri of snapBranches) {
+    var snapHeaders = { 'X-Forge-BranchIri': snapBranchIri };
+    var [snapNodesResp, snapUsagesResp] = await Promise.all([
+      fetch(baseUrl() + '/api/entities/geometry-nodes',  { headers: snapHeaders }),
+      fetch(baseUrl() + '/api/entities/geometry-usages', { headers: snapHeaders }),
+    ]);
+    if (snapNodesResp.ok) {
+      var snapNodesRaw = await snapNodesResp.json();
+      (Array.isArray(snapNodesRaw) ? snapNodesRaw : (snapNodesRaw.items || snapNodesRaw.value || [])).forEach(function (n) {
+        if (n.iri && !state.geoNodes[n.iri]) {
+          state.geoNodes[n.iri] = { name: n.name || n.iri, svgContent: n.svgContent || '' };
+          if (n.name) state.iriToName[n.iri] = n.name;
+        }
+      });
+    }
+    if (snapUsagesResp.ok) {
+      var snapUsagesRaw = await snapUsagesResp.json();
+      (Array.isArray(snapUsagesRaw) ? snapUsagesRaw : (snapUsagesRaw.items || snapUsagesRaw.value || [])).forEach(function (u) {
+        if (u.parentIri && u.childGeometryIri) {
+          var already = state.geoUsages.some(function (x) {
+            return x.parentIri === u.parentIri && x.childGeometryIri === u.childGeometryIri;
+          });
+          if (!already) {
+            state.geoUsages.push({
+              parentIri:        u.parentIri,
+              childGeometryIri: u.childGeometryIri,
+              matrix:           Array.isArray(u.matrix) ? u.matrix : [1, 0, 0, 1, 0, 0],
+            });
+          }
+        }
+      });
+    }
+  }
 }
 
 // ── Render geometry assembly ───────────────────────────────────────────────
@@ -901,6 +1059,12 @@ function showStateSummary() {
   tags.appendChild(tag('drivetrain dim: ' + shorten(state.drivetrainDimIri), 'dim'));
   tags.appendChild(tag('trim dim: ' + shorten(state.trimDimIri), 'dim'));
   tags.appendChild(tag('branch: ' + shorten(state.branchIri)));
+  if (state.geometrySnapshotBranchIri) {
+    tags.appendChild(tag('geometry v1: ' + shorten(state.geometrySnapshotBranchIri), 'iri'));
+  }
+  if (state.geometryV2SnapshotBranchIri) {
+    tags.appendChild(tag('geometry v2: ' + shorten(state.geometryV2SnapshotBranchIri), 'iri'));
+  }
   summary.style.display = 'block';
 }
 
@@ -930,8 +1094,8 @@ async function queryTree() {
   // 'current' → omit referenceDate; server uses DateTime.UtcNow
 
   var enumOptions = {};
-  if (drivetrain !== 'all') enumOptions[state.drivetrainDimIri] = 'urn:forge:car:drivetrain/' + drivetrain;
-  if (trim       !== 'all') enumOptions[state.trimDimIri]       = 'urn:forge:car:trim/'       + trim;
+  if (drivetrain !== 'all' && state.drivetrainDimIri) enumOptions[state.drivetrainDimIri] = 'urn:forge:car:drivetrain/' + drivetrain;
+  if (trim       !== 'all' && state.trimDimIri)       enumOptions[state.trimDimIri]       = 'urn:forge:car:trim/'       + trim;
   if (Object.keys(enumOptions).length > 0) body.enumerationOptions = enumOptions;
 
   var eraLabel = { current: 'current date', initial: '2025 (initial era)', update1: '2026+ (update-1 era)' }[era];
@@ -978,6 +1142,7 @@ window.resetState = function () {
     aluminiumFrameIri: null, thermalManagementIri: null,
     rearMotorIri: null, turbochargerIri: null,
     luxuryInteriorIri: null, raceEditionPackIri: null,
+    steelFrameIri: null, geometrySnapshotBranchIri: null, geometryV2SnapshotBranchIri: null,
     iriToName: {}, geoNodes: {}, geoUsages: [],
     lastTreeRoot: null, lastNodeCount: 0,
     geo3dNodes: {}, geo3dUsages: [],
@@ -992,7 +1157,158 @@ window.resetState = function () {
   document.getElementById('geo-placeholder').style.display = 'flex';
   document.getElementById('geo3d-placeholder').style.display = 'flex';
   document.getElementById('geo3d-canvas-wrap').style.display = 'none';
+  document.getElementById('btn-download-bundle').style.display = 'none';
+  Object.assign(bigState, { populated: false, branchIri: null, rootIri: null });
   if (chart) { chart.dispose(); chart = null; }
+};
+
+// ── Big Sample ────────────────────────────────────────────────────────────────
+
+var bigState = {
+  populated: false,
+  branchIri: null,
+  rootIri: null,
+};
+
+window.runBigPopulate = async function () {
+  var branchIri = document.getElementById('inp-branch-iri').value.trim();
+  if (!branchIri) { setStatus('Branch IRI must not be empty.', 'err'); return; }
+
+  var btn = document.getElementById('btn-big-populate');
+  document.getElementById('btn-download-bundle').style.display = 'none';
+  btn.disabled = true;
+  setStatus('Populating big-car sample — creating ~29 000 entities. This may take 30–120 s…', 'busy');
+
+  try {
+    var resp = await fetch(baseUrl() + '/api/capabilities/car/demo/big/populate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branchIri: branchIri }),
+    });
+
+    if (!resp.ok) {
+      var txt = await resp.text();
+      throw new Error('HTTP ' + resp.status + ' — ' + txt.slice(0, 200));
+    }
+
+    var data = await resp.json();
+    bigState.populated = true;
+    bigState.branchIri = branchIri;
+    bigState.rootIri   = data.rootIri;
+
+    // Wire into shared state so queryTree / renderTree / renderGeo3d all work.
+    state.populated  = true;
+    state.carIri     = data.rootIri;
+    state.branchIri  = branchIri;
+    // Big sample has no variability dimensions — leave dim IRIs null;
+    // queryTree already guards against null keys.
+
+    setStatus('Big-car populated ✓ — loading geometry bundle and querying tree…', 'busy');
+
+    // Fetch geo3d usages (JSON, small) and all OBJ content via the one-shot ZIP bundle.
+    await Promise.all([
+      fetchBigGeo3dViaBundle(branchIri),
+      fetchBigGeo3dUsages(branchIri),
+    ]);
+
+    setFiltersEnabled(true);
+    await queryTree();
+
+    document.getElementById('btn-download-bundle').style.display = '';
+    setStatus(
+      'Big-car sample ready ✓ — ' +
+      data.treeNodeCount.toLocaleString() + ' nodes · ' +
+      data.geometry3dNodeCount.toLocaleString() + ' geometry shapes · ' +
+      data.geometry3dUsageCount.toLocaleString() + ' placements.',
+      'ok');
+
+  } catch (e) {
+    setStatus('Big-car populate failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ── Big sample geometry fetchers ─────────────────────────────────────────────
+// Downloads the ZIP bundle (one request) and unpacks every OBJ file into
+// state.geo3dNodes so triggerGeo3dRender can render them.
+async function fetchBigGeo3dViaBundle(branchIri) {
+  var resp = await fetch(baseUrl() + '/api/objects/geometry3d-nodes/bundle', {
+    headers: { 'X-Forge-BranchIri': branchIri },
+  });
+  if (!resp.ok) { console.warn('Bundle fetch failed HTTP', resp.status); return; }
+  var blob = await resp.blob();
+  var zip  = await JSZip.loadAsync(blob);
+
+  // Parse manifest to build filename → {iri, name} map.
+  var manifestFile = zip.file('manifest.json');
+  var manifest = manifestFile ? JSON.parse(await manifestFile.async('string')) : [];
+  var byFileName = {};
+  manifest.forEach(function (e) { byFileName[e.fileName] = e; });
+
+  state.geo3dNodes = {};
+  await Promise.all(
+    Object.keys(zip.files).filter(function (n) { return n.endsWith('.obj'); }).map(async function (name) {
+      var entry = byFileName[name];
+      if (!entry) return;
+      var obj = await zip.file(name).async('string');
+      state.geo3dNodes[entry.iri] = { name: entry.name || entry.iri, objContent: obj };
+      if (entry.name) state.iriToName[entry.iri] = entry.name;
+    })
+  );
+}
+
+async function fetchBigGeo3dUsages(branchIri) {
+  var resp = await fetch(baseUrl() + '/api/entities/geometry3d-usages', {
+    headers: { 'X-Forge-BranchIri': branchIri },
+  });
+  if (!resp.ok) { console.warn('geo3d-usages fetch failed HTTP', resp.status); return; }
+  var raw = await resp.json();
+  state.geo3dUsages = [];
+  (Array.isArray(raw) ? raw : (raw.items || raw.value || [])).forEach(function (u) {
+    if (u.parentIri && u.childGeometry3dIri) {
+      state.geo3dUsages.push({
+        parentIri:          u.parentIri,
+        childGeometry3dIri: u.childGeometry3dIri,
+        matrix3d: Array.isArray(u.matrix3d) ? u.matrix3d : [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1],
+      });
+    }
+  });
+}
+
+window.downloadBundle = function () {
+  if (!bigState.branchIri) {
+    setStatus('Populate the big-car sample first.', 'err');
+    return;
+  }
+  var btn = document.getElementById('btn-download-bundle');
+  btn.disabled = true;
+  setStatus('Fetching geometry bundle…', 'busy');
+
+  fetch(baseUrl() + '/api/objects/geometry3d-nodes/bundle', {
+    headers: { 'X-Forge-BranchIri': bigState.branchIri },
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var cd = r.headers.get('Content-Disposition') || '';
+    var match = cd.match(/filename="?([^";]+)"?/);
+    var filename = match ? match[1] : 'geometry3d-bundle.zip';
+    return r.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+  }).then(function (result) {
+    var url = URL.createObjectURL(result.blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = result.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    var sizeMB = (result.blob.size / 1024 / 1024).toFixed(2);
+    setStatus('ZIP downloaded ✔ — ' + sizeMB + '\u202fMB · geometry3d-bundle.zip', 'ok');
+  }).catch(function (e) {
+    setStatus('Bundle download failed: ' + e.message, 'err');
+  }).finally(function () {
+    btn.disabled = false;
+  });
 };
 
 })();

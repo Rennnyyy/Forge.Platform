@@ -12,9 +12,9 @@ namespace Forge.Structure;
 /// </para>
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
-[JsonDerivedType(typeof(FlagOptionCondition),        "flag")]
+[JsonDerivedType(typeof(FlagOptionCondition), "flag")]
 [JsonDerivedType(typeof(EnumerationOptionCondition), "enumeration")]
-[JsonDerivedType(typeof(TimeCondition),              "time")]
+[JsonDerivedType(typeof(TimeCondition), "time")]
 public interface IStructureCondition
 {
     /// <summary>

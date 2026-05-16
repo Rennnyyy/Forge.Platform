@@ -1,0 +1,42 @@
+meta {
+  name: Geometry snapshot - populate car demo
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/car/demo/populate
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branchIri": "https://forge-it.net/branches/main"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.carIri: isDefined
+  res.body.steelFrameIri: isDefined
+  res.body.geometrySnapshotBranchIri: isDefined
+  res.body.geometryV2SnapshotBranchIri: isDefined
+  res.body.geometryNodeCount: eq 10
+  res.body.geometryUsageCount: eq 10
+  res.body.geometry3dNodeCount: eq 6
+  res.body.geometry3dUsageCount: eq 12
+}
+
+script:post-response {
+  bru.setVar("carIri",                  res.body.carIri);
+  bru.setVar("branchIri",               res.body.branchIri);
+  bru.setVar("steelFrameIri",           res.body.steelFrameIri);
+  bru.setVar("alumFrameIri",            res.body.aluminiumFrameIri);
+  bru.setVar("geomSnapshotBranchIri",   res.body.geometrySnapshotBranchIri);
+  bru.setVar("geomV2SnapshotBranchIri", res.body.geometryV2SnapshotBranchIri);
+}

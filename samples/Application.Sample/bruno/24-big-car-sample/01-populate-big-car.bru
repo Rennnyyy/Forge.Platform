@@ -1,0 +1,40 @@
+meta {
+  name: Big car sample - populate (7 576 nodes, 4 000 geometry shapes, 10 000 placements)
+  type: http
+  seq: 1
+}
+
+http {
+  timeout: 120000
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/car/demo/big/populate
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branchIri": "https://forge-it.net/branches/main"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.rootIri: isDefined
+  res.body.treeNodeCount: eq 7576
+  res.body.leafNodeCount: eq 6000
+  res.body.treeEdgeCount: eq 7575
+  res.body.geometry3dNodeCount: eq 4000
+  res.body.geometry3dUsageCount: eq 10000
+}
+
+script:post-response {
+  bru.setVar("bigCarRootIri",  res.body.rootIri);
+  bru.setVar("bigCarBranchIri", res.body.branchIri);
+}

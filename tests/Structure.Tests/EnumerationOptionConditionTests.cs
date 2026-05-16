@@ -9,8 +9,8 @@ namespace Forge.Structure.Tests;
 public sealed class EnumerationOptionConditionTests
 {
     private const string ColorDimension = "https://forge-it.net/dimensions/color";
-    private const string RedIri   = "https://forge-it.net/colors/red";
-    private const string BlueIri  = "https://forge-it.net/colors/blue";
+    private const string RedIri = "https://forge-it.net/colors/red";
+    private const string BlueIri = "https://forge-it.net/colors/blue";
     private const string OtherDimension = "https://forge-it.net/dimensions/other";
 
     private static StructureConfiguration WithEnum(string dimensionIri, string valueIri) =>

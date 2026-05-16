@@ -20,16 +20,24 @@ namespace Forge.Structure;
 public sealed record GetConfiguredTreeCommand(
     string StructureHeadIri,
     string BranchIri,
-    IReadOnlyDictionary<string, bool>?   FlagOptions        = null,
+    IReadOnlyDictionary<string, bool>? FlagOptions = null,
     IReadOnlyDictionary<string, string>? EnumerationOptions = null,
-    DateTimeOffset?                      ReferenceDate      = null);
+    DateTimeOffset? ReferenceDate = null);
 
 /// <summary>
 /// A single node in the configured tree returned by <see cref="GetConfiguredTreeHandler"/>.
+/// <para>
+/// <see cref="SnapshotBranchIri"/> is non-null when the <see cref="Usage"/> edge that
+/// led to this node carried a <c>SnapshotIri</c> value (or when an ancestor edge did
+/// and no descendant edge overrode it). Callers should fetch associated context
+/// (geometry, metadata) for this node from that named graph instead of the query's
+/// default branch. See Structure ADR-0006.
+/// </para>
 /// </summary>
 public sealed record StructureNodeDto(
-    string                          Iri,
-    IReadOnlyList<StructureNodeDto> Children);
+    string Iri,
+    IReadOnlyList<StructureNodeDto> Children,
+    string? SnapshotBranchIri = null);
 
 /// <summary>
 /// Response returned by <see cref="GetConfiguredTreeHandler"/>.
@@ -40,7 +48,7 @@ public sealed record StructureNodeDto(
 /// </para>
 /// </summary>
 public sealed record GetConfiguredTreeResponse(
-    StructureNodeDto      Root,
+    StructureNodeDto Root,
     IReadOnlyList<string> AllNodeIris);
 
 /// <summary>
@@ -89,8 +97,8 @@ public sealed class GetConfiguredTreeHandler
 
     public async ValueTask<ExecutionResult<GetConfiguredTreeResponse>> HandleAsync(
         GetConfiguredTreeCommand command,
-        CapabilityContext         context,
-        CancellationToken         cancellationToken = default)
+        CapabilityContext context,
+        CancellationToken cancellationToken = default)
     {
         // ── 1. Build StructureConfiguration ────────────────────────────────
         var options = new Dictionary<string, OptionValue>(StringComparer.Ordinal);
@@ -112,16 +120,16 @@ public sealed class GetConfiguredTreeHandler
                 .ToListAsync(cancellationToken);
         }
 
-        // ── 3. Build a parent → child-IRI adjacency lookup ────────────────
+        // ── 3. Build a parent → (childIri, snapshotIri) adjacency lookup ─────
         var childrenByParent = filteredUsages.ToLookup(
             u => u.ParentStructureIri,
-            u => u.ChildStructureIri,
+            u => (ChildIri: u.ChildStructureIri, SnapshotIri: u.SnapshotIri),
             StringComparer.Ordinal);
 
         // ── 4. DFS from the head IRI ──────────────────────────────────────
-        var allNodeIris   = new HashSet<string>(StringComparer.Ordinal);
+        var allNodeIris = new HashSet<string>(StringComparer.Ordinal);
         var inCurrentPath = new HashSet<string>(StringComparer.Ordinal);
-        var root          = BuildNode(command.StructureHeadIri, childrenByParent, inCurrentPath, allNodeIris);
+        var root = BuildNode(command.StructureHeadIri, childrenByParent, inCurrentPath, allNodeIris, null);
 
         return new ExecutionResult<GetConfiguredTreeResponse>.Ok(
             new GetConfiguredTreeResponse(root, [.. allNodeIris]));
@@ -131,24 +139,36 @@ public sealed class GetConfiguredTreeHandler
     /// Recursively builds a <see cref="StructureNodeDto"/> for <paramref name="iri"/>.
     /// Uses backtracking cycle detection: a node already on the current DFS path is returned
     /// without children. Backtracking allows the same IRI to appear in multiple subtrees.
+    /// <para>
+    /// <paramref name="inheritedSnapshotBranchIri"/> carries the snapshot branch annotation
+    /// from the incoming edge (or from an ancestor edge when no closer edge overrides it).
+    /// Each child edge's <c>SnapshotIri</c> overrides the inherited value for that subtree.
+    /// See Structure ADR-0006.
+    /// </para>
     /// </summary>
     private static StructureNodeDto BuildNode(
-        string                  iri,
-        ILookup<string, string> childrenByParent,
-        HashSet<string>         inCurrentPath,
-        HashSet<string>         collected)
+        string iri,
+        ILookup<string, (string ChildIri, string? SnapshotIri)> childrenByParent,
+        HashSet<string> inCurrentPath,
+        HashSet<string> collected,
+        string? inheritedSnapshotBranchIri)
     {
         collected.Add(iri);
 
         if (!inCurrentPath.Add(iri))
-            return new StructureNodeDto(iri, []);   // cycle sentinel
+            return new StructureNodeDto(iri, [], inheritedSnapshotBranchIri);   // cycle sentinel
 
         var children = childrenByParent[iri]
-            .Select(childIri => BuildNode(childIri, childrenByParent, inCurrentPath, collected))
+            .Select(edge => BuildNode(
+                edge.ChildIri,
+                childrenByParent,
+                inCurrentPath,
+                collected,
+                edge.SnapshotIri ?? inheritedSnapshotBranchIri))
             .ToList();
 
         inCurrentPath.Remove(iri);   // backtrack
 
-        return new StructureNodeDto(iri, children);
+        return new StructureNodeDto(iri, children, inheritedSnapshotBranchIri);
     }
 }

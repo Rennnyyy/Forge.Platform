@@ -93,5 +93,5 @@ public partial class GeometryUsage3D
     }
 
     private static readonly double[] Identity4x4 =
-        [1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1];
+        [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }

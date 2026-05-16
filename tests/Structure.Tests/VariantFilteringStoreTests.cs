@@ -14,11 +14,11 @@ namespace Forge.Structure.Tests;
 public sealed class StructureFilteringStoreTests
 {
     private const string BranchIri = "https://forge-it.net/branches/main";
-    private const string EvDim  = "https://forge-it.net/dimensions/ev";
+    private const string EvDim = "https://forge-it.net/dimensions/ev";
     private const string ColorDim = "https://forge-it.net/dimensions/color";
-    private const string RedIri  = "https://forge-it.net/colors/red";
+    private const string RedIri = "https://forge-it.net/colors/red";
     private const string ParentIri = "https://forge-it.net/structures/P";
-    private const string ChildIri  = "https://forge-it.net/structures/C";
+    private const string ChildIri = "https://forge-it.net/structures/C";
 
     private static StructureConfiguration EmptyConfig() =>
         new(BranchIri: BranchIri, Options: new Dictionary<string, OptionValue>());
@@ -121,7 +121,7 @@ public sealed class StructureFilteringStoreTests
     [Fact]
     public async Task Mixed_usages_only_satisfied_ones_are_returned()
     {
-        var satisfied   = MakeUsage(new ConditionSet([new FlagOptionCondition(EvDim, true)]));
+        var satisfied = MakeUsage(new ConditionSet([new FlagOptionCondition(EvDim, true)]));
         var unsatisfied = MakeUsage(new ConditionSet([new FlagOptionCondition(EvDim, false, isRequired: true)]));
         var store = new StubEntityStore(satisfied, unsatisfied);
         var sut = new StructureFilteringStore(store);
@@ -171,7 +171,7 @@ public sealed class StructureFilteringStoreTests
     public async Task Usage_with_satisfied_milestone_is_returned()
     {
         var from = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var to   = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
         var usage = MakeUsage(new ConditionSet([new TimeCondition(from, to)]));
         var store = new StubEntityStore(usage);
         var sut = new StructureFilteringStore(store);

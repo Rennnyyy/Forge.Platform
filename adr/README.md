@@ -65,3 +65,5 @@ What this enables or forecloses. Follow-ups.
 - [0023 — Object Storage slices (`Forge.ObjectStorage.Abstractions`, `.InMemory`, `.Http`)](0023-object-storage-slices.md)
 - [0024 — Entity change event slice named `Forge.Entity.Messaging`, not `Forge.EntityEvents`](0024-entity-events-slice-named-entity-messaging.md)
 - [0025 — Entity and Capability as the exclusive platform extension model](0025-entity-capability-exclusive-extension-model.md)
+- [0026 — Bruno collection extended to 23 chapters (geometry snapshot demo)](0026-bruno-chapter-23-geometry-snapshot.md)
+- [0027 — Bruno collection extended to 24 chapters (big-car sample + bundle download)](0027-bruno-chapter-24-big-car-sample.md)

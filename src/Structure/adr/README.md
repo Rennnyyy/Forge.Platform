@@ -14,3 +14,4 @@ Follows MADR-minimal as defined in [root ADR-0003](/adr/0003-adr-policy.md).
 - [0003 — VariantScope and VariantConfiguration](0003-variant-scope-and-configuration.md)
 - [0004 — VariantFilteringStore: IEntityStore decorator for QueryByTypeAsync&lt;Usage&gt;](0004-variant-filtering-store.md)
 - [0005 — ConfiguredTreeCapability: depth-first DAG traversal with variant filtering](0005-configured-tree-capability.md)
+- [0006 — Snapshot-scoped Usage: per-edge branch annotation for geometry resolution](0006-snapshot-scoped-usage.md)

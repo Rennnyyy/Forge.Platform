@@ -1,0 +1,21 @@
+meta {
+  name: Big car sample - download geometry3d bundle (ZIP with 4 000 OBJ files)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/objects/geometry3d-nodes/bundle
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{bigCarBranchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.headers['content-type']: contains application/zip
+  res.headers['content-disposition']: contains geometry3d-bundle.zip
+}

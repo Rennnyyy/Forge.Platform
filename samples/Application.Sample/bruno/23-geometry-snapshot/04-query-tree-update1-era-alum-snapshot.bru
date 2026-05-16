@@ -1,0 +1,61 @@
+meta {
+  name: Geometry snapshot - verify AlumFrame carries v2 snapshotBranchIri in update-1 era
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{carIri}}",
+    "branchIri": "{{branchIri}}",
+    "referenceDate": "2026-06-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{carIri}}
+}
+
+script:post-response {
+  function findNode(node, targetIri) {
+    if (node.iri === targetIri) return node;
+    for (const c of (node.children || [])) {
+      const found = findNode(c, targetIri);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const alumFrameNode = findNode(res.body.root, bru.getVar("alumFrameIri"));
+  const v2Branch      = bru.getVar("geomV2SnapshotBranchIri");
+  const v1Branch      = bru.getVar("geomSnapshotBranchIri");
+
+  test("AlumFrame node is reachable in the update-1 era configured tree", () => {
+    expect(alumFrameNode).to.not.be.null;
+  });
+
+  test("AlumFrame node carries snapshotBranchIri set to the geometry-v2 branch", () => {
+    expect(alumFrameNode?.snapshotBranchIri).to.equal(v2Branch);
+  });
+
+  test("Root car node has no snapshotBranchIri", () => {
+    expect(res.body.root.snapshotBranchIri).to.be.null;
+  });
+
+  // In update-1 era SteelFrame is still connected (no end condition), so v1 should propagate too.
+  const steelFrameNode = findNode(res.body.root, bru.getVar("steelFrameIri"));
+  test("SteelFrame node still carries v1 snapshotBranchIri in update-1 era", () => {
+    expect(steelFrameNode?.snapshotBranchIri).to.equal(v1Branch);
+  });
+}

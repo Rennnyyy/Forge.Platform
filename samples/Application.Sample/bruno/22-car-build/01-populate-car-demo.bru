@@ -25,9 +25,12 @@ assert {
   res.body.carIri: isDefined
   res.body.drivetrainDimensionIri: isDefined
   res.body.trimDimensionIri: isDefined
+  res.body.steelFrameIri: isDefined
+  res.body.geometrySnapshotBranchIri: isDefined
+  res.body.geometryV2SnapshotBranchIri: isDefined
   res.body.geometryNodeCount: eq 10
   res.body.geometryUsageCount: eq 10
-  res.body.geometry3dNodeCount: eq 5
+  res.body.geometry3dNodeCount: eq 6
   res.body.geometry3dUsageCount: eq 12
 }
 
@@ -36,6 +39,9 @@ script:post-response {
   bru.setVar("carIri",                res.body.carIri);
   bru.setVar("drivetrainDimIri",      res.body.drivetrainDimensionIri);
   bru.setVar("trimDimIri",            res.body.trimDimensionIri);
+  bru.setVar("steelFrameIri",         res.body.steelFrameIri);
+  bru.setVar("geomSnapshotBranchIri",   res.body.geometrySnapshotBranchIri);
+  bru.setVar("geomV2SnapshotBranchIri", res.body.geometryV2SnapshotBranchIri);
   // landmark IRIs for presence/absence assertions
   bru.setVar("evPackageIri",          res.body.evPackageIri);
   bru.setVar("icePackageIri",         res.body.icePackageIri);

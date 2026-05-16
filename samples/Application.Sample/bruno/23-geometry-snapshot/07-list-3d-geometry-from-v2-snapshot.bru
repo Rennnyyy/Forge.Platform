@@ -1,0 +1,36 @@
+meta {
+  name: Geometry snapshot - list 3D geometry from v2 snapshot branch (2 nodes: body + perf wheel)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/entities/geometry3d-nodes
+  body: none
+  auth: none
+}
+
+headers {
+  X-Forge-BranchIri: {{geomV2SnapshotBranchIri}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isDefined
+}
+
+script:post-response {
+  test("Exactly 2 Geometry3D nodes in the v2 snapshot branch (body + performance wheel)", () => {
+    expect(res.body.items.length).to.equal(2);
+  });
+
+  test("The v2 snapshot branch has a 3D body node", () => {
+    const names = res.body.items.map(n => n.name);
+    expect(names.some(n => n.includes("v2.0") && n.toLowerCase().includes("body"))).to.be.true;
+  });
+
+  test("The v2 snapshot branch has a performance wheel 3D node", () => {
+    const names = res.body.items.map(n => n.name);
+    expect(names.some(n => n.toLowerCase().includes("performance") || (n.includes("v2.0") && n.toLowerCase().includes("wheel")))).to.be.true;
+  });
+}

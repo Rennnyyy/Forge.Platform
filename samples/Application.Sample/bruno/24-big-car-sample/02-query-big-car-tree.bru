@@ -1,0 +1,33 @@
+meta {
+  name: Big car sample - query configured tree (all 7 576 nodes, unconditional)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/capabilities/structure/configured-tree/get
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "structureHeadIri": "{{bigCarRootIri}}",
+    "branchIri": "{{bigCarBranchIri}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.root.iri: eq {{bigCarRootIri}}
+}
+
+script:post-response {
+  test("Big car tree returns all 7 576 nodes (all edges unconditional)", () => {
+    expect(res.body.allNodeIris.length).to.equal(7576);
+  });
+}

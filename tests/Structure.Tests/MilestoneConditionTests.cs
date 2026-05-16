@@ -78,7 +78,7 @@ public sealed class TimeConditionTests
     public void Date_inside_closed_window_is_satisfied()
     {
         var from = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var to   = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
         var inside = new DateTimeOffset(2025, 6, 15, 0, 0, 0, TimeSpan.Zero);
         var condition = new TimeCondition(validFrom: from, validTo: to);
 
@@ -89,7 +89,7 @@ public sealed class TimeConditionTests
     public void Date_outside_closed_window_is_not_satisfied()
     {
         var from = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var to   = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
         var outside = new DateTimeOffset(2026, 6, 15, 0, 0, 0, TimeSpan.Zero);
         var condition = new TimeCondition(validFrom: from, validTo: to);
 
@@ -109,7 +109,7 @@ public sealed class TimeConditionTests
     public void ValidFrom_and_ValidTo_are_stored_correctly()
     {
         var from = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var to   = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero);
         var condition = new TimeCondition(from, to);
 
         condition.ValidFrom.ShouldBe(from);
