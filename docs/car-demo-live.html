@@ -733,10 +733,29 @@ async function fetchGeometry3dLayer() {
   }
   var nodesRaw  = await nodesResp.json();
   var usagesRaw = await usagesResp.json();
+
+  // Build initial node map from metadata (no objContent yet).
   state.geo3dNodes = {};
-  (Array.isArray(nodesRaw) ? nodesRaw : (nodesRaw.items || nodesRaw.value || [])).forEach(function (n) {
-    if (n.iri) state.geo3dNodes[n.iri] = { name: n.name || n.iri, objContent: n.objContent || '' };
+  var nodeMetas = (Array.isArray(nodesRaw) ? nodesRaw : (nodesRaw.items || nodesRaw.value || []));
+  nodeMetas.forEach(function (n) {
+    if (n.iri) state.geo3dNodes[n.iri] = { name: n.name || n.iri, objContent: '' };
   });
+
+  // Fetch OBJ content for each node in parallel from the object store.
+  // Each OBJ is served as text/plain from api/objects/geometry3d-nodes/content?iri=...
+  await Promise.all(nodeMetas.map(async function (n) {
+    if (!n.iri || !n.objectKey) return; // skip nodes with no uploaded content yet
+    try {
+      var r = await fetch(
+        baseUrl() + '/api/objects/geometry3d-nodes/content?iri=' + encodeURIComponent(n.iri),
+        { headers: headers }
+      );
+      if (r.ok) state.geo3dNodes[n.iri].objContent = await r.text();
+    } catch (e) {
+      console.warn('Failed to fetch OBJ for', n.iri, e);
+    }
+  }));
+
   state.geo3dUsages = [];
   (Array.isArray(usagesRaw) ? usagesRaw : (usagesRaw.items || usagesRaw.value || [])).forEach(function (u) {
     if (u.parentIri && u.childGeometry3dIri) {
@@ -1019,6 +1038,11 @@ function initRenderer() {
   renderer3d = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer3d.setSize(wrap.clientWidth, wrap.clientHeight);
   renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer3d.shadowMap.enabled = true;
+  renderer3d.shadowMap.type    = THREE.PCFSoftShadowMap;
+  renderer3d.toneMapping       = THREE.ACESFilmicToneMapping;
+  renderer3d.toneMappingExposure = 1.1;
+  renderer3d.outputColorSpace  = THREE.SRGBColorSpace;
 
   camera3d = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 50);
   camera3d.position.set(3.5, 2.5, 4.5);
@@ -1050,6 +1074,35 @@ function initRenderer() {
   })();
 }
 
+// PBR material factory — different roughness/metalness per part type.
+function materialFor(nodeData, color) {
+  const name = (nodeData.name || '').toLowerCase();
+  if (/wheel/.test(name)) {
+    // Rubber tyre: dark, non-metallic, very rough
+    return new THREE.MeshPhysicalMaterial({
+      color: 0x1a1a1a, metalness: 0.05, roughness: 0.90, side: THREE.DoubleSide,
+    });
+  }
+  if (/battery/.test(name)) {
+    // Matte blue-grey plastic housing
+    return new THREE.MeshPhysicalMaterial({
+      color: 0x2a4a6a, metalness: 0.15, roughness: 0.65, side: THREE.DoubleSide,
+    });
+  }
+  if (/exhaust/.test(name)) {
+    // Brushed steel exhaust
+    return new THREE.MeshPhysicalMaterial({
+      color: 0x888885, metalness: 0.90, roughness: 0.35, side: THREE.DoubleSide,
+    });
+  }
+  // Default: metallic car paint with clear-coat
+  return new THREE.MeshPhysicalMaterial({
+    color, metalness: 0.80, roughness: 0.22,
+    clearcoat: 1.0, clearcoatRoughness: 0.08,
+    side: THREE.DoubleSide,
+  });
+}
+
 // Build 3D scene recursively from the usage graph.
 function buildScene3d(scene, parentIri, parentWorld, nodes, usages) {
   for (const u of usages) {
@@ -1059,8 +1112,10 @@ function buildScene3d(scene, parentIri, parentWorld, nodes, usages) {
     const world    = new THREE.Matrix4().multiplyMatrices(parentWorld, local);
     const mesh     = new THREE.Mesh(
       parseOBJ(nodeData.objContent || ''),
-      new THREE.MeshPhongMaterial({ color: colorFor(u.childGeometry3dIri), side: THREE.DoubleSide })
+      materialFor(nodeData, colorFor(u.childGeometry3dIri))
     );
+    mesh.castShadow    = true;
+    mesh.receiveShadow = true;
     mesh.applyMatrix4(world);
     scene.add(mesh);
     buildScene3d(scene, u.childGeometry3dIri, world, nodes, usages); // G3D→G3D
@@ -1078,15 +1133,41 @@ window.renderGeo3d = function (nodes, usages, reachableIris) {
   if (!renderer3d) initRenderer();
 
   scene3d = new THREE.Scene();
-  scene3d.background = new THREE.Color(0x0d1117);
-  scene3d.fog        = new THREE.Fog(0x0d1117, 10, 30);
-  scene3d.add(new THREE.AmbientLight(0xccddff, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+  scene3d.background = new THREE.Color(0x111827);
+  scene3d.fog        = new THREE.Fog(0x111827, 12, 32);
+  // Hemisphere: warm sky, dark ground bounce
+  scene3d.add(new THREE.HemisphereLight(0xb1d4ff, 0x443322, 0.8));
+  // Key light — warm sun with soft shadows
+  const sun = new THREE.DirectionalLight(0xfff5e0, 2.8);
   sun.position.set(5, 8, 3);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width  = 2048;
+  sun.shadow.mapSize.height = 2048;
+  sun.shadow.camera.near   = 0.5;
+  sun.shadow.camera.far    = 30;
+  sun.shadow.camera.left   = -5;
+  sun.shadow.camera.right  =  5;
+  sun.shadow.camera.bottom = -5;
+  sun.shadow.camera.top    =  5;
+  sun.shadow.bias = -0.001;
   scene3d.add(sun);
-  const grid = new THREE.GridHelper(8, 16, 0x223344, 0x1a2233);
+  // Cool fill from opposite side
+  const fill = new THREE.DirectionalLight(0x7fbfff, 0.6);
+  fill.position.set(-4, 3, -3);
+  scene3d.add(fill);
+  // Ground grid
+  const grid = new THREE.GridHelper(10, 20, 0x1e3050, 0x162237);
   grid.position.y = -0.5;
   scene3d.add(grid);
+  // Invisible shadow-receiver plane
+  const groundMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(14, 14),
+    new THREE.ShadowMaterial({ opacity: 0.45 })
+  );
+  groundMesh.rotation.x = -Math.PI / 2;
+  groundMesh.position.y = -0.501;
+  groundMesh.receiveShadow = true;
+  scene3d.add(groundMesh);
 
   // Walk S→G3D root usages (parents that are NOT themselves geo3d nodes);
   // only include roots whose structure node is in the active reachable set.

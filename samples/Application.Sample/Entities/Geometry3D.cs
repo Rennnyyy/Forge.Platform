@@ -12,10 +12,11 @@ namespace Forge.Application.Sample;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The shape is stored as a plain-text <b>Wavefront OBJ</b> fragment — a non-proprietary
-/// ASCII format that can be read and edited in any text editor. A minimal box is ~15 lines;
-/// a 3D preview is assembled client-side using Three.js by walking the
-/// <see cref="GeometryUsage3D"/> hierarchy and applying each edge's 4×4 matrix.
+/// The OBJ mesh is stored as a <b>binary object</b> (plain-text <c>text/plain</c> content) in an
+/// <c>IObjectStore</c> keyed <c>"geometry3d-obj"</c>. Metadata (name, description, object key)
+/// lives in the RDF entity store. A 3D preview is assembled client-side using Three.js by
+/// fetching each node's OBJ from <c>api/objects/geometry3d-nodes/content?iri=…</c>,
+/// walking the <see cref="GeometryUsage3D"/> hierarchy, and applying each edge's 4×4 matrix.
 /// </para>
 /// <para>
 /// Coordinate convention used in the car demo:
@@ -25,19 +26,28 @@ namespace Forge.Application.Sample;
 ///   <item><description>Z — car width (right = +Z)</description></item>
 /// </list>
 /// </para>
-/// Endpoints registered by <c>MapOperations()</c>:
+/// <para>
+/// All routes are owned by <c>MapObjectOperations()</c>; <c>MapOperations()</c> skips this type.
+/// </para>
 /// <list type="table">
 ///   <listheader><term>Verb + Route</term><description>Operation</description></listheader>
-///   <item><term>POST   api/entities/geometry3d-nodes</term><description>Create</description></item>
-///   <item><term>GET    api/entities/geometry3d-nodes</term><description>List</description></item>
-///   <item><term>GET    api/entities/geometry3d-nodes?iri=…</term><description>Read</description></item>
-///   <item><term>PUT    api/entities/geometry3d-nodes?iri=…</term><description>Update</description></item>
-///   <item><term>DELETE api/entities/geometry3d-nodes?iri=…</term><description>Delete</description></item>
+///   <item><term>POST   api/entities/geometry3d-nodes</term><description>Create metadata entity</description></item>
+///   <item><term>GET    api/entities/geometry3d-nodes</term><description>List metadata entities</description></item>
+///   <item><term>GET    api/entities/geometry3d-nodes?iri=…</term><description>Read single metadata entity</description></item>
+///   <item><term>PUT    api/entities/geometry3d-nodes?iri=…</term><description>Update metadata entity</description></item>
+///   <item><term>DELETE api/entities/geometry3d-nodes?iri=…</term><description>Delete entity + blob (combined)</description></item>
+///   <item><term>PUT    api/objects/geometry3d-nodes/content?iri=…</term><description>Upload OBJ content</description></item>
+///   <item><term>GET    api/objects/geometry3d-nodes/content?iri=…</term><description>Download OBJ content</description></item>
+///   <item><term>DELETE api/objects/geometry3d-nodes/content?iri=…</term><description>Delete blob only; entity stays</description></item>
 /// </list>
+/// <para>
+/// <c>ObjectKey</c>, <c>ContentType</c>, and <c>ForgeObjectStoreKey</c> are emitted
+/// by the generator; do not declare them manually.
+/// </para>
 /// </remarks>
 [Entity(Path = "geometry3d-nodes")]
 [Identity(IdentityGenerator.Random)]
-[OperationEndpoints]
+[ObjectBearing("geometry3d-obj")]
 public partial class Geometry3D : IStructure
 {
     /// <summary>Human-readable label for this 3D geometry node.</summary>
@@ -47,14 +57,4 @@ public partial class Geometry3D : IStructure
     /// <summary>Optional free-text description of this shape and its role.</summary>
     [Predicate("description")]
     public string? Description { get; set; }
-
-    /// <summary>
-    /// Wavefront OBJ text — a plain ASCII 3D mesh editable in any text editor.
-    /// Only <c>v</c> (vertex) and <c>f</c> (face) lines are required; both triangles
-    /// and quads are supported (quads are fan-triangulated client-side).
-    /// The shape should be centred at the local origin; its placement in world space
-    /// is controlled by the <see cref="GeometryUsage3D"/> edge that references it.
-    /// </summary>
-    [Predicate("objContent")]
-    public string? ObjContent { get; set; }
 }
